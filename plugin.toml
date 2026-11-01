@@ -1,0 +1,19 @@
+id = "menu-patch"
+name = "Menu Patch"
+version = "0.0.0"         # release-please sets it in each release pull request
+authors = ["VulonLok (EU4 Menu Patch)", "Happy Dwarf Team (Anvil port)"]
+description = "Back on the country selection screen and Exit to Menu in a campaign return to the main menu without restarting the game. A port of EU4 Menu Patch by VulonLok."
+api = 2
+anvil = ">=1.5.0"
+entry = "menu_patch.dll"
+phase = "main"
+symbols = "symbols.toml"   # the game build comes from here
+# The next campaign starts in the same process instead of a fresh one, so state
+# the reset leaves behind could change it; it also writes the world's
+# multiplayer restriction. Suspended in ironman (unless allowed) and in
+# multiplayer, where Exit to Menu restarts the game as without the plugin.
+affects_gameplay = true
+allow_ironman = "opt-in"
+allow_multiplayer = false
+issues = "https://github.com/happy-dwarf-team/anvil-menu-patch/issues"
+repository = "https://github.com/happy-dwarf-team/anvil-menu-patch"
