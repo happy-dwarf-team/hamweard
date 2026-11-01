@@ -16,6 +16,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <utility>
 
 namespace {
 
@@ -40,6 +41,8 @@ constexpr std::ptrdiff_t idler_app = 0x330;
 constexpr std::ptrdiff_t idler_minimap = 0x10E0;
 constexpr std::ptrdiff_t idler_exit_flag = 0x12E9;
 constexpr std::ptrdiff_t idler_notifications = 0x1400;
+constexpr std::ptrdiff_t idler_diplomacy_icons = 0x1410;  // the diplomessageicons_window
+constexpr std::ptrdiff_t window_destroy_slot = 0x130;
 constexpr std::ptrdiff_t menu_pending = 0x900;
 
 constexpr std::ptrdiff_t lobby_id = 0x1C0;
@@ -225,6 +228,23 @@ void release_minimap(Bytes idler) {
     game(sym::minimap_destroy, controller, 1u);
 }
 
+// The in-game idler puts the diplomatic message icons window into the GUI
+// root, and its destructor leaves it there: each return would keep one more
+// top-level window drawn over the next campaigns. The outgoing idler still
+// reads its slot on its last frames, so the window is destroyed only once that
+// idler is gone, before the world reset, with the window's own destroy
+// (vtable +0x130) as the HUD reload (0x82B470) uses it.
+void* g_orphan_icons_window = nullptr;
+
+void destroy_orphan_icons_window() {
+    void* window = std::exchange(g_orphan_icons_window, nullptr);
+    if (!window) return;
+    using DestroyFn = void(void* window);
+    auto* destroy = at<DestroyFn*>(at<void*>(window, 0), off::window_destroy_slot);
+    destroy(window);
+    host().info("diplomatic message icons window of the last campaign destroyed");
+}
+
 // In CInGameIdler::Idle, instead of setting exit + restart.
 void return_to_menu(Bytes idler) {
     Bytes app = at<Bytes>(idler, off::idler_app);
@@ -240,6 +260,7 @@ void return_to_menu(Bytes idler) {
     // its full destructor removes the GUI and the callbacks too.
     if (void* notices = at<void*>(idler, off::idler_notifications)) game(sym::notifications_destroy, notices);
     release_minimap(idler);
+    g_orphan_icons_window = at<void*>(idler, off::idler_diplomacy_icons);
     construct_menu(app, reason);
 }
 
@@ -257,6 +278,7 @@ void on_frontend_tick(void* idler, bool update) {
         g_reset_gate.run(app, idler, at<void*>(app, off::app_current_idler), at<void*>(app, off::app_next_idler),
                          [&] {
                              BusyScope busy;
+                             destroy_orphan_icons_window();
                              game(sym::reset_game, app, false);
                              // A frontend owns this reset, so the history needs the
                              // post-load validation ResetGame runs only for an in-game idler.
