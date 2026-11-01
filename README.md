@@ -12,9 +12,8 @@ record) and the fix for the crash when the same save is loaded again. The port r
 the original's hand-written stubs, near allocations and page protection with Anvil's
 `replace_block` and `swap_pointer`, and its own log with `anvil.log`.
 
-**Status: prototype, not for players.** The second to fourth campaign started in the same
-process crashes in Direct3D 9 (see [Known issue](#known-issue)); tested in the lab on
-single-player campaigns only.
+**Status: prototype.** Tested in the lab on single-player campaigns only (seven campaigns
+in one process with the texture workaround below); multiplayer and ironman are not tested.
 
 ## What it changes in the game
 
@@ -60,19 +59,22 @@ commit it with `symbols.toml`.
 The runs are in the EU4 engine lab (`docs/anvil-menu-patch.md`). In one process: Back
 from the country selection, Exit to Menu, loading the same save again, Continue game with
 the refreshed record, and up to five returns in a row all reach the menu without a
-restart, and `anvil-game` ends and starts its sessions. Not tested: multiplayer and Steam
+restart, and `anvil-game` ends and starts its sessions. With the workaround, seven
+campaigns (30 to 140 days at speed 3) ran in one process without a crash. Not tested: multiplayer and Steam
 lobbies (hosting, joining, leaving), ironman with the opt-in, and mods.
 
-## Known issue
+## The texture workaround
 
-A campaign started after a return to the menu crashes within about a minute at speed 3
-(second campaign in three runs, fourth in one): an access violation in `d3d9.dll`
-(`SetTexture`) while the game draws the sprite of a top-level GUI window, with a garbage
-texture pointer. The same build without the plugin, replacing the world five times by
-loading saves in the game, did not crash. Each campaign also leaves about 90 hidden
-top-level windows of its views (ledger, HRE, peace, popups, outliner entries, ...) in the
-GUI root; the visible diplomatic message icons window is now destroyed, which did not
-fix the crash. The cause is not known yet.
+Icons of the views of a finished campaign stay in the GUI root and keep counting their
+sprite types as shown. An icon loads a lazy (`loadType = "INGAME"`) texture only when that
+count was 0, so in the next campaign `MessageSettingsButton`, the settings button of
+message popups, was drawn after its texture had been released: the game logged
+`Should not be lazy loaded` and crashed in `d3d9.dll` (`SetTexture`) in the second to
+fourth campaign. A mid hook at the start of the sprite draw (`0x156BFB0`), active after the
+first return, loads such a texture first, as the first shown icon would have, and logs it.
+It works around the leak at the point of failure; destroying the old views' windows
+would fix the cause. Each campaign still leaves about 90 hidden top-level windows; the
+visible diplomatic message icons window is destroyed.
 
 ## License
 
