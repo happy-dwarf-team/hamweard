@@ -203,6 +203,42 @@ memory = "code"
 values.shown_count = { at = 33, size = 4 }
 note = "an icon is shown: the sprite type's shown count goes up, and a lazy texture is loaded only when it was 0"
 
+# --- the windows a campaign leaves in the GUI root ---
+
+[symbol.in_game_gui_init]
+rva = 0x81AF10
+bytes = "48 89 5C 24 08 55 56 57 41 54 41 55 41 56 41 57"
+memory = "code"
+note = "CInGameIdler: builds the campaign's GUI (topbar, menubar, diplomatic icons, ...); also the HUD reload's slot +0x30"
+
+[symbol.in_game_idler_construct]
+rva = 0x803270
+bytes = "48 8B C4 48 89 58 18 48 89 50 10 48 89 48 08 55 56 57 41 54 41 55 41 56"
+memory = "code"
+note = "CInGameIdler's constructor (vtable 0x1CB8460): its views create their windows from here on"
+
+[symbol.gui_create_window]
+rva = 0x14E9030
+bytes = "48 89 5C 24 10 57 48 83 EC 40 48 8B F9 48 8B DA"
+memory = "code"
+signature = "void* (void* manager, const void* name)"
+note = "GUI manager slot +0x48: creates a window by its .gui name and adds it as a top-level window; returns the full object (widget at +0x30)"
+
+[symbol.gui_manager_store]
+rva = 0x14E8904
+bytes = "48 89 35 E5 0B E6 00"
+memory = "code"
+values.manager = { at = 3, rip_relative = 7 }
+note = "GUI manager constructor: stores this to the global GUI manager pointer (as Tongs declares it)"
+
+[symbol.widget_registry]
+rva = 0x14E9E16
+bytes = "48 8B BE 10 01 00 00 48 8B 86 18 01 00 00"
+memory = "code"
+values.begin = { at = 3, size = 4 }
+values.end = { at = 10, size = 4 }
+note = "GUI update: the vector of every live widget at manager+0x110 / +0x118 (as Tongs declares it)"
+
 # --- data ---
 
 [symbol.world]

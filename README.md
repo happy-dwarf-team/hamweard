@@ -13,7 +13,7 @@ the original's hand-written stubs, near allocations and page protection with Anv
 `replace_block` and `swap_pointer`, and its own log with `anvil.log`.
 
 **Status: prototype.** Tested in the lab on single-player campaigns only (seven campaigns
-in one process with the texture workaround below); multiplayer and ironman are not tested.
+in one process, several times); multiplayer and ironman are not tested.
 
 ## What it changes in the game
 
@@ -63,18 +63,26 @@ restart, and `anvil-game` ends and starts its sessions. With the workaround, sev
 campaigns (30 to 140 days at speed 3) ran in one process without a crash. Not tested: multiplayer and Steam
 lobbies (hosting, joining, leaving), ironman with the opt-in, and mods.
 
+## Windows a campaign leaves behind
+
+1.37.5 never destroys the windows of a campaign: it restarts the process instead. The
+plugin records the windows the GUI manager creates (`0x14E9030`) from the in-game idler's
+constructor on, and destroys the ones still alive (checked in the widget registry, by
+name) once the outgoing idler is gone; windows named like one of the fresh main menu's,
+`load_screen` and `console_wnd` are kept. That removes about 130 windows per campaign. About
+25 per campaign still stay: message popups (`DefaultPopup`, made through `eu3dialog`'s own
+constructor, `0x10A03F0`, not the GUI manager) and duplicates of frontend names.
+
 ## The texture workaround
 
-Icons of the views of a finished campaign stay in the GUI root and keep counting their
-sprite types as shown. An icon loads a lazy (`loadType = "INGAME"`) texture only when that
-count was 0, so in the next campaign `MessageSettingsButton`, the settings button of
-message popups, was drawn after its texture had been released: the game logged
-`Should not be lazy loaded` and crashed in `d3d9.dll` (`SetTexture`) in the second to
-fourth campaign. A mid hook at the start of the sprite draw (`0x156BFB0`), active after the
-first return, loads such a texture first, as the first shown icon would have, and logs it.
-It works around the leak at the point of failure; destroying the old views' windows
-would fix the cause. Each campaign still leaves about 90 hidden top-level windows; the
-visible diplomatic message icons window is destroyed.
+Each leaked popup keeps its settings button counted as shown, so the shown count of the
+lazy (`loadType = "INGAME"`) sprite `MessageSettingsButton` never returns to 0 (in the lab
+it equalled the number of leaked popups, 106 after seven campaigns). An icon loads a lazy
+texture only when that count was 0, so after the texture had been released the next
+campaign drew a freed handle: the game logged `Should not be lazy loaded` and crashed in
+`d3d9.dll` (`SetTexture`) in the second to fourth campaign. A mid hook at the start of the
+sprite draw (`0x156BFB0`), active after the first return, loads such a texture first, as the
+first shown icon would have, and logs it. It stays needed until the popups are destroyed too.
 
 ## License
 

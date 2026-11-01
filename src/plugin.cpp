@@ -13,11 +13,16 @@
 
 #include <windows.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -42,8 +47,10 @@ constexpr std::ptrdiff_t idler_app = 0x330;
 constexpr std::ptrdiff_t idler_minimap = 0x10E0;
 constexpr std::ptrdiff_t idler_exit_flag = 0x12E9;
 constexpr std::ptrdiff_t idler_notifications = 0x1400;
-constexpr std::ptrdiff_t idler_diplomacy_icons = 0x1410;  // the diplomessageicons_window
-constexpr std::ptrdiff_t window_destroy_slot = 0x130;
+constexpr std::ptrdiff_t window_widget = 0x30;          // a window's widget in its full object
+constexpr std::ptrdiff_t window_destroy_slot = 0x130;    // of the full object, as the HUD reload (0x82B470) uses it
+constexpr std::ptrdiff_t widget_dead = 0xC4;             // as Tongs reads it
+constexpr std::ptrdiff_t widget_name_slot = 0xA0;        // returns the .gui name, a std::string*
 constexpr std::ptrdiff_t menu_pending = 0x900;
 
 constexpr std::ptrdiff_t lobby_id = 0x1C0;
@@ -85,6 +92,23 @@ bool g_restore_deferral_logged = false;
 std::uint32_t g_returns = 0;
 std::ptrdiff_t g_sprite_shown_count = 0;  // +0x288, from icon_show's bytes
 std::uint32_t g_texture_reloads = 0;
+Bytes g_settings_sprite = nullptr;        // MessageSettingsButton, reported at each return
+
+anvil::HookOf<sym::gui_create_window> g_create_window;
+std::uintptr_t* g_manager_global = nullptr;
+std::ptrdiff_t g_registry_begin = 0;
+std::ptrdiff_t g_registry_end = 0;
+// Main thread: the windows the GUI manager created since the campaign's GUI
+// was built, destroyed once the outgoing in-game idler is gone.
+bool g_recording_windows = false;
+bool g_campaign_seen = false;
+// A set, not a list: the game frees most of them itself, and a window made
+// later at a freed address (the main menu's country_selection_panel) is not one.
+std::unordered_map<void*, std::string> g_campaign_windows;  // full object -> .gui name
+// Names of the windows the fresh main menu has: the frontend's.
+// The game can create one of them again during a campaign and the main menu
+// then uses that one (country_selection_panel), so they are never destroyed.
+std::unordered_set<std::string> g_frontend_names;
 menu_patch::WorldResetGate g_reset_gate;
 
 anvil::Host host() noexcept { return anvil::Host{}; }
@@ -236,21 +260,56 @@ void release_minimap(Bytes idler) {
     game(sym::minimap_destroy, controller, 1u);
 }
 
-// The in-game idler puts the diplomatic message icons window into the GUI
-// root, and its destructor leaves it there: each return would keep one more
-// top-level window drawn over the next campaigns. The outgoing idler still
-// reads its slot on its last frames, so the window is destroyed only once that
-// idler is gone, before the world reset, with the window's own destroy
-// (vtable +0x130) as the HUD reload (0x82B470) uses it.
-void* g_orphan_icons_window = nullptr;
+std::string_view game_string(const void* string) noexcept;
 
-void destroy_orphan_icons_window() {
-    void* window = std::exchange(g_orphan_icons_window, nullptr);
-    if (!window) return;
-    using DestroyFn = void(void* window);
-    auto* destroy = at<DestroyFn*>(at<void*>(window, 0), off::window_destroy_slot);
-    destroy(window);
-    host().info("diplomatic message icons window of the last campaign destroyed");
+// The in-game idler and its views create their windows through the GUI
+// manager, and nothing destroys them when the idler goes: 1.37.5 restarts the
+// process instead. Each campaign left about 90 top-level windows, whose shown
+// icons kept lazy sprite textures counted as shown (see on_sprite_draw).
+void* on_create_window(void* manager, const void* name) noexcept {
+    void* window = g_create_window.next(manager, name);
+    if (!window) return window;
+    const std::string_view text = game_string(name);
+    if (!g_campaign_seen) {
+        g_frontend_names.emplace(text);
+    } else if (g_recording_windows && text != "load_screen" && text != "console_wnd" &&
+               !g_frontend_names.contains(std::string(text))) {
+        g_campaign_windows.insert_or_assign(window, std::string(game_string(name)));
+    } else {
+        g_campaign_windows.erase(window);
+    }
+    return window;
+}
+
+void destroy_campaign_windows() {
+    std::unordered_map<void*, std::string> windows = std::exchange(g_campaign_windows, {});
+    Bytes manager = reinterpret_cast<Bytes>(*g_manager_global);
+    if (windows.empty() || !manager) return;
+    std::size_t destroyed = 0, gone = 0;
+    for (const auto& [window, name] : windows) {
+        Bytes widget = static_cast<Bytes>(window) + off::window_widget;
+        // Live and not marked dead: the game may have destroyed it already
+        // (a closed popup, a HUD reload), or with a window destroyed before.
+        void** begin = at<void**>(manager, g_registry_begin);
+        void** end = at<void**>(manager, g_registry_end);
+        if (std::find(begin, end, widget) == end || at<std::uint8_t>(widget, off::widget_dead) != 0) {
+            ++gone;
+            continue;
+        }
+        // The same window, not another one made at its freed address: the
+        // widget's name (vtable slot 0xA0, as Tongs reads it) is the one it
+        // was created with.
+        using NameFn = const void* (*)(void* widget);
+        const void* own = at<NameFn>(at<void*>(widget, 0), off::widget_name_slot)(widget);
+        if (!own || game_string(own) != name) {
+            ++gone;
+            continue;
+        }
+        using DestroyFn = void(void* window);
+        at<DestroyFn*>(at<void*>(window, 0), off::window_destroy_slot)(window);
+        ++destroyed;
+    }
+    host().info("windows of the last campaign: {} destroyed, {} already gone", destroyed, gone);
 }
 
 std::string_view game_string(const void* string) noexcept {
@@ -269,6 +328,7 @@ std::string_view game_string(const void* string) noexcept {
 void on_sprite_draw(anvil::Cpu& cpu) {
     if (g_returns == 0) return;
     Bytes sprite = reinterpret_cast<Bytes>(cpu.rcx);
+    if (!g_settings_sprite && game_string(sprite + off::sprite_name) == "MessageSettingsButton") g_settings_sprite = sprite;
     if (at<std::uint8_t>(sprite, off::sprite_lazy) != 1 || at<std::int32_t>(sprite, off::sprite_texture_id) != -1 ||
         at<std::int32_t>(sprite, g_sprite_shown_count) <= 0 || at<std::uint64_t>(sprite, off::sprite_path_size) == 0)
         return;
@@ -283,8 +343,10 @@ void on_sprite_draw(anvil::Cpu& cpu) {
 void return_to_menu(Bytes idler) {
     Bytes app = at<Bytes>(idler, off::idler_app);
     const std::uint32_t reason = multiplayer_reason();
-    host().info("Exit to Menu: idler {}, world {}, multiplayer reason {}", static_cast<void*>(idler),
-                static_cast<void*>(world()), reason);
+    host().info("Exit to Menu: idler {}, world {}, multiplayer reason {}, MessageSettingsButton shown {}",
+                static_cast<void*>(idler), static_cast<void*>(world()), reason,
+                g_settings_sprite ? at<std::int32_t>(g_settings_sprite, g_sprite_shown_count) : -1);
+    g_recording_windows = false;
     at<std::uint8_t>(idler, off::idler_exit_flag) = 0;
     BusyScope busy;
     game(sym::in_game_exit, idler);
@@ -294,7 +356,6 @@ void return_to_menu(Bytes idler) {
     // its full destructor removes the GUI and the callbacks too.
     if (void* notices = at<void*>(idler, off::idler_notifications)) game(sym::notifications_destroy, notices);
     release_minimap(idler);
-    g_orphan_icons_window = at<void*>(idler, off::idler_diplomacy_icons);
     construct_menu(app, reason);
 }
 
@@ -312,7 +373,7 @@ void on_frontend_tick(void* idler, bool update) {
         g_reset_gate.run(app, idler, at<void*>(app, off::app_current_idler), at<void*>(app, off::app_next_idler),
                          [&] {
                              BusyScope busy;
-                             destroy_orphan_icons_window();
+                             destroy_campaign_windows();
                              game(sym::reset_game, app, false);
                              // A frontend owns this reset, so the history needs the
                              // post-load validation ResetGame runs only for an in-game idler.
@@ -328,6 +389,8 @@ struct MenuPatch : anvil::Plugin {
     anvil::Change in_game;
     anvil::Change pregame;
     anvil::Change sprite_draw;
+    anvil::Change gui_init;
+    anvil::Change idler_construct;
 
     void load(anvil::Host& h) override {
         g_world = h.data(sym::world);
@@ -350,6 +413,18 @@ struct MenuPatch : anvil::Plugin {
         h.swap(g_tick, sym::frontend_tick_slot, &on_frontend_tick);
         g_sprite_shown_count = static_cast<std::ptrdiff_t>(h.value(sym::icon_show, "shown_count"));
         sprite_draw = h.mid_hook(sym::sprite_draw, on_sprite_draw);
+        g_manager_global = reinterpret_cast<std::uintptr_t*>(h.game().image_base + h.value(sym::gui_manager_store, "manager"));
+        g_registry_begin = static_cast<std::ptrdiff_t>(h.value(sym::widget_registry, "begin"));
+        g_registry_end = static_cast<std::ptrdiff_t>(h.value(sym::widget_registry, "end"));
+        h.hook(g_create_window, sym::gui_create_window, on_create_window);
+        // Recording starts with the in-game idler (its views make windows
+        // while a save loads) and again at each GUI build (the HUD reload).
+        const auto record = [] {
+            g_campaign_seen = true;
+            g_recording_windows = true;
+        };
+        idler_construct = h.mid_hook(sym::in_game_idler_construct, record);
+        gui_init = h.mid_hook(sym::in_game_gui_init, record);
     }
 };
 
