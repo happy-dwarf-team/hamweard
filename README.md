@@ -12,8 +12,9 @@ record) and the fix for the crash when the same save is loaded again. The port r
 the original's hand-written stubs, near allocations and page protection with Anvil's
 `replace_block` and `swap_pointer`, and its own log with `anvil.log`.
 
-**Status: prototype.** Tested in the lab on single-player campaigns only; see
-[What was tested](#what-was-tested).
+**Status: prototype, not for players.** The second to fourth campaign started in the same
+process crashes in Direct3D 9 (see [Known issue](#known-issue)); tested in the lab on
+single-player campaigns only.
 
 ## What it changes in the game
 
@@ -56,9 +57,22 @@ commit it with `symbols.toml`.
 
 ## What was tested
 
-See `docs/` of the EU4 engine lab (`docs/anvil-menu-patch.md`) for the runs. Not tested:
-multiplayer and Steam lobbies (hosting, joining, leaving), ironman with the opt-in,
-mods, and campaigns longer than a few in-game days.
+The runs are in the EU4 engine lab (`docs/anvil-menu-patch.md`). In one process: Back
+from the country selection, Exit to Menu, loading the same save again, Continue game with
+the refreshed record, and up to five returns in a row all reach the menu without a
+restart, and `anvil-game` ends and starts its sessions. Not tested: multiplayer and Steam
+lobbies (hosting, joining, leaving), ironman with the opt-in, and mods.
+
+## Known issue
+
+A campaign started after a return to the menu crashes within about a minute at speed 3
+(second campaign in three runs, fourth in one): an access violation in `d3d9.dll`
+(`SetTexture`) while the game draws the sprite of a top-level GUI window, with a garbage
+texture pointer. The same build without the plugin, replacing the world five times by
+loading saves in the game, did not crash. Each campaign also leaves about 90 hidden
+top-level windows of its views (ledger, HRE, peace, popups, outliner entries, ...) in the
+GUI root; the visible diplomatic message icons window is now destroyed, which did not
+fix the crash. The cause is not known yet.
 
 ## License
 
