@@ -16,7 +16,7 @@ void check(bool condition, const char* what) {
 }  // namespace
 
 int main() {
-    menu_patch::WorldResetGate gate;
+    hamweard::WorldResetGate gate;
     int app = 0, old = 0, menu = 0, other = 0, resets = 0;
     for (int cycle = 0; cycle < 1000; ++cycle) {
         bool outgoing_alive = true;

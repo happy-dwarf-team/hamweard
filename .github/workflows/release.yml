@@ -64,11 +64,11 @@ jobs:
       - name: Prepare release assets
         working-directory: dist
         run: |
-          # The zips are named after plugin.toml's version, which the release PR set.
-          ls -- *"-${TAG#v}.zip" *"-${TAG#v}-workshop.zip" > /dev/null || {
-            echo "::error::the zips do not carry the version of ${TAG}: $(ls)"
-            exit 1
-          }
+          # The plugin.toml in the zip carries the version the release PR set.
+          for zip in *-windows-x64.zip; do
+            version=$(unzip -p "$zip" '*/plugin.toml' | sed -n 's/^version[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)
+            [ "$version" = "${TAG#v}" ] || { echo "::error::$zip holds version '$version', not ${TAG}"; exit 1; }
+          done
           sha256sum -- *.zip > SHA256SUMS.txt
           cat SHA256SUMS.txt
 

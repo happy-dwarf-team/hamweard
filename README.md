@@ -1,8 +1,24 @@
-# Menu Patch for Anvil
+# Hamweard
 
-An [Anvil](https://github.com/happy-dwarf-team/anvil) plugin for Europa Universalis IV
+[![build](https://github.com/happy-dwarf-team/hamweard/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/happy-dwarf-team/hamweard/actions/workflows/build.yml)
+[![Latest release](https://img.shields.io/github/v/release/happy-dwarf-team/hamweard)](https://github.com/happy-dwarf-team/hamweard/releases/latest)
+[![Steam Workshop](https://img.shields.io/badge/Steam%20Workshop-Hamweard-1b2838?logo=steam)](https://steamcommunity.com/sharedfiles/filedetails/?id=3832650792)
+[![License: MIT](https://img.shields.io/github/license/happy-dwarf-team/hamweard)](LICENSE)
+
+**Back to the main menu without restarting the game.** An
+[Anvil](https://github.com/happy-dwarf-team/anvil) plugin for Europa Universalis IV
 1.37.5 (Steam, Windows x64): **Back** on the country selection screen and **Exit to Menu**
-in a campaign take you back to the main menu without restarting the game.
+in a campaign take you back to the main menu in a few seconds, in the same process,
+instead of closing and starting the game again.
+
+Hamweard is a port of [EU4 Menu Patch](https://github.com/YozoraTempest/EU4-Menu-Patch)
+by VulonLok (YozoraTempest on GitHub), under the MIT License.
+
+### Why "Hamweard"?
+
+Old English *hāmweard* means "homeward": the plugin takes you from a campaign back to the
+main menu as if back home, without a restart on the way. The rest of the team's tools are
+named after the forge (Anvil, Bellows, Tongs, Etch); this one is the walk home after work.
 
 ## Thanks
 
@@ -18,15 +34,21 @@ hand-written stubs, near allocations and page protection with Anvil's `replace_b
 `swap_pointer` and hooks, its own log with `anvil.log`, and adds the clean-up of the
 windows a campaign leaves behind (below).
 
-**Status: prototype.** Tested in the lab on single-player campaigns only; multiplayer,
-ironman and mods are not tested.
+**Status:** tested in the lab on single-player campaigns only (see
+[What was tested](#what-was-tested)); multiplayer, ironman and mods are not tested.
 
 ## Install and use
 
 1. Install [Anvil](https://anvil.happydwarf.dev/) 1.5 or newer in the game folder.
-2. Unpack the release zip into `<EU4>/anvil/plugins/` (it makes
-   `anvil/plugins/menu-patch/`). If you used the original EU4 Menu Patch, remove its DLL:
-   both change the same code, and Anvil verifies the bytes before it loads the plugin.
+2. Get the plugin, either way:
+   - subscribe to the Steam Workshop mod and enable it in your playset (Anvil 1.3 or newer
+     loads plugins from mods), or
+   - unpack `hamweard-windows-x64.zip` from the
+     [latest release](https://github.com/happy-dwarf-team/hamweard/releases/latest) into
+     `<EU4>/anvil/plugins/` (it makes `anvil/plugins/hamweard/`).
+
+   If you used the original EU4 Menu Patch, remove its DLL: both change the same code, and
+   Anvil verifies the bytes before it loads the plugin.
 3. Start the game and approve the plugin when Anvil asks (or beforehand in Anvil Manager).
 4. In a campaign: **Exit to Menu** in the in-game menu, confirm, then **Quit** on the
    end-of-game screen. On the country selection screen: **Back**. Either way the main
@@ -47,7 +69,10 @@ usual.
   joining or leaving a lobby).
 - **Ironman: off unless you allow it** in Anvil (`allow_ironman = "opt-in"`). Not tested
   either way, including the save the game makes when you leave an ironman campaign.
-- **Mods: not tested.** No game file changes, so the checksum stays the same.
+- **Mods: not tested.** No game file changes, so the checksum stays the same, but no
+  campaign with mods (or with Bellows or the Anvil overlay alongside) was run.
+- **Not seen in a test:** naval battles and some message popups (an heir to name, a new
+  colonial nation). The windows of land battles and peace deals were tested.
 - About eight windows per campaign stay in the GUI root after a return (see below). Their
   memory cost over many returns was not measured.
 - EU4 1.37.5 Steam only. On any other build Anvil does not load the plugin.
@@ -115,13 +140,14 @@ and Bellows or the Anvil overlay running alongside.
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DEU4_EXE="<EU4>/eu4.exe" -DEU4_DIR="<EU4>"
 cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
-cmake --build build --config Release --target menu_patch-check
+cmake --build build --config Release --target hamweard-check
 ```
 
 The check target runs `anvil check --exe` on all 32 symbols and rewrites `symbols.lock`;
-commit it with `symbols.toml`. `menu_patch-deploy` (with `EU4_DIR`) copies the plugin into
+commit it with `symbols.toml`. `hamweard-deploy` (with `EU4_DIR`) copies the plugin into
 the game folder.
 
 ## License
 
-MIT, see [LICENSE](LICENSE): the original's notice (c) 2026 VulonLok and the port's.
+MIT, see [LICENSE](LICENSE). Hamweard keeps the original's notice, (c) 2026 VulonLok
+([EU4 Menu Patch](https://github.com/YozoraTempest/EU4-Menu-Patch)), next to the port's.

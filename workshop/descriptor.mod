@@ -2,5 +2,6 @@ version="0.0.0" # x-release-please-version
 tags={
 	"Utilities"
 }
-name="Menu Patch - Return to the Main Menu"
+name="Hamweard - Back to Main Menu Without Restarting"
 supported_version="1.37.*"
+remote_file_id="3832650792"
