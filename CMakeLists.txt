@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(menu_patch LANGUAGES CXX)
+project(hamweard LANGUAGES CXX)
 
 include(FetchContent)
 
@@ -12,9 +12,9 @@ FetchContent_Declare(anvil_sdk
 FetchContent_MakeAvailable(anvil_sdk)
 
 # Reads plugin.toml, runs `anvil gen` on symbols.toml, builds the DLL and lays
-# out build/plugin/<id>/. Adds menu_patch-check and, with -DEU4_DIR=<game
-# folder>, menu_patch-deploy.
-anvil_add_plugin(menu_patch SOURCES src/plugin.cpp)
+# out build/plugin/<id>/. Adds hamweard-check and, with -DEU4_DIR=<game
+# folder>, hamweard-deploy.
+anvil_add_plugin(hamweard SOURCES src/plugin.cpp)
 
 # The world-reset gate on its own (no game needed).
 enable_testing()

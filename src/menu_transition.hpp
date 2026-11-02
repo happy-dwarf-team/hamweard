@@ -2,7 +2,7 @@
 // MIT License, Copyright (c) 2026 VulonLok. See LICENSE.
 #pragma once
 
-namespace menu_patch {
+namespace hamweard {
 
 // SetNextIdler hands the new idler over on a later frame. The world is reset
 // only after that hand-over has destroyed the outgoing idler: once the menu is
@@ -29,4 +29,4 @@ public:
     }
 };
 
-}  // namespace menu_patch
+}  // namespace hamweard

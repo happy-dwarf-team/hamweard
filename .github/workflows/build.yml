@@ -43,9 +43,11 @@ jobs:
 
       # The release assets, built on every change so a release never packages
       # something CI has not seen:
-      #   <id>-<version>.zip           the plugin folder, for <EU4>/anvil/plugins/
-      #   <id>-<version>-workshop.zip  a mod folder (descriptor.mod + anvil/<id>/)
-      #                                for Documents/Paradox Interactive/Europa Universalis IV/mod/
+      #   <id>-windows-x64.zip  the plugin folder, for <EU4>/anvil/plugins/
+      #   <id>-workshop.zip     a mod folder (descriptor.mod + anvil/<id>/)
+      #                         for Documents/Paradox Interactive/Europa Universalis IV/mod/
+      # The names carry no version, so a link to the latest release's asset
+      # (anvil.happydwarf.dev) keeps working; plugin.toml in the zip has it.
       - name: Package
         id: package
         shell: pwsh
@@ -58,7 +60,7 @@ jobs:
           if (-not (Test-Path "$plugin/plugin.toml")) { Write-Output "::error::$plugin was not built"; exit 1 }
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           New-Item -ItemType Directory dist -Force | Out-Null
-          [IO.Compression.ZipFile]::CreateFromDirectory((Resolve-Path $plugin), "$PWD/dist/$id-$version.zip",
+          [IO.Compression.ZipFile]::CreateFromDirectory((Resolve-Path $plugin), "$PWD/dist/$id-windows-x64.zip",
               [IO.Compression.CompressionLevel]::Optimal, $true)
 
           $stage = "build/workshop"
@@ -69,7 +71,7 @@ jobs:
           $descriptor = (Get-Content workshop/descriptor.mod) -replace '^version="[^"]*".*$', "version=`"$version`""
           Set-Content "$stage/$id/descriptor.mod" $descriptor -Encoding utf8
           Set-Content "$stage/$id.mod" ($descriptor + "path=`"mod/$id`"") -Encoding utf8
-          [IO.Compression.ZipFile]::CreateFromDirectory((Resolve-Path $stage), "$PWD/dist/$id-$version-workshop.zip",
+          [IO.Compression.ZipFile]::CreateFromDirectory((Resolve-Path $stage), "$PWD/dist/$id-workshop.zip",
               [IO.Compression.CompressionLevel]::Optimal, $false)
 
           foreach ($zip in Get-ChildItem dist/*.zip) {
@@ -101,6 +103,6 @@ jobs:
       # Pinned to a release tag, not a commit: the action installs the pdx-ws
       # release named by its own tag and verifies that release's attestation.
       - name: Workshop preview
-        uses: happy-dwarf-team/paradox-workshop-publish@v0.2.3
+        uses: happy-dwarf-team/paradox-workshop-publish@v0.3.0
         with:
           dry-run: true

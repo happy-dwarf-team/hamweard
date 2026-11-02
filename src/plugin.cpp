@@ -1,4 +1,4 @@
-// Menu Patch: Back on the country selection screen and Exit to Menu in a
+// Hamweard: Back on the country selection screen and Exit to Menu in a
 // campaign return to the main menu instead of restarting the game.
 //
 // A port of EU4 Menu Patch 0.1.4 (https://github.com/YozoraTempest/EU4-Menu-Patch,
@@ -104,7 +104,7 @@ std::unordered_map<void*, std::string> g_campaign_windows;  // full object -> .g
 // The game can create one of them again during a campaign and the main menu
 // then uses that one (country_selection_panel), so they are never destroyed.
 std::unordered_set<std::string> g_frontend_names;
-menu_patch::WorldResetGate g_reset_gate;
+hamweard::WorldResetGate g_reset_gate;
 
 anvil::Host host() noexcept { return anvil::Host{}; }
 
@@ -368,7 +368,7 @@ void on_frontend_tick(void* idler, bool update) {
     restore_multiplayer_access(idler);
 }
 
-struct MenuPatch : anvil::Plugin {
+struct Hamweard : anvil::Plugin {
     anvil::Change in_game;
     anvil::Change pregame;
     anvil::Change gui_init;
@@ -418,4 +418,4 @@ struct MenuPatch : anvil::Plugin {
 
 }  // namespace
 
-ANVIL_PLUGIN(MenuPatch)
+ANVIL_PLUGIN(Hamweard)

@@ -1,6 +1,6 @@
 # Every game address the plugin uses, for EU4 1.37.5 (Steam, win64). Anvil
 # verifies them against eu4.exe before loading the DLL and skips the plugin on
-# any other build. After a change, run the menu_patch-check target with EU4_EXE
+# any other build. After a change, run the hamweard-check target with EU4_EXE
 # set and commit symbols.lock.
 #
 # The sites, functions and structure offsets come from EU4 Menu Patch
