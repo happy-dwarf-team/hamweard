@@ -83,4 +83,4 @@ jobs:
       # gh finds a draft release by its tag too (contents: write can see drafts).
       - name: Upload release assets
         working-directory: dist
-        run: gh release upload "$TAG" -- *.zip SHA256SUMS.txt --clobber
+        run: gh release upload "$TAG" --clobber -- *.zip SHA256SUMS.txt
