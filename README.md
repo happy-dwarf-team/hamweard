@@ -69,9 +69,12 @@ lobbies (hosting, joining, leaving), ironman with the opt-in, and mods.
 plugin records the windows the GUI manager creates (`0x14E9030`) from the in-game idler's
 constructor on, and destroys the ones still alive (checked in the widget registry, by
 name) once the outgoing idler is gone; windows named like one of the fresh main menu's,
-`load_screen` and `console_wnd` are kept. That removes about 130 windows per campaign. About
-25 per campaign still stay: message popups (`DefaultPopup`, made through `eu3dialog`'s own
-constructor, `0x10A03F0`, not the GUI manager) and duplicates of frontend names.
+`load_screen` and `console_wnd` are kept. Message popups (`DefaultPopup`) do not go through
+the GUI manager: `eu3dialog` (`0x10A06C0`) builds their window itself, so the plugin also
+records the window it stores in the dialog (`0x10A0735`). Each window is hidden before it is
+destroyed, as the HUD reload does. That removes about 140 to 160 windows per campaign, all
+popups included. About 8 per campaign still stay, duplicates of frontend names (`goto_box`,
+`rightClickMenu`, `start_game_dialog` and the like) and `dlc_entry`.
 
 ## The texture workaround
 
@@ -82,7 +85,10 @@ texture only when that count was 0, so after the texture had been released the n
 campaign drew a freed handle: the game logged `Should not be lazy loaded` and crashed in
 `d3d9.dll` (`SetTexture`) in the second to fourth campaign. A mid hook at the start of the
 sprite draw (`0x156BFB0`), active after the first return, loads such a texture first, as the
-first shown icon would have, and logs it. It stays needed until the popups are destroyed too.
+first shown icon would have, and logs it. Since the popups are destroyed too, the count no
+longer grows (11 to 19 at each Exit to Menu over seven campaigns) and the hook had nothing to
+load; seven campaigns without it ran without a crash too. It stays as a safety net for paths
+the lab did not try.
 
 ## License
 

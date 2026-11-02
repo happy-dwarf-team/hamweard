@@ -51,6 +51,9 @@ constexpr std::ptrdiff_t window_widget = 0x30;          // a window's widget in 
 constexpr std::ptrdiff_t window_destroy_slot = 0x130;    // of the full object, as the HUD reload (0x82B470) uses it
 constexpr std::ptrdiff_t widget_dead = 0xC4;             // as Tongs reads it
 constexpr std::ptrdiff_t widget_name_slot = 0xA0;        // returns the .gui name, a std::string*
+constexpr std::ptrdiff_t widget_visible = 0xC5;          // as Tongs reads it
+constexpr std::ptrdiff_t widget_hide_slot = 0x90;        // of the widget, as 0x82B470 hides the menu bar
+constexpr std::ptrdiff_t dialog_name = 0x118;            // eu3dialog: the .gui name of its window (std::string)
 constexpr std::ptrdiff_t menu_pending = 0x900;
 
 constexpr std::ptrdiff_t lobby_id = 0x1C0;
@@ -266,18 +269,20 @@ std::string_view game_string(const void* string) noexcept;
 // manager, and nothing destroys them when the idler goes: 1.37.5 restarts the
 // process instead. Each campaign left about 90 top-level windows, whose shown
 // icons kept lazy sprite textures counted as shown (see on_sprite_draw).
-void* on_create_window(void* manager, const void* name) noexcept {
-    void* window = g_create_window.next(manager, name);
-    if (!window) return window;
-    const std::string_view text = game_string(name);
+void note_window(void* window, std::string_view name) {
     if (!g_campaign_seen) {
-        g_frontend_names.emplace(text);
-    } else if (g_recording_windows && text != "load_screen" && text != "console_wnd" &&
-               !g_frontend_names.contains(std::string(text))) {
-        g_campaign_windows.insert_or_assign(window, std::string(game_string(name)));
+        g_frontend_names.emplace(name);
+    } else if (g_recording_windows && name != "load_screen" && name != "console_wnd" &&
+               !g_frontend_names.contains(std::string(name))) {
+        g_campaign_windows.insert_or_assign(window, std::string(name));
     } else {
         g_campaign_windows.erase(window);
     }
+}
+
+void* on_create_window(void* manager, const void* name) noexcept {
+    void* window = g_create_window.next(manager, name);
+    if (window) note_window(window, game_string(name));
     return window;
 }
 
@@ -304,6 +309,11 @@ void destroy_campaign_windows() {
         if (!own || game_string(own) != name) {
             ++gone;
             continue;
+        }
+        // Hidden first, as the HUD reload hides the menu bar before it destroys it.
+        if (at<std::uint8_t>(widget, off::widget_visible) != 0) {
+            using HideFn = void (*)(void* widget);
+            at<HideFn>(at<void*>(widget, 0), off::widget_hide_slot)(widget);
         }
         using DestroyFn = void(void* window);
         at<DestroyFn*>(at<void*>(window, 0), off::window_destroy_slot)(window);
@@ -391,6 +401,7 @@ struct MenuPatch : anvil::Plugin {
     anvil::Change sprite_draw;
     anvil::Change gui_init;
     anvil::Change idler_construct;
+    anvil::Change dialog_store;
 
     void load(anvil::Host& h) override {
         g_world = h.data(sym::world);
@@ -425,6 +436,13 @@ struct MenuPatch : anvil::Plugin {
         };
         idler_construct = h.mid_hook(sym::in_game_idler_construct, record);
         gui_init = h.mid_hook(sym::in_game_gui_init, record);
+        // Message popups (eu3dialog) build their window themselves, not
+        // through the manager's create; each kept its settings icon counted
+        // as shown (MessageSettingsButton's count equalled the leaked popups).
+        dialog_store = h.mid_hook(sym::dialog_window_store, [](anvil::Cpu& cpu) {
+            if (void* window = reinterpret_cast<void*>(cpu.rdi))
+                note_window(window, game_string(reinterpret_cast<Bytes>(cpu.rbx) + off::dialog_name));
+        });
     }
 };
 

@@ -224,6 +224,12 @@ memory = "code"
 signature = "void* (void* manager, const void* name)"
 note = "GUI manager slot +0x48: creates a window by its .gui name and adds it as a top-level window; returns the full object (widget at +0x30)"
 
+[symbol.dialog_window_store]
+rva = 0x10A0735
+bytes = "48 89 7B 08 48 85 FF"   # mov [rbx+8], rdi; test rdi, rdi
+memory = "code"
+note = "eu3dialog (message popups, 0x10A06C0): stores the window it just built (rdi) in the dialog (rbx); the dialog's .gui name is at rbx+0x118"
+
 [symbol.gui_manager_store]
 rva = 0x14E8904
 bytes = "48 89 35 E5 0B E6 00"
