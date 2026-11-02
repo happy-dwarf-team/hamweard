@@ -41,8 +41,9 @@ windows a campaign leaves behind (below).
 
 1. Install [Anvil](https://anvil.happydwarf.dev/) 1.5 or newer in the game folder.
 2. Get the plugin, either way:
-   - subscribe to the Steam Workshop mod and enable it in your playset (Anvil 1.3 or newer
-     loads plugins from mods), or
+   - subscribe to the
+     [Steam Workshop mod](https://steamcommunity.com/sharedfiles/filedetails/?id=3832650792)
+     and enable it in your playset (Anvil has loaded plugins from mods since 1.3), or
    - unpack `hamweard-windows-x64.zip` from the
      [latest release](https://github.com/happy-dwarf-team/hamweard/releases/latest) into
      `<EU4>/anvil/plugins/` (it makes `anvil/plugins/hamweard/`).
