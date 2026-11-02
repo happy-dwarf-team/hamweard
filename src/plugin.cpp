@@ -68,11 +68,6 @@ constexpr std::ptrdiff_t lobby_search_call = 0x310;
 constexpr std::ptrdiff_t world_multiplayer_reason = 0x23B4;
 
 constexpr std::size_t main_menu_size = 0xB48;
-
-constexpr std::ptrdiff_t sprite_name = 0x10;          // std::string
-constexpr std::ptrdiff_t sprite_path_size = 0x80;     // size of the texture path std::string at +0x70
-constexpr std::ptrdiff_t sprite_texture_id = 0x258;   // -1: not loaded
-constexpr std::ptrdiff_t sprite_lazy = 0x28C;         // 1: loaded while an icon shows it (loadType INGAME)
 }  // namespace off
 
 using TickFn = void(void* idler, bool update);
@@ -93,9 +88,6 @@ void* g_pending_menu_idler = nullptr;
 std::uint32_t g_previous_multiplayer_reason = 0;
 bool g_restore_deferral_logged = false;
 std::uint32_t g_returns = 0;
-std::ptrdiff_t g_sprite_shown_count = 0;  // +0x288, from icon_show's bytes
-std::uint32_t g_texture_reloads = 0;
-Bytes g_settings_sprite = nullptr;        // MessageSettingsButton, reported at each return
 
 anvil::HookOf<sym::gui_create_window> g_create_window;
 std::uintptr_t* g_manager_global = nullptr;
@@ -268,7 +260,10 @@ std::string_view game_string(const void* string) noexcept;
 // The in-game idler and its views create their windows through the GUI
 // manager, and nothing destroys them when the idler goes: 1.37.5 restarts the
 // process instead. Each campaign left about 90 top-level windows, whose shown
-// icons kept lazy sprite textures counted as shown (see on_sprite_draw).
+// icons kept lazy sprites (loadType INGAME) counted as shown. An icon loads
+// such a texture only when the count was 0, so once the texture was released
+// the next campaign drew its freed handle ("Should not be lazy loaded" in
+// error.log, then a crash in d3d9; lab, docs/anvil-menu-patch.md).
 void note_window(void* window, std::string_view name) {
     if (!g_campaign_seen) {
         g_frontend_names.emplace(name);
@@ -328,34 +323,12 @@ std::string_view game_string(const void* string) noexcept {
     return {data, s->size};
 }
 
-// A campaign started after a return draws lazy sprites (loadType INGAME)
-// whose texture is gone while icons still count them as shown: icons of the
-// last campaign's views stay in the GUI root, shown, so the count never goes
-// back to 0, and an icon loads the texture only when the count was 0. The
-// game then logs "Should not be lazy loaded" and draws the freed handle, which
-// crashes in d3d9 (lab, docs/anvil-menu-patch.md). Before such a draw, load
-// the texture the way the first shown icon would have.
-void on_sprite_draw(anvil::Cpu& cpu) {
-    if (g_returns == 0) return;
-    Bytes sprite = reinterpret_cast<Bytes>(cpu.rcx);
-    if (!g_settings_sprite && game_string(sprite + off::sprite_name) == "MessageSettingsButton") g_settings_sprite = sprite;
-    if (at<std::uint8_t>(sprite, off::sprite_lazy) != 1 || at<std::int32_t>(sprite, off::sprite_texture_id) != -1 ||
-        at<std::int32_t>(sprite, g_sprite_shown_count) <= 0 || at<std::uint64_t>(sprite, off::sprite_path_size) == 0)
-        return;
-    game(sym::sprite_load_texture, sprite);
-    if (++g_texture_reloads <= 32)
-        host().info("texture of {} loaded again before drawing it (shown {}, id {})",
-                    game_string(sprite + off::sprite_name), at<std::int32_t>(sprite, g_sprite_shown_count),
-                    at<std::int32_t>(sprite, off::sprite_texture_id));
-}
-
 // In CInGameIdler::Idle, instead of setting exit + restart.
 void return_to_menu(Bytes idler) {
     Bytes app = at<Bytes>(idler, off::idler_app);
     const std::uint32_t reason = multiplayer_reason();
-    host().info("Exit to Menu: idler {}, world {}, multiplayer reason {}, MessageSettingsButton shown {}",
-                static_cast<void*>(idler), static_cast<void*>(world()), reason,
-                g_settings_sprite ? at<std::int32_t>(g_settings_sprite, g_sprite_shown_count) : -1);
+    host().info("Exit to Menu: idler {}, world {}, multiplayer reason {}", static_cast<void*>(idler),
+                static_cast<void*>(world()), reason);
     g_recording_windows = false;
     at<std::uint8_t>(idler, off::idler_exit_flag) = 0;
     BusyScope busy;
@@ -398,7 +371,6 @@ void on_frontend_tick(void* idler, bool update) {
 struct MenuPatch : anvil::Plugin {
     anvil::Change in_game;
     anvil::Change pregame;
-    anvil::Change sprite_draw;
     anvil::Change gui_init;
     anvil::Change idler_construct;
     anvil::Change dialog_store;
@@ -422,8 +394,6 @@ struct MenuPatch : anvil::Plugin {
             g_pending_frontend_app.store(reinterpret_cast<void*>(cpu.rbx));
         });
         h.swap(g_tick, sym::frontend_tick_slot, &on_frontend_tick);
-        g_sprite_shown_count = static_cast<std::ptrdiff_t>(h.value(sym::icon_show, "shown_count"));
-        sprite_draw = h.mid_hook(sym::sprite_draw, on_sprite_draw);
         g_manager_global = reinterpret_cast<std::uintptr_t*>(h.game().image_base + h.value(sym::gui_manager_store, "manager"));
         g_registry_begin = static_cast<std::ptrdiff_t>(h.value(sym::widget_registry, "begin"));
         g_registry_end = static_cast<std::ptrdiff_t>(h.value(sym::widget_registry, "end"));
