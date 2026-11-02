@@ -38,7 +38,7 @@ Anvil asks again after every update. Until you approve, the version you trusted 
 ![](https://i.imgur.com/Uf8Z21n.png)
 
 ### Alternative download
-[GitHub](https://github.com/OWNER/REPO)
+[GitHub](https://github.com/happy-dwarf-team/anvil-menu-patch). The research behind the port: [Anvil issue #105](https://github.com/happy-dwarf-team/anvil/issues/105).
 
 ![](https://i.imgur.com/Uf8Z21n.png)
 
