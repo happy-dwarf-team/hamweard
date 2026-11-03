@@ -1,6 +1,6 @@
 id = "hamweard"
 name = "Hamweard"
-version = "1.0.0"         # release-please sets it in each release pull request
+version = "1.1.0"         # release-please sets it in each release pull request
 authors = ["VulonLok (EU4 Menu Patch)", "Happy Dwarf Team (Anvil port)"]
 description = "Back on the country selection screen and Exit to Menu in a campaign return to the main menu without restarting the game. A port of EU4 Menu Patch by VulonLok (MIT)."
 api = 2
