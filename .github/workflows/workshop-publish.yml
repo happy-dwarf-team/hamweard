@@ -4,7 +4,15 @@ name: workshop-publish
 # release.yml creates a draft release with the zips, and publishing that draft
 # on GitHub starts this workflow. The mod gets exactly the plugin zip of that
 # release, checked against its build attestation, so the Workshop and GitHub
-# serve the same build. The release notes become the Workshop change note.
+# serve the same build. The release notes become the Workshop change note, and
+# workshop/description.md the item's description.
+#
+# Run by hand (workflow_dispatch, from main only), it publishes the given
+# release again with main's workshop/ folder: the way to update the Workshop
+# page between releases. The release must be the one in workshop/descriptor.mod,
+# that is the latest. Steam keeps the mod's version when its files are unchanged
+# and then records no change note, but it does take the new description. The
+# steam-workshop environment must then allow the branch main next to the tags v*.
 #
 # Opt-in: it runs only when the repository variable WORKSHOP_PUBLISH is `true`
 # (Settings → Secrets and variables → Actions → Variables). Anvil loads plugins
@@ -15,13 +23,19 @@ name: workshop-publish
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release to publish again with main's description, e.g. v1.0.0
+        required: true
+        type: string
 
 permissions: {}
 
 jobs:
   publish:
     # The template itself is not released; repositories created from it opt in.
-    if: github.repository != 'happy-dwarf-team/anvil-plugin-template' && vars.WORKSHOP_PUBLISH == 'true'
+    if: github.repository != 'happy-dwarf-team/anvil-plugin-template' && vars.WORKSHOP_PUBLISH == 'true' && (github.event_name == 'release' || github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
     environment: steam-workshop
     concurrency:
@@ -33,9 +47,9 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      TAG: ${{ github.event.release.tag_name }}
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
-      # The release event checks out the release's tag.
+      # The release event checks out the release's tag, a manual run main.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -80,7 +94,7 @@ jobs:
         with:
           steam-username: ${{ secrets.STEAM_USERNAME }}
           steam-session: ${{ secrets.STEAM_SESSION }}
-          change-note: ${{ github.event.release.body }}
+          change-note: ${{ github.event_name == 'workflow_dispatch' && 'Updated the Workshop page.' || github.event.release.body }}
 
       - name: Link the Workshop item
         env:
