@@ -32,7 +32,8 @@ template <class T> T& at(void* object, std::ptrdiff_t offset) noexcept {
     return *reinterpret_cast<T*>(static_cast<Bytes>(object) + offset);
 }
 
-// Structure offsets of 1.37.5, from EU4 Menu Patch.
+// Structure offsets of 1.37.5, from EU4 Menu Patch; those that differ
+// between the builds are in Layout below.
 namespace off {
 constexpr std::ptrdiff_t app_current_idler = 0x40;
 constexpr std::ptrdiff_t app_next_idler = 0x70;
@@ -43,10 +44,6 @@ constexpr std::ptrdiff_t app_services = 0x348;  // its +0x10 is the Steam lobby
 constexpr std::ptrdiff_t app_menu_arg_1 = 0x350;
 constexpr std::ptrdiff_t app_menu_arg_2 = 0x358;
 
-constexpr std::ptrdiff_t idler_app = 0x330;
-constexpr std::ptrdiff_t idler_minimap = 0x10E0;
-constexpr std::ptrdiff_t idler_exit_flag = 0x12E9;
-constexpr std::ptrdiff_t idler_notifications = 0x1400;
 constexpr std::ptrdiff_t window_widget = 0x30;          // a window's widget in its full object
 constexpr std::ptrdiff_t window_destroy_slot = 0x130;    // of the full object, as the HUD reload (0x82B470) uses it
 constexpr std::ptrdiff_t widget_dead = 0xC4;             // as Tongs reads it
@@ -54,7 +51,6 @@ constexpr std::ptrdiff_t widget_name_slot = 0xA0;        // returns the .gui nam
 constexpr std::ptrdiff_t widget_visible = 0xC5;          // as Tongs reads it
 constexpr std::ptrdiff_t widget_hide_slot = 0x90;        // of the widget, as 0x82B470 hides the menu bar
 constexpr std::ptrdiff_t dialog_name = 0x118;            // eu3dialog: the .gui name of its window (std::string)
-constexpr std::ptrdiff_t menu_pending = 0x900;
 
 constexpr std::ptrdiff_t lobby_id = 0x1C0;
 constexpr std::ptrdiff_t lobby_hosting = 0x299;
@@ -66,9 +62,23 @@ constexpr std::ptrdiff_t lobby_search_callback = 0x300;
 constexpr std::ptrdiff_t lobby_search_call = 0x310;
 
 constexpr std::ptrdiff_t world_multiplayer_reason = 0x23B4;
-
-constexpr std::size_t main_menu_size = 0xB48;
 }  // namespace off
+
+// The offsets that differ on GOG 1.37.5.2 (its eu4.pdb, and the same code in
+// both builds): CInGameIdler's fields from its CEU4Application pointer on, and
+// CFrontEnd's view state and size. CEU4Application, the widgets and the
+// world's multiplayer reason have the same layout.
+struct Layout {
+    std::ptrdiff_t idler_app;
+    std::ptrdiff_t idler_minimap;
+    std::ptrdiff_t idler_exit_flag;
+    std::ptrdiff_t idler_notifications;
+    std::ptrdiff_t menu_pending;  // CFrontEnd's view state
+    std::size_t main_menu_size;
+};
+constexpr Layout kSteam{0x330, 0x10E0, 0x12E9, 0x1400, 0x900, 0xB48};
+constexpr Layout kGog{0x328, 0x10D0, 0x12D9, 0x13F0, 0x8F0, 0xB38};
+Layout g_layout = kSteam;
 
 using TickFn = void(void* idler, bool update);
 using UnregisterCallResultFn = void(void* callback, std::uint64_t call);
@@ -76,7 +86,7 @@ using UnregisterCallResultFn = void(void* callback, std::uint64_t call);
 anvil::PointerSwap<TickFn> g_tick;
 std::uintptr_t* g_world = nullptr;    // the global holding the root object
 std::uintptr_t* g_history = nullptr;  // the global holding the history
-void* g_lobby_vtable = nullptr;
+void* g_lobby_vtable = nullptr;  // null on a build without the Steam lobby (GOG)
 void* g_minimap_vtable = nullptr;
 UnregisterCallResultFn* g_unregister_call_result = nullptr;
 
@@ -130,6 +140,7 @@ std::uint32_t multiplayer_reason() noexcept {
 }
 
 Bytes steam_lobby(Bytes app) noexcept {
+    if (!g_lobby_vtable) return nullptr;
     Bytes services = at<Bytes>(app, off::app_services);
     Bytes lobby = services ? at<Bytes>(services, 0x10) : nullptr;
     return lobby && at<void*>(lobby, 0) == g_lobby_vtable ? lobby : nullptr;
@@ -163,6 +174,7 @@ void leave_steam_session(Bytes app) {
 }
 
 bool steam_session_idle(Bytes app) {
+    if (!g_lobby_vtable) return true;  // no Steam lobby on this build: nothing to wait for
     Bytes lobby = steam_lobby(app);
     const bool idle = lobby && !at<std::uint64_t>(lobby, off::lobby_id) &&
                       !at<std::uint64_t>(lobby, off::lobby_create_call) &&
@@ -181,7 +193,7 @@ void restore_multiplayer_access(void* idler) {
     if (idler != g_pending_menu_idler || !g_pending_menu_app) return;
     Bytes app = g_pending_menu_app;
     if (at<void*>(app, off::app_current_idler) != idler || at<void*>(app, off::app_next_idler) != nullptr ||
-        at<std::uint32_t>(idler, off::menu_pending) != 0 || !at<std::uint8_t>(app, off::app_checksum_ready))
+        at<std::uint32_t>(idler, g_layout.menu_pending) != 0 || !at<std::uint8_t>(app, off::app_checksum_ready))
         return;
     Bytes w = world();
     if (!w) return;
@@ -226,7 +238,7 @@ void construct_menu(Bytes app, std::uint32_t reason) {
         game(sym::set_save_metadata, app, record.valid ? &record.strings[3] : &empty);
         host().info("Continue game refreshed (record valid: {})", record.valid);
     }
-    void* memory = game(sym::game_alloc, std::uint64_t{off::main_menu_size});
+    void* memory = game(sym::game_alloc, std::uint64_t{g_layout.main_menu_size});
     void* menu = game(sym::main_menu_construct, memory, at<void*>(app, off::app_menu_arg_1),
                       at<void*>(app, off::app_menu_arg_2), app);
     // SetNextIdler takes the pointer and nulls the local.
@@ -242,7 +254,7 @@ void construct_menu(Bytes app, std::uint32_t reason) {
 }
 
 void release_minimap(Bytes idler) {
-    auto& slot = at<void*>(idler, off::idler_minimap);
+    auto& slot = at<void*>(idler, g_layout.idler_minimap);
     void* controller = slot;
     if (!controller) return;
     if (at<void*>(controller, 0) != g_minimap_vtable) {
@@ -325,19 +337,19 @@ std::string_view game_string(const void* string) noexcept {
 
 // In CInGameIdler::Idle, instead of setting exit + restart.
 void return_to_menu(Bytes idler) {
-    Bytes app = at<Bytes>(idler, off::idler_app);
+    Bytes app = at<Bytes>(idler, g_layout.idler_app);
     const std::uint32_t reason = multiplayer_reason();
     host().info("Exit to Menu: idler {}, world {}, multiplayer reason {}", static_cast<void*>(idler),
                 static_cast<void*>(world()), reason);
     g_recording_windows = false;
-    at<std::uint8_t>(idler, off::idler_exit_flag) = 0;
+    at<std::uint8_t>(idler, g_layout.idler_exit_flag) = 0;
     BusyScope busy;
     game(sym::in_game_exit, idler);
     leave_steam_session(app);
     game(sym::campaign_exit_cleanup);
     // The in-game reload clears this owner before it replaces the world; only
     // its full destructor removes the GUI and the callbacks too.
-    if (void* notices = at<void*>(idler, off::idler_notifications)) game(sym::notifications_destroy, notices);
+    if (void* notices = at<void*>(idler, g_layout.idler_notifications)) game(sym::notifications_destroy, notices);
     release_minimap(idler);
     construct_menu(app, reason);
 }
@@ -378,13 +390,19 @@ struct Hamweard : anvil::Plugin {
     void load(anvil::Host& h) override {
         g_world = h.data(sym::world);
         g_history = h.data(sym::history);
-        g_lobby_vtable = h.address(sym::steam_lobby_vtable);
+        const char* build = h.game().build_id;
+        g_layout = build && std::string_view(build) == "eu4-1.37.5.2-gog-win64" ? kGog : kSteam;
         g_minimap_vtable = h.address(sym::minimap_vtable);
-        // The import CSteamLobby's destructor calls through (IAT 0x1B67730).
-        if (HMODULE steam = GetModuleHandleW(L"steam_api64.dll"))
-            g_unregister_call_result = reinterpret_cast<UnregisterCallResultFn*>(
-                reinterpret_cast<void*>(GetProcAddress(steam, "SteamAPI_UnregisterCallResult")));
-        if (!g_unregister_call_result) h.warn("SteamAPI_UnregisterCallResult not found: a lobby search is not cancelled");
+        // The GOG build has no Steam lobby: its four symbols are absent there.
+        if (h.present(sym::steam_lobby_vtable)) {
+            g_lobby_vtable = h.address(sym::steam_lobby_vtable);
+            // The import CSteamLobby's destructor calls through (IAT 0x1B67730).
+            if (HMODULE steam = GetModuleHandleW(L"steam_api64.dll"))
+                g_unregister_call_result = reinterpret_cast<UnregisterCallResultFn*>(
+                    reinterpret_cast<void*>(GetProcAddress(steam, "SteamAPI_UnregisterCallResult")));
+            if (!g_unregister_call_result) h.warn("SteamAPI_UnregisterCallResult not found: a lobby search is not cancelled");
+        }
+        h.info("game build {}: {}", build ? build : "unknown", g_lobby_vtable ? "with the Steam lobby clean-up" : "no Steam lobby");
 
         // The three changes are enabled together after load(), or none.
         in_game = h.replace_block(sym::in_game_menu_block, [](anvil::Cpu& cpu) {
