@@ -9,8 +9,8 @@ Normally **Exit to Menu** in a campaign and **Back** on the country selection sc
 - **Honest limits:** your next campaign starts in a game that already played one. We saw nothing carry over, but Anvil treats Hamweard as a mod that affects gameplay: it is off in multiplayer, off in ironman unless you allow it, and not tested with other mods yet.
 
 ## You need
-- **[Anvil](https://anvil.happydwarf.dev/) 1.5 or newer** in the game folder. Download it once from its website: the Workshop can't install it for you.
-- **EU4 1.37.5** on Steam (Windows). The GOG build is not supported yet.
+- **[Anvil](https://anvil.happydwarf.dev/) 1.9 or newer** in the game folder. Download it once from its website: the Workshop can't install it for you.
+- **EU4 1.37.5** on Steam (Windows). The plugin also runs on the GOG build 1.37.5.2, from the release zip on GitHub.
 - Remove the original EU4 Menu Patch first: both change the same part of the game.
 - After subscribing, start the game, approve Hamweard in Anvil (Ctrl+Shift+F12, then Mods) and restart. Anvil asks again after every update.
 

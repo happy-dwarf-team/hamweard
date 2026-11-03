@@ -7,7 +7,7 @@
 
 **Back to the main menu without restarting the game.** An
 [Anvil](https://github.com/happy-dwarf-team/anvil) plugin for Europa Universalis IV
-1.37.5 (Steam, Windows x64): **Back** on the country selection screen and **Exit to Menu**
+1.37.5 (Steam, and GOG 1.37.5.2, Windows x64): **Back** on the country selection screen and **Exit to Menu**
 in a campaign take you back to the main menu in a few seconds, in the same process,
 instead of closing and starting the game again.
 
@@ -39,7 +39,7 @@ windows a campaign leaves behind (below).
 
 ## Install and use
 
-1. Install [Anvil](https://anvil.happydwarf.dev/) 1.5 or newer in the game folder.
+1. Install [Anvil](https://anvil.happydwarf.dev/) 1.9 or newer in the game folder.
 2. Get the plugin, either way:
    - subscribe to the
      [Steam Workshop mod](https://steamcommunity.com/sharedfiles/filedetails/?id=3832650792)
@@ -76,7 +76,9 @@ usual.
   colonial nation). The windows of land battles and peace deals were tested.
 - About eight windows per campaign stay in the GUI root after a return (see below). Their
   memory cost over many returns was not measured.
-- EU4 1.37.5 Steam only. On any other build Anvil does not load the plugin.
+- EU4 1.37.5 on Steam and the GOG build 1.37.5.2. On any other build Anvil does not load
+  the plugin. The GOG build has no Steam lobby, so there is nothing to clean up there and
+  the multiplayer restriction comes back without waiting for one.
 
 ## What it changes in the game
 
@@ -89,7 +91,7 @@ usual.
 
 After the world reset it puts back the world's multiplayer restriction reason, which the
 game's reset flattens to 1, once the menu owns the frame, the checksum is ready and the
-Steam lobby is idle. Steam's own checks are left alone.
+Steam lobby is idle (on Steam; the GOG build has none). Steam's own checks are left alone.
 
 ## Windows a campaign leaves behind
 
@@ -131,6 +133,12 @@ sessions. Without the sprite-draw hook:
   menu took 3.5 to 4 seconds after each.
 
 That is 12 campaigns with the current code, and earlier versions ran several more seven-campaign series.
+
+On the GOG build 1.37.5.2 (lab `docs/hamweard-gog.md`, 3 November 2026, Anvil with
+`absent` symbols, vanilla profile, Steam-made saves): five campaigns of 30 days in one
+process, five Exit to Menu and two Back, seven returns in 4.0 to 4.5 seconds each, no
+crash and no warning in `anvil.log`. The multiplayer restriction came back after every
+return without waiting for a Steam lobby, which the GOG build does not have.
 
 Not tested: multiplayer and Steam lobbies, ironman with the opt-in, mods, naval battles,
 and Bellows or the Anvil overlay running alongside.

@@ -1,49 +1,60 @@
-# Every game address the plugin uses, for EU4 1.37.5 (Steam, win64). Anvil
-# verifies them against eu4.exe before loading the DLL and skips the plugin on
-# any other build. After a change, run the hamweard-check target with EU4_EXE
+# Every game address the plugin uses, for EU4 1.37.5 on Steam and the GOG
+# build 1.37.5.2 (win64). Anvil verifies them against eu4.exe before loading
+# the DLL and skips the plugin on any other build. The GOG build has no Steam
+# lobby: its four symbols are absent there (Anvil 1.9), and the GOG addresses
+# come from the lab's port (its eu4.pdb names them; hamweard#9). After a change, run the hamweard-check target with EU4_EXE
 # set and commit symbols.lock.
 #
 # The sites, functions and structure offsets come from EU4 Menu Patch
 # (https://github.com/YozoraTempest/EU4-Menu-Patch, MIT, (c) 2026 VulonLok),
 # v0.1.4 at 7752efd; the bytes were read from the Steam eu4.exe 1.37.5
 # (SHA-256 9AD3EFE1...D771A).
-build = "eu4-1.37.5-steam-win64"
+builds = ["eu4-1.37.5-steam-win64", "eu4-1.37.5.2-gog-win64"]
 
 # --- the two blocks the plugin replaces ---
 
 [symbol.in_game_menu_block]
-rva = 0x815CAE
 bytes = "48 8D 8D 40 02 00 00"         # lea rcx, [rbp+0x240]
 memory = "code"
 resume = "in_game_idle_epilogue"
 note = "CInGameIdler::Idle (r13 = the idler): the Exit to Menu branch, which sets the exit and restart flags"
+build."eu4-1.37.5-steam-win64" = { rva = 0x815CAE }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x81500E }
 
 [symbol.in_game_idle_epilogue]
-rva = 0x8165F2
-bytes = "49 8B 85 30 03 00 00 48 8B 88 70 03 00 00 0F B6 85 48 02 00 00"
 memory = "code"
 note = "CInGameIdler::Idle: the stock epilogue the Exit to Menu branch resumes at"
 
+[symbol.in_game_idle_epilogue.build."eu4-1.37.5-steam-win64"]
+rva = 0x8165F2
+bytes = "49 8B 85 30 03 00 00 48 8B 88 70 03 00 00 0F B6 85 48 02 00 00"
+
+[symbol.in_game_idle_epilogue.build."eu4-1.37.5.2-gog-win64"]
+rva = 0x815952
+bytes = "49 8B 85 28 03 00 00 48 8B 88 70 03 00 00 0F B6 85 48 02 00 00"
+
 [symbol.pregame_menu_block]
-rva = 0x111DFD7
 bytes = "66 C7 83 83 00 00 00 01 01"   # mov word [rbx+0x83], 0x0101
 memory = "code"
 resume = "pregame_menu_continuation"
 note = "country selection Back (rbx = the application): sets exit + restart (app+0x83/0x84)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x111DFD7 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1118B87 }
 
 [symbol.pregame_menu_continuation]
-rva = 0x111E000
 bytes = "48 8B 5D B0 48 85 DB 74 5C"   # mov rbx, [rbp-0x50]; test rbx, rbx; je
 memory = "code"
 note = "where country selection Back goes on after the flags"
+build."eu4-1.37.5-steam-win64" = { rva = 0x111E000 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1118BB0 }
 
 # --- the frontend idler's tick ---
 
 [symbol.frontend_tick_slot]
-rva = 0x1D5A8E8
 memory = "read"
-points_to = 0x10D2E80
 note = "slot +0x20 of the frontend idler vtable 0x1D5A8C8: void tick(idler, bool update)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1D5A8E8, points_to = 0x10D2E80 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1D43338, points_to = 0x10D1670 }
 
 # --- vtables the plugin compares against ---
 
@@ -52,28 +63,31 @@ rva = 0x1DA6D38
 memory = "read"
 points_to = 0x1658A80
 note = "CSteamLobby's vtable; slot 0 checked so the lobby pointer is known to be one"
+absent = ["eu4-1.37.5.2-gog-win64"]
 
 [symbol.minimap_vtable]
-rva = 0x1D6C620
 memory = "read"
-points_to = 0x1248740
 note = "the in-game minimap controller's vtable; slot 0 is its deleting destructor"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1D6C620, points_to = 0x1248740 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1D54DF0, points_to = 0x1242A90 }
 
 # --- game functions ---
 
 [symbol.busy_enter]
-rva = 0x470AF0
 bytes = "40 53 48 83 EC 20 48 8B D9"
 memory = "code"
 signature = "void* (void* previous)"
 note = "busy scope: saves the previous state in *previous"
+build."eu4-1.37.5-steam-win64" = { rva = 0x470AF0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x4709C0 }
 
 [symbol.busy_leave]
-rva = 0x470B30
 bytes = "40 53 48 83 EC 20 48 8B D9"
 memory = "code"
 signature = "void (void* previous)"
 note = "busy scope: restores the state busy_enter saved"
+build."eu4-1.37.5-steam-win64" = { rva = 0x470B30 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x470A00 }
 
 [symbol.lobby_close]
 rva = 0x1658D50
@@ -81,6 +95,7 @@ bytes = "40 53 48 83 EC 20 80 B9 99 02 00 00 00"   # cmp byte [rcx+0x299], 0 (ho
 memory = "code"
 signature = "void (void* lobby)"
 note = "CSteamLobby: stops hosting, leaves the lobby, unregisters the lobby event context"
+absent = ["eu4-1.37.5.2-gog-win64"]
 
 [symbol.lobby_disconnect]
 rva = 0x165B0C0
@@ -88,6 +103,7 @@ bytes = "40 53 48 83 EC 20 48 8B D9 8B 89 C4 01 00 00"
 memory = "code"
 signature = "void (void* lobby)"
 note = "CSteamLobby: clears the outstanding join result"
+absent = ["eu4-1.37.5.2-gog-win64"]
 
 [symbol.lobby_initialize]
 rva = 0x1658CB0
@@ -95,143 +111,169 @@ bytes = "40 53 48 83 EC 20 48 8B D9"
 memory = "code"
 signature = "void (void* lobby)"
 note = "CSteamLobby: registers the lobby event context again"
+absent = ["eu4-1.37.5.2-gog-win64"]
 
 [symbol.in_game_exit]
-rva = 0x80FEE0
 bytes = "40 53 48 83 EC 30 48 8B D9"
 memory = "code"
 signature = "void (void* idler)"
 note = "CInGameIdler: the stock exit of the campaign view"
+build."eu4-1.37.5-steam-win64" = { rva = 0x80FEE0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x80F240 }
 
 [symbol.campaign_exit_cleanup]
-rva = 0x5CC160
 bytes = "48 89 5C 24 08 48 89 74 24 10 48 89 7C 24 18 55 48 8B EC"
 memory = "code"
 signature = "void ()"
 note = "called by EU4 Menu Patch after in_game_exit; not analysed further"
+build."eu4-1.37.5-steam-win64" = { rva = 0x5CC160 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x5CBC30 }
 
 [symbol.notifications_destroy]
-rva = 0xDFFCF0
 bytes = "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 48 89 7C 24 20 41 56"
 memory = "code"
 signature = "void (void* notices)"
 note = "the diplomatic notifications' full destructor (GUI and callbacks), as the in-game reload uses it"
+build."eu4-1.37.5-steam-win64" = { rva = 0xDFFCF0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0xDFE440 }
 
 [symbol.minimap_destroy]
-rva = 0x1248740
 bytes = "48 89 5C 24 08 48 89 74 24 10 57 48 83 EC 20 8B FA 48 8B F1"
 memory = "code"
 signature = "void (void* controller, uint32_t flags)"
 note = "the minimap controller's deleting destructor (flags 1 frees it)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1248740 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1242A90 }
 
 [symbol.continue_record_read]
-rva = 0x5D1670
 bytes = "48 89 5C 24 08 48 89 74 24 10 48 89 7C 24 18 55 41 54 41 55 41 56 41 57"
 memory = "code"
 signature = "void (void* record)"
 note = "reads the Continue game record (4 strings and a valid flag at +0x80)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x5D1670 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x5D1140 }
 
 [symbol.set_save_metadata]
-rva = 0x2110C0
 bytes = "48 89 5C 24 08 57 48 83 EC 20 48 8B D9 48 8B FA"
 memory = "code"
 signature = "void (void* app, const void* path)"
 note = "joins the previous metadata job and replaces the app's cached save information"
+build."eu4-1.37.5-steam-win64" = { rva = 0x2110C0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x211080 }
 
 [symbol.string_free]
-rva = 0x95660
 bytes = "40 53 48 83 EC 20 48 8B 51 18 48 8B D9"
 memory = "code"
 signature = "void (void* string)"
 note = "frees an MSVC std::string's heap buffer"
+build."eu4-1.37.5-steam-win64" = { rva = 0x95660 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x95690 }
 
 [symbol.game_alloc]
-rva = 0x1A332D4
 bytes = "40 53 48 83 EC 20 48 8B D9"
 memory = "code"
 signature = "void* (uint64_t size)"
 note = "the game's operator new"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1A332D4 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1A1CF54 }
 
 [symbol.main_menu_construct]
-rva = 0x10D23C0
 bytes = "48 8B C4 48 89 58 10 48 89 70 18 48 89 78 20 48 89 48 08 55"
 memory = "code"
 signature = "void* (void* memory, void* app_350, void* app_358, void* app)"
 note = "the main menu idler's constructor (0xB48 bytes)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x10D23C0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x10D0BC0 }
 
 [symbol.set_next_idler]
-rva = 0x14C2530
 bytes = "48 89 5C 24 08 48 89 74 24 10 57 48 83 EC 20 48 8B DA"
 memory = "code"
 signature = "void (void* app, void** idler, bool flag)"
 note = "takes the idler (nulls *idler) into app+0x70; the switch happens on a later frame"
+build."eu4-1.37.5-steam-win64" = { rva = 0x14C2530 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x14BC390 }
 
 [symbol.reset_game]
-rva = 0x210000
 bytes = "48 89 5C 24 08 55 56 57 41 54 41 55 41 56 41 57"
 memory = "code"
 signature = "void (void* app, bool flag)"
 note = "ResetGame: replaces the world; turns any non-zero multiplayer restriction into 1"
+build."eu4-1.37.5-steam-win64" = { rva = 0x210000 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x20FFC0 }
 
 [symbol.history_post_validate]
-rva = 0x7E9B70
 bytes = "48 89 5C 24 10 48 89 6C 24 18 48 89 74 24 20 57"
 memory = "code"
 signature = "void (void* history)"
 note = "the history's post-load validation, which ResetGame runs on its own only for an in-game idler"
+build."eu4-1.37.5-steam-win64" = { rva = 0x7E9B70 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x7E8EE0 }
 
 # --- the windows a campaign leaves in the GUI root ---
 
 [symbol.in_game_gui_init]
-rva = 0x81AF10
 bytes = "48 89 5C 24 08 55 56 57 41 54 41 55 41 56 41 57"
 memory = "code"
 note = "CInGameIdler: builds the campaign's GUI (topbar, menubar, diplomatic icons, ...); also the HUD reload's slot +0x30"
+build."eu4-1.37.5-steam-win64" = { rva = 0x81AF10 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x81A270 }
 
 [symbol.in_game_idler_construct]
-rva = 0x803270
 bytes = "48 8B C4 48 89 58 18 48 89 50 10 48 89 48 08 55 56 57 41 54 41 55 41 56"
 memory = "code"
 note = "CInGameIdler's constructor (vtable 0x1CB8460): its views create their windows from here on"
+build."eu4-1.37.5-steam-win64" = { rva = 0x803270 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x8025F0 }
 
 [symbol.gui_create_window]
-rva = 0x14E9030
 bytes = "48 89 5C 24 10 57 48 83 EC 40 48 8B F9 48 8B DA"
 memory = "code"
 signature = "void* (void* manager, const void* name)"
 note = "GUI manager slot +0x48: creates a window by its .gui name and adds it as a top-level window; returns the full object (widget at +0x30)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x14E9030 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x14E2BA0 }
 
 [symbol.dialog_window_store]
-rva = 0x10A0735
 bytes = "48 89 7B 08 48 85 FF"   # mov [rbx+8], rdi; test rdi, rdi
 memory = "code"
 note = "eu3dialog (message popups, 0x10A06C0): stores the window it just built (rdi) in the dialog (rbx); the dialog's .gui name is at rbx+0x118"
+build."eu4-1.37.5-steam-win64" = { rva = 0x10A0735 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x109EF35 }
 
 [symbol.gui_manager_store]
-rva = 0x14E8904
-bytes = "48 89 35 E5 0B E6 00"
 memory = "code"
 values.manager = { at = 3, rip_relative = 7 }
 note = "GUI manager constructor: stores this to the global GUI manager pointer (as Tongs declares it)"
 
+[symbol.gui_manager_store.build."eu4-1.37.5-steam-win64"]
+rva = 0x14E8904
+bytes = "48 89 35 E5 0B E6 00"
+
+[symbol.gui_manager_store.build."eu4-1.37.5.2-gog-win64"]
+rva = 0x14E2474
+bytes = "48 89 35 F5 AE E4 00"
+
 [symbol.widget_registry]
-rva = 0x14E9E16
 bytes = "48 8B BE 10 01 00 00 48 8B 86 18 01 00 00"
 memory = "code"
 values.begin = { at = 3, size = 4 }
 values.end = { at = 10, size = 4 }
 note = "GUI update: the vector of every live widget at manager+0x110 / +0x118 (as Tongs declares it)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x14E9E16 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x14E3986 }
 
 # --- data ---
 
 [symbol.world]
-rva = 0x233FE78
 memory = "write"
 type = "uintptr_t"
 note = "the game root object; its multiplayer restriction reason is the uint32 at +0x23B4"
+build."eu4-1.37.5-steam-win64" = { rva = 0x233FE78 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x2323CF8 }
 
 [symbol.history]
-rva = 0x233FEA0
 memory = "write"
 type = "uintptr_t"
 note = "the history object history_post_validate takes"
+build."eu4-1.37.5-steam-win64" = { rva = 0x233FEA0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x2323D18 }
