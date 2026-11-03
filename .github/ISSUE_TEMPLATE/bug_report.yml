@@ -1,0 +1,89 @@
+name: Bug report
+description: A crash, a hang or a broken window after returning to the main menu, or a difference in the next campaign.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Security problems go through [private reporting](https://github.com/happy-dwarf-team/hamweard/security/advisories/new).
+        Please narrow it down first: does the problem also happen after a normal restart of the game, without returning to the menu? The README's [Limitations](https://github.com/happy-dwarf-team/hamweard#limitations) list what was not tested (multiplayer, ironman, mods, naval battles).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead. Screenshots help.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start a campaign as ..., play for ...
+        2. Exit to Menu, then Quit on the end-of-game screen
+        3. Start a second campaign: ...
+    validations:
+      required: true
+  - type: dropdown
+    id: return
+    attributes:
+      label: How you returned to the main menu
+      options:
+        - Exit to Menu in a campaign
+        - Back on the country selection screen
+        - Both
+        - It happened before any return
+    validations:
+      required: true
+  - type: input
+    id: returns
+    attributes:
+      label: Returns before the problem
+      description: How many times you had returned to the menu in this game process when it happened (1 = the first return).
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Plugin and Anvil versions
+      description: "From `anvil/anvil.log`, e.g. `Anvil 1.8.0` and `hamweard 1.0.0: loaded`."
+    validations:
+      required: true
+  - type: input
+    id: game-build
+    attributes:
+      label: Game build
+      description: The `game build:` line of `anvil/anvil.log`, and the game version shown in the launcher.
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Game mode
+      options:
+        - Single player
+        - Ironman (allowed in Anvil)
+        - Multiplayer
+    validations:
+      required: true
+  - type: textarea
+    id: mods
+    attributes:
+      label: Enabled mods and other plugins
+      description: The mods of the playset and the other Anvil plugins with their versions (or "none").
+    validations:
+      required: true
+  - type: textarea
+    id: crash
+    attributes:
+      label: Crash report
+      description: After a crash, the `.txt` report from `anvil/crashes/` (the Anvil Manager's **Crashes** tab copies it). Leave empty if the game did not crash.
+      render: text
+  - type: textarea
+    id: log
+    attributes:
+      label: anvil/anvil.log
+      description: The whole file from the start where the problem happened, and the lines of `error.log` around the return if there are any. Check them for anything you do not want to share, such as your Windows user name in paths.
+      render: text
+    validations:
+      required: true
