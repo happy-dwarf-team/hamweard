@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/happy-dwarf-team/hamweard/compare/v1.0.0...v1.1.0) (2026-11-03)
+
+
+### Features
+
+* run on the GOG build 1.37.5.2 ([#12](https://github.com/happy-dwarf-team/hamweard/issues/12)) ([c785510](https://github.com/happy-dwarf-team/hamweard/commit/c7855103a2f08673205aa759568e6bf7c5b3ee47))
+
 ## 1.0.0 (2026-11-02)
 
 
