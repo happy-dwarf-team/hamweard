@@ -16,6 +16,11 @@ FetchContent_MakeAvailable(anvil_sdk)
 # folder>, hamweard-deploy.
 anvil_add_plugin(hamweard SOURCES src/plugin.cpp)
 
+# The licence asks to go with every copy: the release zip and the Workshop mod are
+# this folder.
+add_custom_command(TARGET hamweard POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE" "$<TARGET_FILE_DIR:hamweard>/LICENSE")
+
 # The world-reset gate on its own (no game needed).
 enable_testing()
 add_executable(menu_transition_tests tests/menu_transition_tests.cpp)

@@ -64,6 +64,7 @@ jobs:
           if (-not $id -or -not $version) { Write-Output '::error file=plugin.toml::id or version not found'; exit 1 }
           $plugin = "build/plugin/$id"
           if (-not (Test-Path "$plugin/plugin.toml")) { Write-Output "::error::$plugin was not built"; exit 1 }
+          if (-not (Test-Path "$plugin/LICENSE")) { Write-Output "::error::$plugin has no LICENSE"; exit 1 }
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           New-Item -ItemType Directory dist -Force | Out-Null
           [IO.Compression.ZipFile]::CreateFromDirectory((Resolve-Path $plugin), "$PWD/dist/$id-windows-x64.zip",
