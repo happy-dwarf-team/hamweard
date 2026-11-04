@@ -15,21 +15,15 @@ Old English *hāmweard* means "homeward". The mod takes you from a campaign back
 
 ![](https://i.imgur.com/Uf8Z21n.png)
 
-## Before you subscribe
-- **[Anvil](https://anvil.happydwarf.dev/) 1.9 or newer** must be installed in the game folder. Get it from [anvil.happydwarf.dev](https://anvil.happydwarf.dev/) and press Download. The Workshop can't install it for you: a dwarf has to carry it in by hand, once.
-- **EU4 1.37.5** (Steam, Windows). On any other version Hamweard stays out of the way and the buttons restart the game as usual.
-- **Playing on GOG?** The GOG build 1.37.5.2 works too, but GOG has no Workshop: see the FAQ below.
-- If you use the original EU4 Menu Patch, remove it first: both change the same part of the game.
+## Install
+Hamweard runs on EU4 1.37.5 (Steam, Windows; the GOG build 1.37.5.2 too, see the FAQ). On any other version it stays out of the way and the buttons restart the game as usual. If you use the original EU4 Menu Patch, remove it first: both change the same part of the game.
 
-![](https://i.imgur.com/Uf8Z21n.png)
+1. **Install [Anvil](https://anvil.happydwarf.dev/) 1.9 or newer.** Download it, run it and click **Install Anvil**. If Windows warns, choose **More info**, then **Run anyway**. You do this once; the Workshop can't do it for you.
+2. **Subscribe** and enable Hamweard in your playset.
+3. **Start the game.** Anvil says a plugin is waiting: press **Ctrl+Shift+F12**, open **Mods** and approve Hamweard.
+4. **Restart the game.** From then on, **Exit to Menu** and **Back** take you home without one.
 
-## Getting it running
-1. Subscribe and enable Hamweard in your playset.
-2. Start the game. Anvil will tell you a new plugin is waiting.
-3. Press **Ctrl+Shift+F12**, open **Mods** and approve Hamweard. You can also approve it before playing, in Anvil Manager.
-4. Restart. From then on, **Exit to Menu** and **Back** take you home without one.
-
-Anvil asks again after every update. Until you approve, the version you trusted before keeps working.
+Anvil asks again after an update; the version you approved keeps working until then.
 
 ![](https://i.imgur.com/Uf8Z21n.png)
 
