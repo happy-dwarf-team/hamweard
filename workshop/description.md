@@ -5,8 +5,8 @@ Normally **Exit to Menu** in a campaign and **Back** on the country selection sc
 ## What you get
 - **No restart** after Exit to Menu or Back: the main menu comes back in the same game.
 - **Fewer crashes on the way home:** Hamweard also clears the windows each campaign leaves behind, which in our tests made a later campaign crash.
-- **Tested in single player:** twelve campaigns in a row with wars, battles and peace deals, and no crash.
-- **Honest limits:** your next campaign starts in a game that already played one. We saw nothing carry over, but Anvil treats Hamweard as a mod that affects gameplay: it is off in multiplayer, off in ironman unless you allow it, and not tested with other mods yet.
+- **Tested in single player:** dozens of returns with wars, naval battles, ironman and big mods, and no crash.
+- **Honest limits:** your next campaign starts in a game that already played one. We compared saves and almost nothing carried over, but Anvil treats Hamweard as a mod that affects gameplay: it is off in multiplayer and off in ironman unless you allow it.
 
 Hamweard is a port of EU4 Menu Patch by VulonLok, under the MIT License. The original needs a separate loader; Hamweard runs on Anvil.
 
@@ -35,18 +35,18 @@ Anvil asks again after every update. Until you approve, the version you trusted 
 
 ## What it doesn't touch
 - No game files: the files the game checks stay the same, so ironman achievements stay available.
-- **Gameplay, honestly:** your next campaign starts in a game that already played one, instead of a fresh one. We saw nothing carry over, but we can't promise nothing ever does, so Anvil treats Hamweard as a mod that affects gameplay.
-- **Ironman:** off unless you allow it in Anvil. We have not tested it there yet.
+- **Gameplay, honestly:** your next campaign starts in a game that already played one, instead of a fresh one. A save made after a few returns matched one from a fresh start; the only thing we saw carry over is an achievements list after an ironman campaign, which changed nothing in our tests. We can't promise nothing else does, so Anvil treats Hamweard as a mod that affects gameplay.
+- **Ironman:** off unless you allow it in Anvil. Allowed, it worked in our tests, saves included.
 - **Multiplayer:** always off. In a multiplayer game Anvil keeps Hamweard out, and Exit to Menu restarts the game as usual.
 - Unsubscribe and it's gone. Nothing is left in your saves.
 
 ![](https://i.imgur.com/Uf8Z21n.png)
 
 ## Current state
-- Tested on our machine in single player: Back, Exit to Menu, loading the same save again, Continue game, and twelve campaigns in a row in two sittings, some of them two or three years long with a war, a battle and a peace. No crash.
-- On the GOG build: five short campaigns in one sitting, with Exit to Menu and Back. No crash.
-- Not tested yet: multiplayer, ironman, other mods alongside (big overhauls included) and naval battles. If you try one, tell us how it went on [GitHub](https://github.com/happy-dwarf-team/hamweard/issues).
-- Each return leaves a few small windows behind. After many returns in one sitting, a full restart now and then does no harm.
+- Tested on our machine in single player: Back, Exit to Menu, Continue game, new games and saving after a return, changing country, battles at land and sea, ironman, the multiplayer menu, Anbennar, a ten-mod playset and Bellows. 66 returns in one day, no crash.
+- On the GOG build: a GOG save, Continue game, ironman and a year-long campaign. No crash.
+- Not tested yet: a multiplayer game itself. Tried something new? Tell us on [GitHub](https://github.com/happy-dwarf-team/hamweard/issues).
+- Each return leaves a few small windows behind (about 15 MB). After many returns, a full restart now and then does no harm.
 
 ![](https://i.imgur.com/Uf8Z21n.png)
 
@@ -73,7 +73,10 @@ Hamweard is a real program running inside your game, not just a pile of text fil
 Check the **Mods** tab in Anvil's panel (Ctrl+Shift+F12): it says whether Hamweard is approved, and if it was kept out, why (multiplayer, an ironman game you have not allowed it in, another game version). A dwarf who isn't let in can't show you the way home.
 
 ### Does it work with Bellows?
-They do different jobs, Bellows the start of the game and Hamweard the way back to the menu, and they don't change the same parts of the game. We have not tested them side by side yet, so tell us if anything looks odd.
+Yes. They do different jobs, Bellows the start of the game and Hamweard the way back to the menu, and they don't change the same parts of the game. We ran them side by side for 23 returns in a row without a hitch.
+
+### Does it work in ironman or with big mods?
+Ironman, yes, if you allow it in Anvil (achievements stay on, but a plugin that changes the game may break Paradox's rules for them). Continue game won't show your ironman campaign: load it from Single Player. Mods: Anbennar and a ten-mod playset ran clean, but no dwarf has walked every road.
 
 ### Is it the same as EU4 Menu Patch?
 It is a port of it, with the original author's research and licence. It runs on Anvil instead of its own loader, and it also clears the windows a campaign leaves behind, which in our tests made a later campaign crash. Use one or the other, not both.

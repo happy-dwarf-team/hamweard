@@ -34,8 +34,9 @@ hand-written stubs, near allocations and page protection with Anvil's `replace_b
 `swap_pointer` and hooks, its own log with `anvil.log`, and adds the clean-up of the
 windows a campaign leaves behind (below).
 
-**Status:** tested in the lab on single-player campaigns only (see
-[What was tested](#what-was-tested)); multiplayer, ironman and mods are not tested.
+**Status:** tested in the lab in single player, in ironman with the opt-in and with mods,
+Anbennar among them (see [What was tested](#what-was-tested)). Multiplayer sessions are not
+tested.
 
 ## Install and use
 
@@ -64,20 +65,31 @@ usual.
 ## Limitations
 
 - **Gameplay.** `affects_gameplay = true`: the next campaign starts in the same process
-  instead of a fresh one, so anything the world reset leaves behind could change it. The
-  plugin also writes the world's multiplayer restriction (below).
-- **Multiplayer: not tested, and off.** `allow_multiplayer = false`: while a multiplayer
-  session runs, Anvil takes the plugin's changes out and Exit to Menu restarts the game.
-  The Steam lobby clean-up is ported from the original but was never exercised (hosting,
-  joining or leaving a lobby).
-- **Ironman: off unless you allow it** in Anvil (`allow_ironman = "opt-in"`). Not tested
-  either way, including the save the game makes when you leave an ironman campaign.
-- **Mods: not tested.** No game file changes, so the checksum stays the same, but no
-  campaign with mods (or with Bellows or the Anvil overlay alongside) was run.
-- **Not seen in a test:** naval battles and some message popups (an heir to name, a new
-  colonial nation). The windows of land battles and peace deals were tested.
-- About eight windows per campaign stay in the GUI root after a return (see below). Their
-  memory cost over many returns was not measured.
+  instead of a fresh one, so anything the world reset leaves behind could change it. In
+  the lab a save made after three returns matched a save from a fresh process, apart from
+  the campaign id and the random seed. The one thing seen to survive is the game's
+  achievement list after an ironman campaign: a normal save made later in the same sitting
+  carries an `achievement={...}` block. Such a save loaded and played normally. The plugin
+  also writes the world's multiplayer restriction (below).
+- **Multiplayer: off, and sessions not tested.** `allow_multiplayer = false`: while a
+  multiplayer session runs, Anvil takes the plugin's changes out and Exit to Menu restarts
+  the game. After a return the Multiplayer button works and the Game Browser opens, a scan
+  included (on GOG the button opens the Paradox login). No lobby was hosted or joined, so
+  the Steam lobby clean-up ported from the original has never run.
+- **Ironman: off unless you allow it** in Anvil (`allow_ironman = "opt-in"`). With the
+  opt-in it worked on Steam and GOG: the game saves when you leave and the save loads
+  again. Without it the plugin is suspended and Exit to Menu restarts the game. An ironman
+  save does not update the game's Continue game record, so after a return Continue game
+  points at your last normal save; load the ironman save from the Single Player list.
+- **Mods: tested, not all of them.** No game file changes, so the checksum stays the same.
+  Anbennar with Proper 2K UI and a playset of ten interface and graphics mods ran without
+  trouble. A mod that does something unusual when a campaign ends may still behave
+  differently.
+- **Not seen in a test:** some message popups (an heir to name, a new colonial nation), the
+  window of a lost game, the end of the game in 1821, custom nations and Random New World.
+- About eight windows per campaign stay in the GUI root after a return (see below). In
+  23 returns in a row that cost about 15 MB of memory per return, and the menu stayed at
+  full speed.
 - EU4 1.37.5 on Steam and the GOG build 1.37.5.2. On any other build Anvil does not load
   the plugin. The GOG build has no Steam lobby, so there is nothing to clean up there and
   the multiplayer restriction comes back without waiting for one.
@@ -142,8 +154,33 @@ process, five Exit to Menu and two Back, seven returns in 4.0 to 4.5 seconds eac
 crash and no warning in `anvil.log`. The multiplayer restriction came back after every
 return without waiting for a Steam lobby, which the GOG build does not have.
 
-Not tested: multiplayer and Steam lobbies, ironman with the opt-in, mods, naval battles,
-and Bellows or the Anvil overlay running alongside.
+The gaps were closed on 4 November 2026 (lab `docs/anvil-menu-patch.md`), with Hamweard
+1.1.0 from the release, Anvil 1.9.0 with its overlay and log throttle, and Tongs 0.26.0:
+66 returns in eight game runs, no crash, no `Should not be lazy loaded`, no popup left in
+the GUI root after any return, and each run ended with the game's own Exit button or Exit
+Game, or with a clean restart. 1.1.1 changes no code.
+
+- **Saves after a return:** new games (not only loaded saves), Save Game, Load Game in the
+  menu and in a running campaign, autosaves, and the same save loaded in a fresh process
+  and after three returns: the two saved files differ only in the campaign id and the
+  random seed.
+- **Changing country:** the console's `tag` and observer mode, each followed by Exit to
+  Menu and loading the save again.
+- **Naval battles:** four campaigns with a war at sea and at least six end-of-naval-battle
+  windows.
+- **Multiplayer menu:** the Game Browser and a scan of the Internet list after a return,
+  then Back. No hosting.
+- **Ironman with the opt-in:** Steam and GOG, new campaigns after a return, two in a row,
+  the save on leaving and loading it again. Without the opt-in: suspended, and Exit to Menu
+  restarted the game.
+- **Mods:** Anbennar with Proper 2K UI Enhanced (9 returns, returns in 5.5 to 6.6 seconds),
+  and a copy of a ten-mod playset (8 returns, one campaign over a year long).
+- **Bellows 0.19.0 and the Anvil overlay alongside:** 23 returns in a row, the menu at
+  163 frames per second at the end.
+- **GOG:** a save made on GOG, Continue game, ironman, a campaign of 400 days, 5 returns.
+
+Not tested: multiplayer sessions and the Steam lobby clean-up, and the windows and modes
+listed under [Limitations](#limitations).
 
 ## Build
 
