@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Thanks for reporting. Security problems go through [private reporting](https://github.com/happy-dwarf-team/hamweard/security/advisories/new).
-        Please narrow it down first: does the problem also happen after a normal restart of the game, without returning to the menu? The README's [Limitations](https://github.com/happy-dwarf-team/hamweard#limitations) list what was not tested (multiplayer, ironman, mods, naval battles).
+        Please narrow it down first: does the problem also happen after a normal restart of the game, without returning to the menu? The README's [Limitations](https://github.com/happy-dwarf-team/hamweard#limitations) list what was not tested.
   - type: textarea
     id: what-happened
     attributes:
@@ -46,7 +46,7 @@ body:
     id: versions
     attributes:
       label: Plugin and Anvil versions
-      description: "From `anvil/anvil.log`, e.g. `Anvil 1.8.0` and `hamweard 1.0.0: loaded`."
+      description: "From `anvil/anvil.log`, e.g. `Anvil 1.10.0` and `hamweard 1.1.1: loaded`."
     validations:
       required: true
   - type: input
@@ -83,7 +83,7 @@ body:
     id: log
     attributes:
       label: anvil/anvil.log
-      description: The whole file from the start where the problem happened, and the lines of `error.log` around the return if there are any. Check them for anything you do not want to share, such as your Windows user name in paths.
+      description: "The Anvil Manager's **Log** tab has **Copy a problem report** (Anvil 1.9 or newer), which leaves your paths and user name out. Otherwise paste the whole file from the start where the problem happened. Add the lines of `error.log` around the return if there are any, and check them for anything you do not want to share, such as your Windows user name in paths."
       render: text
     validations:
       required: true
