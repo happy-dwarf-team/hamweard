@@ -67,9 +67,7 @@ usual.
 - **Gameplay.** `affects_gameplay = true`: the next campaign starts in the same process
   instead of a fresh one, so anything the world reset leaves behind could change it. In
   the lab a save made after three returns matched a save from a fresh process, apart from
-  the campaign id and the random seed. The one thing seen to survive is the game's
-  achievement list after an ironman campaign: a normal save made later in the same sitting
-  carries an `achievement={...}` block. Such a save loaded and played normally.
+  the campaign id and the random seed.
 - **Canals restart the game.** A canal rewrites the map itself, and the map outlives the
   campaign: in the lab a new game after a save with canals differed from a fresh one, even
   with the canals closed first. So once a save or event has applied a canal, Exit to Menu
@@ -79,8 +77,10 @@ usual.
   does that too, with or without Hamweard. **Back** first clears it: the new campaign then
   matches one from a fresh start.
 - **Multiplayer: off, and sessions not tested.** `allow_multiplayer = false`: while a
-  multiplayer session runs, Anvil takes the plugin's changes out and Exit to Menu restarts
-  the game. The game marks a process that has entered single player as possibly corrupted
+  multiplayer campaign with other players runs, Anvil takes the plugin's changes out. In a
+  lobby and as a host alone in the game Anvil does not, so the plugin itself leaves those
+  by the game's restart. So Exit to Menu and Back restart the game in any multiplayer
+  session, as without the plugin. The game marks a process that has entered single player as possibly corrupted
   and, with a Paradox session online, asks for a restart before multiplayer. A return keeps
   that mark, so restart the game to play multiplayer after a campaign. Offline the game
   does not check the mark: the Multiplayer button works and the Game Browser opens, a scan
@@ -97,19 +97,40 @@ usual.
   differently.
 - **Not seen in a test:** some message popups (an heir to name, a new colonial nation), the
   window of a lost game, the end of the game in 1821, custom nations and Random New World.
-- About eight windows per campaign stay in the GUI root after a return (see below). In
-  23 returns in a row that cost about 15 MB of memory per return, and the menu stayed at
-  full speed.
+- **Memory grows by 5 to 15 MB per return,** and the menu stayed at full speed over 23
+  returns in a row. About eight windows per campaign stay in the GUI root too (see below),
+  but they are not the cause: the game's own reload in a campaign leaves 29 windows each
+  time and memory stays flat. After many returns in one sitting, restart the game now and
+  then.
 - EU4 1.37.5 on Steam and the GOG build 1.37.5.2. On any other build Anvil does not load
   the plugin. The GOG build has no Steam lobby, so there is nothing to clean up there.
+
+## Troubleshooting
+
+Every return writes to `<EU4>/anvil/anvil.log`, in lines that start with `[hamweard]`. The
+log says when the plugin chose a restart, and why.
+
+| What you see | Why | What to do |
+| --- | --- | --- |
+| Exit to Menu or Back restarts the game | The plugin is not loaded, or Anvil suspended it | Open the Anvil panel (`Ctrl+Shift+F12`): is Hamweard loaded and approved? An ironman campaign needs the opt-in, in the panel or on the Manager's **Mods** tab. |
+| The same, and the log says `the map has had a canal` | A save or event with a canal changed the map, and only a restart gives the old map back | Nothing to fix: the plugin keeps the restart for the rest of that sitting. |
+| The same, and the log says `multiplayer` | A multiplayer session ends with a restart | Expected. |
+| Anvil refuses to load Hamweard | The game is another build, or the original EU4 Menu Patch changed the same code | Use EU4 1.37.5 on Steam or GOG 1.37.5.2, and remove the Menu Patch DLL. |
+| The game asks for a restart before multiplayer | The game's own rule after the single player screen, and a return keeps it | Restart the game once. |
+| Continue game does not show your ironman campaign | The game does not record ironman saves there | Load it from the Single Player list. |
+| Province triggered modifiers are gone in a new campaign | A game bug: a save was clicked in the list before the new campaign | Press **Back** after clicking a save, then start the campaign. |
+
+A crash or anything odd after a return: open an
+[issue](https://github.com/happy-dwarf-team/hamweard/issues) with `anvil.log`, and
+`Documents/Paradox Interactive/Europa Universalis IV/logs/error.log`, from that sitting.
 
 ## What it changes in the game
 
 | Site | The game | The plugin |
 | --- | --- | --- |
-| `0x815CAE`, the Exit to Menu branch of `CInGameIdler::Idle` | sets the exit and restart flags: the game quits and starts again | releases the campaign's leftovers, queues a new main menu and resumes at the stock epilogue |
-| `0x111DFD7`, Back on the country selection screen | the same flags | queues the switch for the menu's next tick |
-| slot `+0x20` of the frontend idler vtable | the frontend tick | runs the queued switch, destroys the last campaign's windows and resets the world once the old idler is gone, then the stock tick |
+| `0x815CAE`, the Exit to Menu branch of `CInGameIdler::Idle` | sets the exit and restart flags: the game quits and starts again | in single player releases the campaign's leftovers, queues a new main menu and resumes at the stock epilogue; in a multiplayer session, or after a canal, the game's restart |
+| `0x111DFD7`, Back on the country selection screen | the same flags | in single player queues the switch for the menu's next tick; in a multiplayer lobby, or after a canal, the game's restart |
+| slot `+0x20` of the frontend idler vtable | the frontend tick | runs the queued switch, destroys the last campaign's windows, resets the world once the old idler is gone and forgets the achievement list the last loaded save carried, then the stock tick |
 | slot `+0x30` of the frontend idler vtable | builds the menu, starting with the loading screen | clears the last campaign's map objects first, so unit banners do not stand on the loading screen |
 | `0x78F250`, `ApplyCanalLogic` | rewrites the map's neighbours for a canal | the same, and the plugin notes it: from then on both buttons restart the game as usual |
 | `0x7E8470`, `CHistoryDataBase::Execute` | walks the history between two dates | does nothing while a return waits for its world reset: the new menu would walk it on the old world, which crashed after a start from a later date |
@@ -118,6 +139,13 @@ usual.
 The world's `PotentialCorruption` flag stays as the game keeps it through its reset. Only
 the `-nudge` reason (2), which the reset flattens to 1, is put back. Earlier versions, like
 the original, cleared the flag after every return.
+
+## Why a return takes a few seconds
+
+A return took 3.5 to 4 seconds in the lab, and about 3 of those are the game's own world
+reset (`ResetGame`). Almost all of that re-reads the databases and the history from disk,
+which is what gives the next campaign a clean start, so the plugin does not skip it.
+Loading a save from the menu is the game's own path, and Hamweard adds nothing to it.
 
 ## Windows a campaign leaves behind
 
@@ -136,8 +164,8 @@ still alive (checked in the widget registry, by name), each hidden first, as the
 reload does. Windows named like one of the fresh main menu's, `load_screen` and
 `console_wnd` are kept. That removes about 100 to 160 windows per campaign, all popups
 included, and the shown count no longer grows. About eight per campaign still stay:
-duplicates of frontend names (`goto_box`, `rightClickMenu`, `start_game_dialog` and the
-like) and `dlc_entry`.
+duplicates of frontend names (`goto_box` and `rightClickMenu` twice each,
+`start_game_dialog`, `tutorial_minimized`, `IronmanSaveSelectDialog`) and `dlc_entry`.
 
 Earlier versions also had a mid hook on every sprite draw that loaded such a texture
 first. With the popups destroyed it had nothing left to do, and the lab runs below passed
@@ -196,8 +224,16 @@ id apart, in a fresh process and after returns from campaigns started in 1444, 1
 save picked in the list; on GOG after three returns as well. The menu's checksum stayed
 the same. A save with canals restarted the game on Exit to Menu and on Back.
 
+The achievement list and the multiplayer check of the next version were tested on
+4 November 2026 with 27 returns in one process, 13 Exit to Menu and 14 Back, no restart and
+no crash. After a return the list stayed empty, and a normal save had no `achievement`
+block, also after an ironman save, a country change and a save that still has the block. An
+ironman save loaded after each of those had its 52 achievements, and a new ironman
+campaign said achievements can be earned.
+
 Not tested: multiplayer sessions and the Steam lobby clean-up, and the windows and modes
-listed under [Limitations](#limitations).
+listed under [Limitations](#limitations). The multiplayer check was read from the game's
+code only: the Host a server window was opened and cancelled, nothing was hosted or joined.
 
 ## Build
 
@@ -208,7 +244,7 @@ ctest --test-dir build -C Release --output-on-failure
 cmake --build build --config Release --target hamweard-check
 ```
 
-The check target runs `anvil check --exe` on all 36 symbols and rewrites `symbols.lock`;
+The check target runs `anvil check --exe` on all 37 symbols and rewrites `symbols.lock`;
 commit it with `symbols.toml`. `hamweard-deploy` (with `EU4_DIR`) copies the plugin into
 the game folder.
 
