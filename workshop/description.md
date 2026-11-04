@@ -42,7 +42,7 @@ Anvil asks again after an update; the version you approved keeps working until t
 - Tested on our machine in single player: Back, Exit to Menu, Continue game, new games and saving after a return, changing country, battles at land and sea, ironman, the multiplayer menu, Anbennar, a ten-mod playset and Bellows. 66 returns in one day, no crash.
 - On the GOG build: a GOG save, Continue game, ironman and a year-long campaign. No crash.
 - Not tested yet: a multiplayer game itself. Tried something new? Tell us on [GitHub](https://github.com/happy-dwarf-team/hamweard/issues).
-- Each return leaves a few small windows behind (about 15 MB). After many returns, a full restart now and then does no harm.
+- Each return keeps about 15 MB more in memory. After many returns, a full restart now and then does no harm.
 
 ![](https://i.imgur.com/Uf8Z21n.png)
 
