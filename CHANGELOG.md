@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/happy-dwarf-team/hamweard/compare/v1.1.0...v1.1.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* ship the licence with the plugin ([#16](https://github.com/happy-dwarf-team/hamweard/issues/16)) ([fec5bac](https://github.com/happy-dwarf-team/hamweard/commit/fec5baccdca151b7f182857262144583f55ec411))
+
 ## [1.1.0](https://github.com/happy-dwarf-team/hamweard/compare/v1.0.0...v1.1.0) (2026-11-03)
 
 
