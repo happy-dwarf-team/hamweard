@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.2](https://github.com/happy-dwarf-team/hamweard/compare/v1.1.1...v1.1.2) (2026-11-04)
+
+
+### Bug Fixes
+
+* clear the achievement list and leave multiplayer sessions by restart ([#26](https://github.com/happy-dwarf-team/hamweard/issues/26)) ([b0f4e64](https://github.com/happy-dwarf-team/hamweard/commit/b0f4e64297868dedcec7b49e8671d35f4fcc152f))
+* stop the crash after a later start and leave less behind on a return ([#23](https://github.com/happy-dwarf-team/hamweard/issues/23)) ([71a9886](https://github.com/happy-dwarf-team/hamweard/commit/71a9886ded3da7790a0a36b532d9966add20cc2a))
+
 ## [1.1.1](https://github.com/happy-dwarf-team/hamweard/compare/v1.1.0...v1.1.1) (2026-11-04)
 
 
