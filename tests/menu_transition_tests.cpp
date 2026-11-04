@@ -24,6 +24,9 @@ int main() {
         check(gate.pending(), "pending after queue");
         auto reset = [&] {
             check(!outgoing_alive, "reset while the outgoing idler is alive");
+            // The history walk is skipped only while the gate is pending: the
+            // reset's own walk has to run.
+            check(!gate.pending(), "not pending during the reset");
             ++resets;
             // A reset can pump messages: it must never run twice.
             check(!gate.run(&app, &menu, &menu, nullptr, [] { std::exit(1); }), "nested reset");
@@ -44,5 +47,11 @@ int main() {
     } catch (const std::runtime_error&) {
     }
     check(!gate.run(&app, &menu, &menu, nullptr, [] { std::exit(1); }), "a failed reset is not retried");
+
+    using hamweard::corruption_after_return;
+    check(corruption_after_return(0, 0) == 0, "a clean world stays clean");
+    check(corruption_after_return(1, 1) == 1, "the game's flag stays set");
+    check(corruption_after_return(1, 2) == 2, "-nudge's reason comes back");
+    check(corruption_after_return(0, 2) == 0, "nothing is set on a clean world");
     std::puts("menu transition tests passed");
 }

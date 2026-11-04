@@ -3,7 +3,7 @@
 //
 // A port of EU4 Menu Patch 0.1.4 (https://github.com/YozoraTempest/EU4-Menu-Patch,
 // MIT License, Copyright (c) 2026 VulonLok) to Anvil: the clean-up sequence,
-// the deferred world reset and the multiplayer restore are the original's,
+// and the deferred world reset are the original's,
 // the hand-written stubs, near allocations and page protection are Anvil's
 // replace_block and swap_pointer. Everything runs on the game's main thread.
 #include <anvil/anvil.hpp>
@@ -41,6 +41,7 @@ constexpr std::ptrdiff_t app_exit = 0x83;
 constexpr std::ptrdiff_t app_restart = 0x84;
 constexpr std::ptrdiff_t app_checksum_ready = 0x328;
 constexpr std::ptrdiff_t app_services = 0x348;  // its +0x10 is the Steam lobby
+constexpr std::ptrdiff_t app_graphical_map = 0x360;
 constexpr std::ptrdiff_t app_menu_arg_1 = 0x350;
 constexpr std::ptrdiff_t app_menu_arg_2 = 0x358;
 
@@ -61,13 +62,21 @@ constexpr std::ptrdiff_t lobby_join_call = 0x2E0;
 constexpr std::ptrdiff_t lobby_search_callback = 0x300;
 constexpr std::ptrdiff_t lobby_search_call = 0x310;
 
-constexpr std::ptrdiff_t world_multiplayer_reason = 0x23B4;
+constexpr std::ptrdiff_t world_provinces_begin = 0x1C90;
+constexpr std::ptrdiff_t world_provinces_end = 0x1C98;
+constexpr std::ptrdiff_t world_graphics_owner = 0x1E00;
+constexpr std::ptrdiff_t world_potential_corruption = 0x23B4;
+
+constexpr std::ptrdiff_t map_province_graphics = 0x70;
+constexpr std::ptrdiff_t province_graphics_size = 0x1400;
+
+constexpr std::ptrdiff_t canal_list_count = 0x14;  // ApplyCanalLogic's argument, a CPdxArray
 }  // namespace off
 
 // The offsets that differ on GOG 1.37.5.2 (its eu4.pdb, and the same code in
 // both builds): CInGameIdler's fields from its CEU4Application pointer on, and
 // CFrontEnd's view state and size. CEU4Application, the widgets and the
-// world's multiplayer reason have the same layout.
+// world's PotentialCorruption have the same layout.
 struct Layout {
     std::ptrdiff_t idler_app;
     std::ptrdiff_t idler_minimap;
@@ -81,9 +90,11 @@ constexpr Layout kGog{0x328, 0x10D0, 0x12D9, 0x13F0, 0x8F0, 0xB38};
 Layout g_layout = kSteam;
 
 using TickFn = void(void* idler, bool update);
+using RestoreFn = void(void* idler);
 using UnregisterCallResultFn = void(void* callback, std::uint64_t call);
 
 anvil::PointerSwap<TickFn> g_tick;
+anvil::PointerSwap<RestoreFn> g_restore_device_objects;
 std::uintptr_t* g_world = nullptr;    // the global holding the root object
 std::uintptr_t* g_history = nullptr;  // the global holding the history
 void* g_lobby_vtable = nullptr;  // null on a build without the Steam lobby (GOG)
@@ -95,11 +106,19 @@ std::atomic<void*> g_pending_frontend_app{nullptr};
 // Main thread only: the switch to the menu that is under way.
 Bytes g_pending_menu_app = nullptr;
 void* g_pending_menu_idler = nullptr;
-std::uint32_t g_previous_multiplayer_reason = 0;
-bool g_restore_deferral_logged = false;
+std::uint32_t g_previous_corruption = 0;
 std::uint32_t g_returns = 0;
 
+// A canal rewrites the neighbours of map provinces, and the map outlives the
+// world. Removing a canal does not give the old map back (a new game in the same
+// process still differed, lab), so from the first canal on this process keeps the
+// game's own restart. Set by every load and effect that applies one.
+bool g_map_changed = false;
+Bytes g_in_game_stock_path = nullptr;
+Bytes g_pregame_stock_path = nullptr;
+
 anvil::HookOf<sym::gui_create_window> g_create_window;
+anvil::HookOf<sym::history_execute> g_history_execute;
 std::uintptr_t* g_manager_global = nullptr;
 std::ptrdiff_t g_registry_begin = 0;
 std::ptrdiff_t g_registry_end = 0;
@@ -134,9 +153,9 @@ public:
 
 Bytes world() noexcept { return reinterpret_cast<Bytes>(*g_world); }
 
-std::uint32_t multiplayer_reason() noexcept {
+std::uint32_t potential_corruption() noexcept {
     Bytes w = world();
-    return w ? at<std::uint32_t>(w, off::world_multiplayer_reason) : 0;
+    return w ? at<std::uint32_t>(w, off::world_potential_corruption) : 0;
 }
 
 Bytes steam_lobby(Bytes app) noexcept {
@@ -173,23 +192,11 @@ void leave_steam_session(Bytes app) {
     game(sym::lobby_initialize, lobby);
 }
 
-bool steam_session_idle(Bytes app) {
-    if (!g_lobby_vtable) return true;  // no Steam lobby on this build: nothing to wait for
-    Bytes lobby = steam_lobby(app);
-    const bool idle = lobby && !at<std::uint64_t>(lobby, off::lobby_id) &&
-                      !at<std::uint64_t>(lobby, off::lobby_create_call) &&
-                      !at<std::uint64_t>(lobby, off::lobby_join_call) && !at<std::uint8_t>(lobby, off::lobby_hosting);
-    if (!idle && !g_restore_deferral_logged) {
-        host().info("multiplayer restore deferred: {}", lobby ? "the Steam lobby is busy" : "no Steam lobby service");
-        g_restore_deferral_logged = true;
-    }
-    return idle;
-}
-
 // Once the new main menu owns the frame, has finished its first update and the
-// checksum is ready, put back the multiplayer restriction ResetGame flattened
-// (it turns any non-zero reason into 1). Steam's own checks are left alone.
-void restore_multiplayer_access(void* idler) {
+// checksum is ready. The game's own PotentialCorruption flag stays set: this
+// process has played, so the game asks for a restart before multiplayer
+// (MUST_RESTART_TO_PLAY_MP). ResetGame only flattens -nudge's reason to 1.
+void finish_return(void* idler) {
     if (idler != g_pending_menu_idler || !g_pending_menu_app) return;
     Bytes app = g_pending_menu_app;
     if (at<void*>(app, off::app_current_idler) != idler || at<void*>(app, off::app_next_idler) != nullptr ||
@@ -197,13 +204,11 @@ void restore_multiplayer_access(void* idler) {
         return;
     Bytes w = world();
     if (!w) return;
-    auto& reason = at<std::uint32_t>(w, off::world_multiplayer_reason);
-    const std::uint32_t before = reason;
-    if (before == 1 && g_previous_multiplayer_reason == 1 && !steam_session_idle(app)) return;
-    if (before == 1 && g_previous_multiplayer_reason != 0)
-        reason = g_previous_multiplayer_reason == 1 ? 0 : g_previous_multiplayer_reason;
-    host().info("main menu active: multiplayer reason {} -> {} (before the return {}), checksum ready", before,
-                reason, g_previous_multiplayer_reason);
+    auto& corruption = at<std::uint32_t>(w, off::world_potential_corruption);
+    const std::uint32_t before = corruption;
+    corruption = hamweard::corruption_after_return(before, g_previous_corruption);
+    host().info("main menu active: potential corruption {} -> {} (before the return {}), checksum ready", before,
+                corruption, g_previous_corruption);
     g_pending_menu_app = nullptr;
     g_pending_menu_idler = nullptr;
 }
@@ -246,8 +251,7 @@ void construct_menu(Bytes app, std::uint32_t reason) {
     g_pending_menu_app = app;
     g_pending_menu_idler = at<void*>(app, off::app_next_idler);
     g_reset_gate.queue(app, g_pending_menu_idler);
-    g_previous_multiplayer_reason = reason;
-    g_restore_deferral_logged = false;
+    g_previous_corruption = reason;
     ++g_returns;
     host().info("return to the main menu #{} queued (menu {}, exit {}, restart {})", g_returns, g_pending_menu_idler,
                 at<std::uint8_t>(app, off::app_exit), at<std::uint8_t>(app, off::app_restart));
@@ -268,6 +272,35 @@ void release_minimap(Bytes idler) {
 }
 
 std::string_view game_string(const void* string) noexcept;
+
+// Unit banners and the other map objects of the last campaign: ResetGame clears
+// them late, and the new menu's first act is to draw the loading screen over the
+// GUI root, so they stood on its picture until the menu. This is ResetGame's own
+// loop, run before that. The world's graphics owner is the idler that is gone,
+// and Clear reads it.
+void clear_province_graphics(Bytes app, void* idler) {
+    Bytes map = at<Bytes>(app, off::app_graphical_map);
+    Bytes w = world();
+    if (!map || !w) return;
+    at<void*>(w, off::world_graphics_owner) = idler;
+    const std::ptrdiff_t provinces =
+        (at<Bytes>(w, off::world_provinces_end) - at<Bytes>(w, off::world_provinces_begin)) / 8;
+    Bytes graphics = at<Bytes>(map, off::map_province_graphics);
+    for (std::ptrdiff_t i = 0; i < provinces; ++i)
+        game(sym::province_graphics_clear, graphics + i * off::province_graphics_size);
+}
+
+// The new menu's game setup walks the history from the world's date back to the
+// start date (CGameSetup::ResetScreen). A world about to be replaced does not
+// need that, and after a start from a later date the walk reads relations the
+// world has already taken from the history, and crashes.
+void on_history_execute(void* history, const void* from, const void* to) noexcept {
+    if (g_reset_gate.pending()) {
+        host().info("history walk skipped: the world is about to be reset");
+        return;
+    }
+    g_history_execute.next(history, from, to);
+}
 
 // The in-game idler and its views create their windows through the GUI
 // manager, and nothing destroys them when the idler goes: 1.37.5 restarts the
@@ -338,8 +371,8 @@ std::string_view game_string(const void* string) noexcept {
 // In CInGameIdler::Idle, instead of setting exit + restart.
 void return_to_menu(Bytes idler) {
     Bytes app = at<Bytes>(idler, g_layout.idler_app);
-    const std::uint32_t reason = multiplayer_reason();
-    host().info("Exit to Menu: idler {}, world {}, multiplayer reason {}", static_cast<void*>(idler),
+    const std::uint32_t reason = potential_corruption();
+    host().info("Exit to Menu: idler {}, world {}, potential corruption {}", static_cast<void*>(idler),
                 static_cast<void*>(world()), reason);
     g_recording_windows = false;
     at<std::uint8_t>(idler, g_layout.idler_exit_flag) = 0;
@@ -354,11 +387,17 @@ void return_to_menu(Bytes idler) {
     construct_menu(app, reason);
 }
 
+// The frontend idler's first act after the hand-over: the outgoing idler is gone.
+void on_frontend_restore(void* idler) {
+    if (g_pending_menu_app && idler == g_pending_menu_idler) clear_province_graphics(g_pending_menu_app, idler);
+    g_restore_device_objects.previous()(idler);
+}
+
 // The frontend idler's tick: the queued Back, then the deferred world reset.
 void on_frontend_tick(void* idler, bool update) {
     if (auto* app = static_cast<Bytes>(g_pending_frontend_app.exchange(nullptr))) {
         host().info("Back: returning from the country selection");
-        const std::uint32_t reason = multiplayer_reason();
+        const std::uint32_t reason = potential_corruption();
         BusyScope busy;
         leave_steam_session(app);
         construct_menu(app, reason);
@@ -377,7 +416,7 @@ void on_frontend_tick(void* idler, bool update) {
                          });
     }
     g_tick.previous()(idler, update);
-    restore_multiplayer_access(idler);
+    finish_return(idler);
 }
 
 struct Hamweard : anvil::Plugin {
@@ -386,6 +425,7 @@ struct Hamweard : anvil::Plugin {
     anvil::Change gui_init;
     anvil::Change idler_construct;
     anvil::Change dialog_store;
+    anvil::Change canal_logic;
 
     void load(anvil::Host& h) override {
         g_world = h.data(sym::world);
@@ -405,17 +445,36 @@ struct Hamweard : anvil::Plugin {
         h.info("game build {}: {}", build ? build : "unknown", g_lobby_vtable ? "with the Steam lobby clean-up" : "no Steam lobby");
 
         // The three changes are enabled together after load(), or none.
+        g_in_game_stock_path = static_cast<Bytes>(h.address(sym::in_game_menu_block)) + 7;
+        g_pregame_stock_path = static_cast<Bytes>(h.address(sym::pregame_menu_block)) + 9;
         in_game = h.replace_block(sym::in_game_menu_block, [](anvil::Cpu& cpu) {
+            if (g_map_changed) {
+                host().info("Exit to Menu: the map has had a canal, so the game restarts");
+                cpu.rcx = cpu.rbp + 0x240;  // the block's own lea
+                cpu.rip = reinterpret_cast<std::uintptr_t>(g_in_game_stock_path);
+                return;
+            }
             return_to_menu(reinterpret_cast<Bytes>(cpu.r13));
         });
         pregame = h.replace_block(sym::pregame_menu_block, [](anvil::Cpu& cpu) {
+            if (g_map_changed) {
+                host().info("Back: the map has had a canal, so the game restarts");
+                at<std::uint16_t>(reinterpret_cast<void*>(cpu.rbx), off::app_exit) = 0x0101;  // the block's own mov
+                cpu.rip = reinterpret_cast<std::uintptr_t>(g_pregame_stock_path);
+                return;
+            }
             g_pending_frontend_app.store(reinterpret_cast<void*>(cpu.rbx));
         });
+        canal_logic = h.mid_hook(sym::canal_logic_apply, [](anvil::Cpu& cpu) {
+            if (at<std::int32_t>(reinterpret_cast<void*>(cpu.rcx), off::canal_list_count) > 0) g_map_changed = true;
+        });
         h.swap(g_tick, sym::frontend_tick_slot, &on_frontend_tick);
+        h.swap(g_restore_device_objects, sym::frontend_restore_slot, &on_frontend_restore);
         g_manager_global = reinterpret_cast<std::uintptr_t*>(h.game().image_base + h.value(sym::gui_manager_store, "manager"));
         g_registry_begin = static_cast<std::ptrdiff_t>(h.value(sym::widget_registry, "begin"));
         g_registry_end = static_cast<std::ptrdiff_t>(h.value(sym::widget_registry, "end"));
         h.hook(g_create_window, sym::gui_create_window, on_create_window);
+        h.hook(g_history_execute, sym::history_execute, on_history_execute);
         // Recording starts with the in-game idler (its views make windows
         // while a save loads) and again at each GUI build (the HUD reload).
         const auto record = [] {

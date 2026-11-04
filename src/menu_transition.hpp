@@ -2,7 +2,17 @@
 // MIT License, Copyright (c) 2026 VulonLok. See LICENSE.
 #pragma once
 
+#include <cstdint>
+
 namespace hamweard {
+
+// The world's PotentialCorruption after a return. The game sets it to 1 when
+// the player enters single player and keeps it through ResetGame: it is what
+// asks for a restart before multiplayer, so 1 stays. ResetGame turns every other
+// non-zero reason into 1, and only -nudge's own reason (2) needs putting back.
+constexpr std::uint32_t corruption_after_return(std::uint32_t after_reset, std::uint32_t before_return) noexcept {
+    return after_reset == 1 && before_return > 1 ? before_return : after_reset;
+}
 
 // SetNextIdler hands the new idler over on a later frame. The world is reset
 // only after that hand-over has destroyed the outgoing idler: once the menu is
