@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
@@ -71,6 +72,9 @@ constexpr std::ptrdiff_t map_province_graphics = 0x70;
 constexpr std::ptrdiff_t province_graphics_size = 0x1400;
 
 constexpr std::ptrdiff_t canal_list_count = 0x14;  // ApplyCanalLogic's argument, a CPdxArray
+
+constexpr std::ptrdiff_t achievements_loaded_begin = 0x88;  // CArray<short>
+constexpr std::ptrdiff_t achievements_loaded_end = 0x90;
 }  // namespace off
 
 // The offsets that differ on GOG 1.37.5.2 (its eu4.pdb, and the same code in
@@ -368,6 +372,14 @@ std::string_view game_string(const void* string) noexcept {
     return {data, s->size};
 }
 
+// CAchievementsManager is a singleton, so ResetGame leaves the list the last
+// loaded save carried in it, and a restart cleared that: every later save whose
+// achievements are off would write the list as its achievement={...} block.
+void forget_loaded_achievements() {
+    auto* manager = static_cast<Bytes>(game(sym::achievements_instance));
+    at<void*>(manager, off::achievements_loaded_end) = at<void*>(manager, off::achievements_loaded_begin);
+}
+
 // In CInGameIdler::Idle, instead of setting exit + restart.
 void return_to_menu(Bytes idler) {
     Bytes app = at<Bytes>(idler, g_layout.idler_app);
@@ -406,13 +418,23 @@ void on_frontend_tick(void* idler, bool update) {
     if (Bytes app = g_pending_menu_app) {
         g_reset_gate.run(app, idler, at<void*>(app, off::app_current_idler), at<void*>(app, off::app_next_idler),
                          [&] {
+                             using Clock = std::chrono::steady_clock;
+                             const auto ms = [](Clock::time_point from, Clock::time_point to) {
+                                 return std::chrono::duration_cast<std::chrono::milliseconds>(to - from).count();
+                             };
                              BusyScope busy;
+                             const auto start = Clock::now();
                              destroy_campaign_windows();
+                             const auto windows = Clock::now();
                              game(sym::reset_game, app, false);
+                             forget_loaded_achievements();
+                             const auto reset = Clock::now();
                              // A frontend owns this reset, so the history needs the
                              // post-load validation ResetGame runs only for an in-game idler.
                              game(sym::history_post_validate, reinterpret_cast<void*>(*g_history));
-                             host().info("world reset (world {})", static_cast<void*>(world()));
+                             host().info("world reset (world {}): windows {} ms, reset {} ms, history {} ms",
+                                         static_cast<void*>(world()), ms(start, windows), ms(windows, reset),
+                                         ms(reset, Clock::now()));
                          });
     }
     g_tick.previous()(idler, update);
