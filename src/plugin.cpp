@@ -65,13 +65,16 @@ constexpr std::ptrdiff_t lobby_search_call = 0x310;
 
 constexpr std::ptrdiff_t world_provinces_begin = 0x1C90;
 constexpr std::ptrdiff_t world_provinces_end = 0x1C98;
-constexpr std::ptrdiff_t world_graphics_owner = 0x1E00;
+constexpr std::ptrdiff_t world_graphics_owner = 0x1E00;  // the current idler, as CGameSetup::Back reads it
 constexpr std::ptrdiff_t world_potential_corruption = 0x23B4;
 
 constexpr std::ptrdiff_t map_province_graphics = 0x70;
 constexpr std::ptrdiff_t province_graphics_size = 0x1400;
 
 constexpr std::ptrdiff_t canal_list_count = 0x14;  // ApplyCanalLogic's argument, a CPdxArray
+
+constexpr std::ptrdiff_t idler_session_slot = 0x80;  // GetSession
+constexpr std::ptrdiff_t session_is_dummy = 0x55;    // CSession::_bIsDummy, single player's session
 
 constexpr std::ptrdiff_t achievements_loaded_begin = 0x88;  // CArray<short>
 constexpr std::ptrdiff_t achievements_loaded_end = 0x90;
@@ -380,6 +383,19 @@ void forget_loaded_achievements() {
     at<void*>(manager, off::achievements_loaded_end) = at<void*>(manager, off::achievements_loaded_begin);
 }
 
+// Whether the idler's session is a real one, not single player's dummy. Anvil
+// suspends the plugin only for IsMultiplayerWithPlayers during a campaign, which
+// leaves out a lobby and a host alone in the game, and only the game's restart
+// ends those sessions.
+bool in_multiplayer_session() {
+    Bytes w = world();
+    void* idler = w ? at<void*>(w, off::world_graphics_owner) : nullptr;
+    if (!idler) return false;
+    using GetSessionFn = Bytes (*)(void* idler);
+    Bytes session = at<GetSessionFn>(at<void*>(idler, 0), off::idler_session_slot)(idler);
+    return session && !at<std::uint8_t>(session, off::session_is_dummy);
+}
+
 // In CInGameIdler::Idle, instead of setting exit + restart.
 void return_to_menu(Bytes idler) {
     Bytes app = at<Bytes>(idler, g_layout.idler_app);
@@ -470,8 +486,10 @@ struct Hamweard : anvil::Plugin {
         g_in_game_stock_path = static_cast<Bytes>(h.address(sym::in_game_menu_block)) + 7;
         g_pregame_stock_path = static_cast<Bytes>(h.address(sym::pregame_menu_block)) + 9;
         in_game = h.replace_block(sym::in_game_menu_block, [](anvil::Cpu& cpu) {
-            if (g_map_changed) {
-                host().info("Exit to Menu: the map has had a canal, so the game restarts");
+            const bool session = in_multiplayer_session();
+            if (session || g_map_changed) {
+                if (session) host().info("Exit to Menu in a multiplayer session: the game restarts");
+                else host().info("Exit to Menu: the map has had a canal, so the game restarts");
                 cpu.rcx = cpu.rbp + 0x240;  // the block's own lea
                 cpu.rip = reinterpret_cast<std::uintptr_t>(g_in_game_stock_path);
                 return;
@@ -479,8 +497,10 @@ struct Hamweard : anvil::Plugin {
             return_to_menu(reinterpret_cast<Bytes>(cpu.r13));
         });
         pregame = h.replace_block(sym::pregame_menu_block, [](anvil::Cpu& cpu) {
-            if (g_map_changed) {
-                host().info("Back: the map has had a canal, so the game restarts");
+            const bool lobby = in_multiplayer_session();
+            if (lobby || g_map_changed) {
+                if (lobby) host().info("Back in a multiplayer lobby: the game restarts");
+                else host().info("Back: the map has had a canal, so the game restarts");
                 at<std::uint16_t>(reinterpret_cast<void*>(cpu.rbx), off::app_exit) = 0x0101;  // the block's own mov
                 cpu.rip = reinterpret_cast<std::uintptr_t>(g_pregame_stock_path);
                 return;
