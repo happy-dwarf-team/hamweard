@@ -32,8 +32,8 @@ Anvil asks again after an update; the version you approved keeps working until t
 - **Gameplay, honestly:** your next campaign starts in a game that already played one, instead of a fresh one. A save made after a few returns matched one from a fresh start; the only thing we saw carry over is an achievements list after an ironman campaign, which changed nothing in our tests. We can't promise nothing else does, so Anvil treats Hamweard as a mod that affects gameplay.
 - **Ironman:** off unless you allow it in Anvil. Allowed, it worked in our tests, saves included.
 - **Multiplayer:** always off. In a multiplayer game Anvil keeps Hamweard out, and Exit to Menu restarts the game as usual.
-- **Canals:** a canal changes the map itself, so once a save with a canal has loaded, Exit to Menu and Back restart the game as usual until you close it.
-- **Multiplayer after a campaign:** the game itself asks for a restart first, and Hamweard leaves that check alone.
+- **Canals:** a canal changes the map, so after a save with one both buttons restart the game as usual.
+- **Multiplayer after a campaign:** the game asks for a restart first.
 - Unsubscribe and it's gone. Nothing is left in your saves.
 
 ![](https://i.imgur.com/Uf8Z21n.png)
