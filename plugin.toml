@@ -9,8 +9,7 @@ entry = "hamweard.dll"
 phase = "main"
 symbols = "symbols.toml"   # the game build comes from here
 # The next campaign starts in the same process instead of a fresh one, so state
-# the reset leaves behind could change it; it also writes the world's
-# multiplayer restriction. Suspended in ironman (unless allowed) and in
+# the reset leaves behind could change it. Suspended in ironman (unless allowed) and in
 # multiplayer, where Exit to Menu restarts the game as without the plugin.
 affects_gameplay = true
 allow_ironman = "opt-in"

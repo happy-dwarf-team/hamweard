@@ -35,7 +35,7 @@ hand-written stubs, near allocations and page protection with Anvil's `replace_b
 windows a campaign leaves behind (below).
 
 **Status:** tested in the lab in single player, in ironman with the opt-in and with mods,
-Anbennar among them (see [What was tested](#what-was-tested)). Multiplayer sessions are not
+Anbennar among them, on the code before the state reset fixes of November 2026 (see [What was tested](#what-was-tested)). Multiplayer sessions are not
 tested.
 
 ## Install and use
@@ -69,11 +69,21 @@ usual.
   the lab a save made after three returns matched a save from a fresh process, apart from
   the campaign id and the random seed. The one thing seen to survive is the game's
   achievement list after an ironman campaign: a normal save made later in the same sitting
-  carries an `achievement={...}` block. Such a save loaded and played normally. The plugin
-  also writes the world's multiplayer restriction (below).
+  carries an `achievement={...}` block. Such a save loaded and played normally.
+- **Canals restart the game.** A canal rewrites the map itself, and the map outlives the
+  campaign: in the lab a new game after a save with canals differed from a fresh one, even
+  with the canals closed first. So once a save or event has applied a canal, Exit to Menu
+  and Back restart the game for the rest of that sitting, as they do without the plugin.
+- **The Single Player list keeps a game bug.** Click a save in the list and start a new
+  campaign from the same screen, and all province triggered modifiers are gone. The game
+  does that too, with or without Hamweard. **Back** first clears it: the new campaign then
+  matches one from a fresh start.
 - **Multiplayer: off, and sessions not tested.** `allow_multiplayer = false`: while a
   multiplayer session runs, Anvil takes the plugin's changes out and Exit to Menu restarts
-  the game. After a return the Multiplayer button works and the Game Browser opens, a scan
+  the game. The game marks a process that has entered single player as possibly corrupted
+  and, with a Paradox session online, asks for a restart before multiplayer. A return keeps
+  that mark, so restart the game to play multiplayer after a campaign. Offline the game
+  does not check the mark: the Multiplayer button works and the Game Browser opens, a scan
   included (on GOG the button opens the Paradox login). No lobby was hosted or joined, so
   the Steam lobby clean-up ported from the original has never run.
 - **Ironman: off unless you allow it** in Anvil (`allow_ironman = "opt-in"`). With the
@@ -91,8 +101,7 @@ usual.
   23 returns in a row that cost about 15 MB of memory per return, and the menu stayed at
   full speed.
 - EU4 1.37.5 on Steam and the GOG build 1.37.5.2. On any other build Anvil does not load
-  the plugin. The GOG build has no Steam lobby, so there is nothing to clean up there and
-  the multiplayer restriction comes back without waiting for one.
+  the plugin. The GOG build has no Steam lobby, so there is nothing to clean up there.
 
 ## What it changes in the game
 
@@ -101,11 +110,14 @@ usual.
 | `0x815CAE`, the Exit to Menu branch of `CInGameIdler::Idle` | sets the exit and restart flags: the game quits and starts again | releases the campaign's leftovers, queues a new main menu and resumes at the stock epilogue |
 | `0x111DFD7`, Back on the country selection screen | the same flags | queues the switch for the menu's next tick |
 | slot `+0x20` of the frontend idler vtable | the frontend tick | runs the queued switch, destroys the last campaign's windows and resets the world once the old idler is gone, then the stock tick |
+| slot `+0x30` of the frontend idler vtable | builds the menu, starting with the loading screen | clears the last campaign's map objects first, so unit banners do not stand on the loading screen |
+| `0x78F250`, `ApplyCanalLogic` | rewrites the map's neighbours for a canal | the same, and the plugin notes it: from then on both buttons restart the game as usual |
+| `0x7E8470`, `CHistoryDataBase::Execute` | walks the history between two dates | does nothing while a return waits for its world reset: the new menu would walk it on the old world, which crashed after a start from a later date |
 | `0x14E9030` (GUI manager create), `0x10A0735` (popup window), `0x803270`, `0x81AF10` | create windows, build the campaign GUI | the same, and the plugin notes which windows belong to the campaign |
 
-After the world reset it puts back the world's multiplayer restriction reason, which the
-game's reset flattens to 1, once the menu owns the frame, the checksum is ready and the
-Steam lobby is idle (on Steam; the GOG build has none). Steam's own checks are left alone.
+The world's `PotentialCorruption` flag stays as the game keeps it through its reset. Only
+the `-nudge` reason (2), which the reset flattens to 1, is put back. Earlier versions, like
+the original, cleared the flag after every return.
 
 ## Windows a campaign leaves behind
 
@@ -151,8 +163,7 @@ That is 12 campaigns with the current code, and earlier versions ran several mor
 On the GOG build 1.37.5.2 (lab `docs/hamweard-gog.md`, 3 November 2026, Anvil with
 `absent` symbols, vanilla profile, Steam-made saves): five campaigns of 30 days in one
 process, five Exit to Menu and two Back, seven returns in 4.0 to 4.5 seconds each, no
-crash and no warning in `anvil.log`. The multiplayer restriction came back after every
-return without waiting for a Steam lobby, which the GOG build does not have.
+crash and no warning in `anvil.log`.
 
 The gaps were closed on 4 November 2026 (lab `docs/anvil-menu-patch.md`), with Hamweard
 1.1.0 from the release, Anvil 1.9.0 with its overlay and log throttle, and Tongs 0.26.0:
@@ -179,6 +190,12 @@ Game, or with a clean restart. 1.1.1 changes no code.
   163 frames per second at the end.
 - **GOG:** a save made on GOG, Continue game, ironman, a campaign of 400 days, 5 returns.
 
+On 4 November 2026 the same seed gave the same new campaign byte by byte, the campaign
+id apart, in a fresh process and after returns from campaigns started in 1444, 1453 and
+1508, from a save of a 1508 start, from a 1519 save, and after Back with a later date or a
+save picked in the list; on GOG after three returns as well. The menu's checksum stayed
+the same. A save with canals restarted the game on Exit to Menu and on Back.
+
 Not tested: multiplayer sessions and the Steam lobby clean-up, and the windows and modes
 listed under [Limitations](#limitations).
 
@@ -191,7 +208,7 @@ ctest --test-dir build -C Release --output-on-failure
 cmake --build build --config Release --target hamweard-check
 ```
 
-The check target runs `anvil check --exe` on all 32 symbols and rewrites `symbols.lock`;
+The check target runs `anvil check --exe` on all 36 symbols and rewrites `symbols.lock`;
 commit it with `symbols.toml`. `hamweard-deploy` (with `EU4_DIR`) copies the plugin into
 the game folder.
 

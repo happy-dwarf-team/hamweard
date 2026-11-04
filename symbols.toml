@@ -56,6 +56,12 @@ note = "slot +0x20 of the frontend idler vtable 0x1D5A8C8: void tick(idler, bool
 build."eu4-1.37.5-steam-win64" = { rva = 0x1D5A8E8, points_to = 0x10D2E80 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x1D43338, points_to = 0x10D1670 }
 
+[symbol.frontend_restore_slot]
+memory = "read"
+note = "slot +0x30 of the frontend idler vtable: RestoreDeviceObjects, called right after the hand-over; it starts by drawing the loading screen"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1D5A8F8, points_to = 0x10D5BC0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1D43348, points_to = 0x10D43A0 }
+
 # --- vtables the plugin compares against ---
 
 [symbol.steam_lobby_vtable]
@@ -197,7 +203,7 @@ build."eu4-1.37.5.2-gog-win64" = { rva = 0x14BC390 }
 bytes = "48 89 5C 24 08 55 56 57 41 54 41 55 41 56 41 57"
 memory = "code"
 signature = "void (void* app, bool flag)"
-note = "ResetGame: replaces the world; turns any non-zero multiplayer restriction into 1"
+note = "ResetGame: replaces the world; keeps PotentialCorruption, turning any non-zero reason into 1"
 build."eu4-1.37.5-steam-win64" = { rva = 0x210000 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x20FFC0 }
 
@@ -208,6 +214,29 @@ signature = "void (void* history)"
 note = "the history's post-load validation, which ResetGame runs on its own only for an in-game idler"
 build."eu4-1.37.5-steam-win64" = { rva = 0x7E9B70 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x7E8EE0 }
+
+[symbol.history_execute]
+bytes = "48 89 5C 24 20 4C 89 44 24 18 48 89 54 24 10 55"
+memory = "code"
+signature = "void (void* history, const void* from, const void* to)"
+note = "CHistoryDataBase::Execute: walks the history between two dates on the world; skipped while a return waits for its reset"
+build."eu4-1.37.5-steam-win64" = { rva = 0x7E8470 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x7E77E0 }
+
+[symbol.canal_logic_apply]
+bytes = "4C 8B DC 55 48 8B EC 48 81 EC 80 00 00 00"
+memory = "code"
+note = "ApplyCanalLogic(rcx = the canals to change): rewrites the map's adjacencies, on a load and for add_canal and remove_canal"
+build."eu4-1.37.5-steam-win64" = { rva = 0x78F250 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x78E490 }
+
+[symbol.province_graphics_clear]
+bytes = "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57"
+memory = "code"
+signature = "void (void* graphics)"
+note = "CProvinceGraphics::Clear: frees one province's map objects and map icons, unit banners among them"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1329BA0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1323D00 }
 
 # --- the windows a campaign leaves in the GUI root ---
 
@@ -267,7 +296,7 @@ build."eu4-1.37.5.2-gog-win64" = { rva = 0x14E3986 }
 [symbol.world]
 memory = "write"
 type = "uintptr_t"
-note = "the game root object; its multiplayer restriction reason is the uint32 at +0x23B4"
+note = "the game root object; its PotentialCorruption is the uint32 at +0x23B4"
 build."eu4-1.37.5-steam-win64" = { rva = 0x233FE78 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x2323CF8 }
 
