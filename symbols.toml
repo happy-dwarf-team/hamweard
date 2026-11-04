@@ -238,6 +238,21 @@ note = "CProvinceGraphics::Clear: frees one province's map objects and map icons
 build."eu4-1.37.5-steam-win64" = { rva = 0x1329BA0 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x1323D00 }
 
+# --- what the achievements singleton keeps between campaigns ---
+
+[symbol.achievements_instance]
+memory = "code"
+signature = "void* ()"
+note = "CAchievementsManager::AccessInstance: the singleton, which ResetGame leaves alone"
+
+[symbol.achievements_instance.build."eu4-1.37.5-steam-win64"]
+rva = 0x96080
+bytes = "48 83 EC 28 48 8B 05 05 78 2A 02 48 85 C0"
+
+[symbol.achievements_instance.build."eu4-1.37.5.2-gog-win64"]
+rva = 0x960B0
+bytes = "48 83 EC 28 48 8B 05 55 B6 28 02 48 85 C0"
+
 # --- the windows a campaign leaves in the GUI root ---
 
 [symbol.in_game_gui_init]
