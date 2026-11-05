@@ -49,7 +49,9 @@ both buttons restart the game as usual.
 - **Gameplay.** `affects_gameplay = true`: the next campaign starts in the same process
   instead of a fresh one, so anything the world reset leaves behind could change it. In
   the lab a save made after three returns matched a save from a fresh process, apart from
-  the campaign id and the random seed.
+  the campaign id and the random seed. With Anbennar a new campaign after a return differed
+  from one in a fresh process, even after a plain **Back** from the lobby, and the cause is
+  not known yet.
 - **Canals restart the game.** A canal rewrites the map itself, and the map outlives the
   campaign: in the lab a new game after a save with canals differed from a fresh one, even
   with the canals closed first. So once a save or event has applied a canal, Exit to Menu
@@ -161,7 +163,8 @@ The state reset fixes of 1.1.2 were tested the same day. The same seed gave the 
 campaign byte by byte, the campaign
 id apart, in a fresh process and after returns from campaigns started in 1444, 1453 and
 1508, from a save of a 1508 start, from a 1519 save, and after Back with a later date or a
-save picked in the list; on GOG after three returns as well. The menu's checksum stayed
+save picked in the list; on GOG after three returns as well. A ten-mod playset gave the same
+result, Anbennar did not (see [Limitations](#limitations)). The menu's checksum stayed
 the same. A save with canals restarted the game on Exit to Menu and on Back.
 
 The achievement list and the multiplayer check of 1.1.2 were tested that day too, with 27 returns in one process, 13 Exit to Menu and 14 Back, no restart and
