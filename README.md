@@ -49,9 +49,8 @@ both buttons restart the game as usual.
 - **Gameplay.** `affects_gameplay = true`: the next campaign starts in the same process
   instead of a fresh one, so anything the world reset leaves behind could change it. In
   the lab a save made after three returns matched a save from a fresh process, apart from
-  the campaign id and the random seed. With Anbennar a new campaign after a return differed
-  from one in a fresh process, even after a plain **Back** from the lobby, and the cause is
-  not known yet.
+  the campaign id and the random seed. Anbennar matched too, after a return and after a plain
+  **Back** from the lobby.
 - **Canals.** A canal changes the map itself, and the map outlives the campaign. The game's
   reset takes the canal's links out, but leaves other movement costs and naval distances
   behind. So the plugin copies them before the first canal and puts them back on a return.
@@ -164,12 +163,12 @@ campaign byte by byte, the campaign
 id apart, in a fresh process and after returns from campaigns started in 1444, 1453 and
 1508, from a save of a 1508 start, from a 1519 save, and after Back with a later date or a
 save picked in the list; on GOG after three returns as well. A ten-mod playset gave the same
-result, Anbennar did not (see [Limitations](#limitations)). The menu's checksum stayed
-the same.
+result. The menu's checksum stayed the same.
 
 Canals were tested on 5 November 2026: after a 1719 save with canals on Steam and on GOG, a
 new campaign matched a fresh one, with no restart, 0 naval distances different and the
-campaign id the only other difference.
+campaign id the only other difference. Anbennar, which applies a canal at every start,
+matched a fresh start the same day, and returned from ironman without a restart.
 
 The achievement list and the multiplayer check of 1.1.2 were tested that day too, with 27 returns in one process, 13 Exit to Menu and 14 Back, no restart and
 no crash. After a return the list stayed empty, and a normal save had no `achievement`
@@ -190,7 +189,7 @@ code only: the Host a server window was opened and cancelled, nothing was hosted
 | slot `+0x20` of the frontend idler vtable | the frontend tick | runs the queued switch, destroys the last campaign's windows, resets the world once the old idler is gone, forgets the achievement list the last loaded save carried and puts a canal's map back, or restarts the game if it cannot, then the stock tick |
 | slot `+0x30` of the frontend idler vtable | builds the menu, starting with the loading screen | clears the last campaign's map objects first, so unit banners do not stand on the loading screen |
 | `0x78F250`, `ApplyCanalLogic` | rewrites the map's neighbours for a canal | the same, and before the first canal the plugin copies the map's links and naval distances, to put them back after the world reset |
-| `0x7E8470`, `CHistoryDataBase::Execute` | walks the history between two dates | does nothing while a return waits for its world reset: the new menu would walk it on the old world, which crashed after a start from a later date |
+| `0x7E8470`, `CHistoryDataBase::Execute` | walks the history between two dates | does nothing while a return waits for its world reset: the new menu would walk it on the old world, which crashed after a start from a later date. In the reset's own walk it first validates the reloaded history, as the game does at startup: without that, triggers in history files stay unbound, and Anbennar's next campaign differed |
 | `0x14E9030` (GUI manager create), `0x10A0735` (popup window), `0x803270`, `0x81AF10` | create windows, build the campaign GUI | the same, and the plugin notes which windows belong to the campaign |
 
 The world's `PotentialCorruption` flag stays as the game keeps it through its reset. Only

@@ -114,6 +114,7 @@ anvil::PointerSwap<TickFn> g_tick;
 anvil::PointerSwap<RestoreFn> g_restore_device_objects;
 std::uintptr_t* g_world = nullptr;    // the global holding the root object
 std::uintptr_t* g_history = nullptr;  // the global holding the history
+std::uintptr_t* g_trigger_db = nullptr;  // CTriggerDataBase's instance: alive only while the game loads
 void* g_lobby_vtable = nullptr;  // null on a build without the Steam lobby (GOG)
 void* g_minimap_vtable = nullptr;
 UnregisterCallResultFn* g_unregister_call_result = nullptr;
@@ -310,6 +311,24 @@ void clear_province_graphics(Bytes app, void* idler) {
         game(sym::province_graphics_clear, graphics + i * off::province_graphics_size);
 }
 
+// ResetGame reloads the history files, and their triggers bind names like a
+// government reform only in the validation InitGame runs once, through a database
+// that exists only there. So a history effect's has_reform stayed false after a
+// return, which changed a new Anbennar campaign (lab: S9). The database is created
+// for the reset and used before its first walk, where InitGame uses it, then the
+// effects get the validation ResetGame runs only for an in-game idler.
+bool g_history_reloading = false;
+
+void validate_reloaded_history() {
+    if (!g_history_reloading) return;
+    g_history_reloading = false;
+    if (void* triggers = reinterpret_cast<void*>(*g_trigger_db)) {
+        game(sym::trigger_db_validate, triggers);
+        game(sym::trigger_db_destroy);
+    }
+    game(sym::history_post_validate, reinterpret_cast<void*>(*g_history));
+}
+
 // The new menu's game setup walks the history from the world's date back to the
 // start date (CGameSetup::ResetScreen). A world about to be replaced does not
 // need that, and after a start from a later date the walk reads relations the
@@ -319,6 +338,7 @@ void on_history_execute(void* history, const void* from, const void* to) noexcep
         host().info("history walk skipped: the world is about to be reset");
         return;
     }
+    validate_reloaded_history();
     g_history_execute.next(history, from, to);
 }
 
@@ -472,7 +492,10 @@ void on_frontend_tick(void* idler, bool update) {
                              const auto start = Clock::now();
                              destroy_campaign_windows();
                              const auto windows = Clock::now();
+                             if (!*g_trigger_db) game(sym::trigger_db_create);
+                             g_history_reloading = true;
                              game(sym::reset_game, app, false);
+                             validate_reloaded_history();  // a reset that did not walk the history
                              forget_loaded_achievements();
                              if (g_map_changed) {
                                  g_map_changed = false;
@@ -484,13 +507,8 @@ void on_frontend_tick(void* idler, bool update) {
                                      at<std::uint16_t>(app, off::app_exit) = 0x0101;
                                  }
                              }
-                             const auto reset = Clock::now();
-                             // A frontend owns this reset, so the history needs the
-                             // post-load validation ResetGame runs only for an in-game idler.
-                             game(sym::history_post_validate, reinterpret_cast<void*>(*g_history));
-                             host().info("world reset (world {}): windows {} ms, reset {} ms, history {} ms",
-                                         static_cast<void*>(world()), ms(start, windows), ms(windows, reset),
-                                         ms(reset, Clock::now()));
+                             host().info("world reset (world {}): windows {} ms, reset {} ms",
+                                         static_cast<void*>(world()), ms(start, windows), ms(windows, Clock::now()));
                          });
     }
     g_tick.previous()(idler, update);
@@ -508,6 +526,7 @@ struct Hamweard : anvil::Plugin {
     void load(anvil::Host& h) override {
         g_world = h.data(sym::world);
         g_history = h.data(sym::history);
+        g_trigger_db = h.data(sym::trigger_db);
         g_map = h.data(sym::map);
         const char* build = h.game().build_id;
         g_layout = build && std::string_view(build) == "eu4-1.37.5.2-gog-win64" ? kGog : kSteam;
