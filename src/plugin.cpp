@@ -8,6 +8,7 @@
 // replace_block and swap_pointer. Everything runs on the game's main thread.
 #include <anvil/anvil.hpp>
 
+#include "map_snapshot.hpp"
 #include "menu_transition.hpp"
 #include "symbols.gen.hpp"
 
@@ -18,6 +19,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <string_view>
 #include <string>
 #include <unordered_map>
@@ -73,6 +75,14 @@ constexpr std::ptrdiff_t province_graphics_size = 0x1400;
 
 constexpr std::ptrdiff_t canal_list_count = 0x14;  // ApplyCanalLogic's argument, a CPdxArray
 
+constexpr std::ptrdiff_t map_templates_begin = 0x6C0;  // CMap: the province templates
+constexpr std::ptrdiff_t map_templates_end = 0x6C8;
+constexpr std::ptrdiff_t map_naval_count = 0x17C0;
+constexpr std::ptrdiff_t map_naval_distance = 0x17C8;
+constexpr std::ptrdiff_t template_size = 0x230;
+constexpr std::ptrdiff_t template_neighbours_begin = 0x168;  // CProvinceTemplate::_Neighbours
+constexpr std::ptrdiff_t template_neighbours_end = 0x170;
+
 constexpr std::ptrdiff_t idler_session_slot = 0x80;  // GetSession
 constexpr std::ptrdiff_t session_is_dummy = 0x55;    // CSession::_bIsDummy, single player's session
 
@@ -116,11 +126,21 @@ void* g_pending_menu_idler = nullptr;
 std::uint32_t g_previous_corruption = 0;
 std::uint32_t g_returns = 0;
 
-// A canal rewrites the neighbours of map provinces, and the map outlives the
-// world. Removing a canal does not give the old map back (a new game in the same
-// process still differed, lab), so from the first canal on this process keeps the
-// game's own restart. Set by every load and effect that applies one.
-bool g_map_changed = false;
+// A canal adds neighbours to map provinces, and the map outlives the world. The
+// game's Clear takes the canal's links out again, but then recalculates the costs
+// of every link and the naval distances, and those differ from the ones the map
+// loaded with (lab: 2233 provinces). So the plugin keeps the map as it was before
+// the first canal and puts it back after the reset.
+struct MapSnapshot {
+    std::vector<std::vector<std::uint8_t>> neighbours;
+    std::vector<std::uint8_t> naval;
+    std::int32_t naval_count = 0;
+    bool taken = false;
+};
+MapSnapshot g_map_before_canals;
+bool g_map_changed = false;  // since the last reset
+bool g_map_lost = false;     // the map could not be put back: restart as the game does
+std::uintptr_t* g_map = nullptr;
 Bytes g_in_game_stock_path = nullptr;
 Bytes g_pregame_stock_path = nullptr;
 
@@ -378,6 +398,55 @@ std::string_view game_string(const void* string) noexcept {
 // CAchievementsManager is a singleton, so ResetGame leaves the list the last
 // loaded save carried in it, and a restart cleared that: every later save whose
 // achievements are off would write the list as its achievement={...} block.
+void keep_map_before_canals() {
+    if (g_map_before_canals.taken) return;
+    auto* map = reinterpret_cast<Bytes>(*g_map);
+    if (!map) return;
+    Bytes begin = at<Bytes>(map, off::map_templates_begin);
+    Bytes end = at<Bytes>(map, off::map_templates_end);
+    auto& snapshot = g_map_before_canals;
+    snapshot.neighbours.reserve(static_cast<std::size_t>((end - begin) / off::template_size));
+    for (Bytes t = begin; t != end; t += off::template_size) {
+        auto* first = at<std::uint8_t*>(t, off::template_neighbours_begin);
+        auto* last = at<std::uint8_t*>(t, off::template_neighbours_end);
+        snapshot.neighbours.emplace_back(first, last);
+    }
+    snapshot.naval_count = at<std::int32_t>(map, off::map_naval_count);
+    const auto bytes = static_cast<std::size_t>(snapshot.naval_count) * static_cast<std::size_t>(snapshot.naval_count) * 4;
+    auto* naval = at<std::uint8_t*>(map, off::map_naval_distance);
+    snapshot.naval.assign(naval, naval + bytes);
+    snapshot.taken = true;
+    host().info("map kept before the first canal: {} provinces, {} naval distances", snapshot.neighbours.size(),
+                bytes / 4);
+}
+
+// After the world reset took the canals' links out: the saved costs and naval
+// distances go back. False leaves the map as the reset left it.
+bool restore_map_before_canals() {
+    auto* map = reinterpret_cast<Bytes>(*g_map);
+    const auto& snapshot = g_map_before_canals;
+    if (!map || !snapshot.taken) return false;
+    Bytes begin = at<Bytes>(map, off::map_templates_begin);
+    Bytes end = at<Bytes>(map, off::map_templates_end);
+    if (static_cast<std::size_t>((end - begin) / off::template_size) != snapshot.neighbours.size() ||
+        at<std::int32_t>(map, off::map_naval_count) != snapshot.naval_count)
+        return false;
+    std::size_t i = 0;
+    for (Bytes t = begin; t != end; t += off::template_size, ++i) {
+        auto* first = at<std::uint8_t*>(t, off::template_neighbours_begin);
+        auto* last = at<std::uint8_t*>(t, off::template_neighbours_end);
+        if (!hamweard::same_links(snapshot.neighbours[i], {first, last})) return false;
+    }
+    i = 0;
+    for (Bytes t = begin; t != end; t += off::template_size, ++i) {
+        const auto& saved = snapshot.neighbours[i];
+        if (!saved.empty()) std::memcpy(at<std::uint8_t*>(t, off::template_neighbours_begin), saved.data(), saved.size());
+    }
+    if (!snapshot.naval.empty())
+        std::memcpy(at<std::uint8_t*>(map, off::map_naval_distance), snapshot.naval.data(), snapshot.naval.size());
+    return true;
+}
+
 void forget_loaded_achievements() {
     auto* manager = static_cast<Bytes>(game(sym::achievements_instance));
     at<void*>(manager, off::achievements_loaded_end) = at<void*>(manager, off::achievements_loaded_begin);
@@ -444,6 +513,14 @@ void on_frontend_tick(void* idler, bool update) {
                              const auto windows = Clock::now();
                              game(sym::reset_game, app, false);
                              forget_loaded_achievements();
+                             if (g_map_changed) {
+                                 g_map_changed = false;
+                                 g_map_lost = !restore_map_before_canals();
+                                 if (g_map_lost)
+                                     host().warn("the map could not be put back after a canal: the next return restarts the game");
+                                 else
+                                     host().info("map put back as it was before the canals");
+                             }
                              const auto reset = Clock::now();
                              // A frontend owns this reset, so the history needs the
                              // post-load validation ResetGame runs only for an in-game idler.
@@ -468,6 +545,7 @@ struct Hamweard : anvil::Plugin {
     void load(anvil::Host& h) override {
         g_world = h.data(sym::world);
         g_history = h.data(sym::history);
+        g_map = h.data(sym::map);
         const char* build = h.game().build_id;
         g_layout = build && std::string_view(build) == "eu4-1.37.5.2-gog-win64" ? kGog : kSteam;
         g_minimap_vtable = h.address(sym::minimap_vtable);
@@ -487,9 +565,9 @@ struct Hamweard : anvil::Plugin {
         g_pregame_stock_path = static_cast<Bytes>(h.address(sym::pregame_menu_block)) + 9;
         in_game = h.replace_block(sym::in_game_menu_block, [](anvil::Cpu& cpu) {
             const bool session = in_multiplayer_session();
-            if (session || g_map_changed) {
+            if (session || g_map_lost) {
                 if (session) host().info("Exit to Menu in a multiplayer session: the game restarts");
-                else host().info("Exit to Menu: the map has had a canal, so the game restarts");
+                else host().info("Exit to Menu: the map could not be put back after a canal, so the game restarts");
                 cpu.rcx = cpu.rbp + 0x240;  // the block's own lea
                 cpu.rip = reinterpret_cast<std::uintptr_t>(g_in_game_stock_path);
                 return;
@@ -498,9 +576,9 @@ struct Hamweard : anvil::Plugin {
         });
         pregame = h.replace_block(sym::pregame_menu_block, [](anvil::Cpu& cpu) {
             const bool lobby = in_multiplayer_session();
-            if (lobby || g_map_changed) {
+            if (lobby || g_map_lost) {
                 if (lobby) host().info("Back in a multiplayer lobby: the game restarts");
-                else host().info("Back: the map has had a canal, so the game restarts");
+                else host().info("Back: the map could not be put back after a canal, so the game restarts");
                 at<std::uint16_t>(reinterpret_cast<void*>(cpu.rbx), off::app_exit) = 0x0101;  // the block's own mov
                 cpu.rip = reinterpret_cast<std::uintptr_t>(g_pregame_stock_path);
                 return;
@@ -508,7 +586,10 @@ struct Hamweard : anvil::Plugin {
             g_pending_frontend_app.store(reinterpret_cast<void*>(cpu.rbx));
         });
         canal_logic = h.mid_hook(sym::canal_logic_apply, [](anvil::Cpu& cpu) {
-            if (at<std::int32_t>(reinterpret_cast<void*>(cpu.rcx), off::canal_list_count) > 0) g_map_changed = true;
+            if (at<std::int32_t>(reinterpret_cast<void*>(cpu.rcx), off::canal_list_count) > 0) {
+                keep_map_before_canals();
+                g_map_changed = true;
+            }
         });
         h.swap(g_tick, sym::frontend_tick_slot, &on_frontend_tick);
         h.swap(g_restore_device_objects, sym::frontend_restore_slot, &on_frontend_restore);

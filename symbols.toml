@@ -308,6 +308,13 @@ build."eu4-1.37.5.2-gog-win64" = { rva = 0x14E3986 }
 
 # --- data ---
 
+[symbol.map]
+memory = "write"
+type = "uintptr_t"
+note = "CMap::_pMap, which outlives the world"
+build."eu4-1.37.5-steam-win64" = { rva = 0x233FED8 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x2323D58 }
+
 [symbol.world]
 memory = "write"
 type = "uintptr_t"

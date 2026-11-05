@@ -1,8 +1,10 @@
 // The world-reset gate, after EU4 Menu Patch's tests/menu_transition_tests.cpp
 // (MIT License, Copyright (c) 2026 VulonLok).
+#include "map_snapshot.hpp"
 #include "menu_transition.hpp"
 
 #include <cstdio>
+#include <array>
 #include <cstdlib>
 #include <stdexcept>
 
@@ -16,6 +18,20 @@ void check(bool condition, const char* what) {
 }  // namespace
 
 int main() {
+    {
+        std::array<std::uint8_t, 2 * hamweard::adjacency_size> saved{}, current{};
+        for (std::size_t i = 0; i < saved.size(); ++i) saved[i] = current[i] = static_cast<std::uint8_t>(i);
+        check(hamweard::same_links(saved, current), "the same links");
+        current[0xC] ^= 1;
+        current[0x10 + hamweard::adjacency_size] ^= 1;
+        check(hamweard::same_links(saved, current), "other costs are the same links");
+        current[hamweard::adjacency_size] ^= 1;
+        check(!hamweard::same_links(saved, current), "another neighbour");
+        current[hamweard::adjacency_size] ^= 1;
+        current[0x1C] ^= 1;
+        check(!hamweard::same_links(saved, current), "another type");
+        check(!hamweard::same_links(saved, std::span(current).first(hamweard::adjacency_size)), "another count");
+    }
     hamweard::WorldResetGate gate;
     int app = 0, old = 0, menu = 0, other = 0, resets = 0;
     for (int cycle = 0; cycle < 1000; ++cycle) {
