@@ -55,8 +55,7 @@ both buttons restart the game as usual.
 - **Canals.** A canal changes the map itself, and the map outlives the campaign. The game's
   reset takes the canal's links out, but leaves other movement costs and naval distances
   behind. So the plugin copies them before the first canal and puts them back on a return.
-  If they cannot be put back, the next return restarts the game, as it does without the
-  plugin.
+  If they cannot be put back, that return restarts the game, as it does without the plugin.
 - **The Single Player list keeps a game bug.** Click a save in the list and start a new
   campaign from the same screen, and all province triggered modifiers are gone. The game
   does that too, with or without Hamweard. **Back** first clears it: the new campaign then
@@ -101,7 +100,7 @@ log says when the plugin chose a restart, and why.
 | What you see | Why | What to do |
 | --- | --- | --- |
 | Exit to Menu or Back restarts the game | The plugin is not loaded, or Anvil suspended it | Open the Anvil panel (`Ctrl+Shift+F12`): is Hamweard loaded and approved? An ironman campaign needs the opt-in, in the panel or on the Manager's **Plugins** tab. |
-| The same, and the log says `the map could not be put back` | A canal changed the map and the saved copy no longer fits it | Nothing to fix: the plugin keeps the restart for the rest of that sitting. |
+| The same, and the log says `the map could not be put back` | A canal changed the map and the saved copy no longer fits it | Nothing to fix: a campaign does not start on the changed map, so the plugin restarts the game. |
 | The same, and the log says `multiplayer` | A multiplayer session ends with a restart | Expected. |
 | Anvil refuses to load Hamweard | The game is another build, or the original EU4 Menu Patch changed the same code | Use EU4 1.37.5 on Steam or GOG 1.37.5.2, and remove the Menu Patch DLL. |
 | The game asks for a restart before multiplayer | The game's own rule after the single player screen, and a return keeps it | Restart the game once. |
@@ -186,9 +185,9 @@ code only: the Host a server window was opened and cancelled, nothing was hosted
 
 | Site | The game | The plugin |
 | --- | --- | --- |
-| `0x815CAE`, the Exit to Menu branch of `CInGameIdler::Idle` | sets the exit and restart flags: the game quits and starts again | in single player releases the campaign's leftovers, queues a new main menu and resumes at the stock epilogue; in a multiplayer session, or when a canal's map could not be put back, the game's restart |
-| `0x111DFD7`, Back on the country selection screen | the same flags | in single player queues the switch for the menu's next tick; in a multiplayer lobby, or when a canal's map could not be put back, the game's restart |
-| slot `+0x20` of the frontend idler vtable | the frontend tick | runs the queued switch, destroys the last campaign's windows, resets the world once the old idler is gone and forgets the achievement list the last loaded save carried, then the stock tick |
+| `0x815CAE`, the Exit to Menu branch of `CInGameIdler::Idle` | sets the exit and restart flags: the game quits and starts again | in single player releases the campaign's leftovers, queues a new main menu and resumes at the stock epilogue; in a multiplayer session, the game's restart |
+| `0x111DFD7`, Back on the country selection screen | the same flags | in single player queues the switch for the menu's next tick; in a multiplayer lobby, the game's restart |
+| slot `+0x20` of the frontend idler vtable | the frontend tick | runs the queued switch, destroys the last campaign's windows, resets the world once the old idler is gone, forgets the achievement list the last loaded save carried and puts a canal's map back, or restarts the game if it cannot, then the stock tick |
 | slot `+0x30` of the frontend idler vtable | builds the menu, starting with the loading screen | clears the last campaign's map objects first, so unit banners do not stand on the loading screen |
 | `0x78F250`, `ApplyCanalLogic` | rewrites the map's neighbours for a canal | the same, and before the first canal the plugin copies the map's links and naval distances, to put them back after the world reset |
 | `0x7E8470`, `CHistoryDataBase::Execute` | walks the history between two dates | does nothing while a return waits for its world reset: the new menu would walk it on the old world, which crashed after a start from a later date |
