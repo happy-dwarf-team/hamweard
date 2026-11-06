@@ -12,7 +12,7 @@ Needs [Anvil](https://anvil.happydwarf.dev/) 1.9 or newer and EU4 1.37.5 (Steam;
 
 ![](https://anvil.happydwarf.dev/workshop/hamweard-tiles.png)
 
-Your next campaign starts in a game that already played one. A save made after a few returns matched one from a fresh start, but we can't promise nothing carries over, so Anvil treats Hamweard as a mod that affects gameplay. Not tested yet: a multiplayer game itself.
+Your next campaign starts in a game that already played one. In our tests a new campaign after a return matched one from a fresh start, with Anbennar and with canals too, but we can't promise nothing carries over, so Anvil treats Hamweard as a mod that affects gameplay. Not tested yet: a multiplayer game itself.
 
 [![](https://anvil.happydwarf.dev/workshop/hamweard-docs.png)](https://anvil.happydwarf.dev/plugins/hamweard/) [![](https://anvil.happydwarf.dev/workshop/hamweard-github.png)](https://github.com/happy-dwarf-team/hamweard)
 
