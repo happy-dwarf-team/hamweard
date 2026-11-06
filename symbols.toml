@@ -366,3 +366,18 @@ memory = "code"
 note = "CMapRandomize::Randomize: Random New World, for a new map and for a loaded save"
 build."eu4-1.37.5-steam-win64" = { rva = 0x890D00 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x88FF30 }
+
+[symbol.custom_countries_clear]
+bytes = "48 89 5C 24 08 57 48 83 EC 20"
+memory = "code"
+signature = "void ()"
+note = "CustomCountryManager::Clear: forgets the custom nations of the lobby"
+build."eu4-1.37.5-steam-win64" = { rva = 0x468430 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x468300 }
+
+[symbol.custom_nation_used]
+memory = "write"
+type = "uint8_t"
+note = "CustomCountryManager::_bAnyActionTaken: a custom nation was created in this process"
+build."eu4-1.37.5-steam-win64" = { rva = 0x233D911 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x2321791 }
