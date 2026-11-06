@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.4](https://github.com/happy-dwarf-team/hamweard/compare/v1.1.3...v1.1.4) (2026-11-06)
+
+
+### Bug Fixes
+
+* forget a custom nation designed in the lobby ([#42](https://github.com/happy-dwarf-team/hamweard/issues/42)) ([d2c9915](https://github.com/happy-dwarf-team/hamweard/commit/d2c9915356741dc48ff14488897bc235f162b67d))
+* restart after a Random New World map ([#41](https://github.com/happy-dwarf-team/hamweard/issues/41)) ([f43c82d](https://github.com/happy-dwarf-team/hamweard/commit/f43c82d7f554ff8b580ecc13d7a5593003216533))
+* restart instead of a return when memory runs out ([#39](https://github.com/happy-dwarf-team/hamweard/issues/39)) ([e4e34a3](https://github.com/happy-dwarf-team/hamweard/commit/e4e34a35d082ad37e80cf11487ac53271d1e5031))
+
 ## [1.1.3](https://github.com/happy-dwarf-team/hamweard/compare/v1.1.2...v1.1.3) (2026-11-06)
 
 
