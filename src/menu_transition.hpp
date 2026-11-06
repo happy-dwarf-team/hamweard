@@ -14,6 +14,14 @@ constexpr std::uint32_t corruption_after_return(std::uint32_t after_reset, std::
     return after_reset == 1 && before_return > 1 ? before_return : after_reset;
 }
 
+// Stock, a process that has played never reaches the menu: every way back restarts.
+// The game's own check does not stop a click either, because the update that
+// disables the Multiplayer button then enables every menu button. So after a
+// return the click stops here, and the button's tooltip gives the game's reason.
+constexpr bool multiplayer_needs_restart(bool returned, std::uint32_t corruption) noexcept {
+    return returned && corruption != 0;
+}
+
 // A world reset does not give all its memory back, and a big mod loses tens of MB
 // each time (lab: 66 MB with Anbennar). So a return with less than this left of
 // the system's commit limit restarts the game: the memory comes back, and a

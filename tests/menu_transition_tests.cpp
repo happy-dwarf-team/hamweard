@@ -18,6 +18,10 @@ void check(bool condition, const char* what) {
 }  // namespace
 
 int main() {
+    check(hamweard::multiplayer_needs_restart(true, 1), "a played process restarts first");
+    check(hamweard::multiplayer_needs_restart(true, 2), "so does -nudge's reason");
+    check(!hamweard::multiplayer_needs_restart(true, 0), "nothing played, nothing to ask");
+    check(!hamweard::multiplayer_needs_restart(false, 1), "no return, as without the plugin");
     {
         std::array<std::uint8_t, 2 * hamweard::adjacency_size> saved{}, current{};
         for (std::size_t i = 0; i < saved.size(); ++i) saved[i] = current[i] = static_cast<std::uint8_t>(i);
