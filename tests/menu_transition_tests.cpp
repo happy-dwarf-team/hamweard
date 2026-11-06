@@ -1,8 +1,10 @@
 // The world-reset gate, after EU4 Menu Patch's tests/menu_transition_tests.cpp
 // (MIT License, Copyright (c) 2026 VulonLok).
+#include "map_snapshot.hpp"
 #include "menu_transition.hpp"
 
 #include <cstdio>
+#include <array>
 #include <cstdlib>
 #include <stdexcept>
 
@@ -16,6 +18,54 @@ void check(bool condition, const char* what) {
 }  // namespace
 
 int main() {
+    {
+        std::array<std::uint8_t, 2 * hamweard::adjacency_size> saved{}, current{};
+        for (std::size_t i = 0; i < saved.size(); ++i) saved[i] = current[i] = static_cast<std::uint8_t>(i);
+        check(hamweard::same_links(saved, current), "the same links");
+        current[0xC] ^= 1;
+        current[0x10 + hamweard::adjacency_size] ^= 1;
+        check(hamweard::same_links(saved, current), "other costs are the same links");
+        current[hamweard::adjacency_size] ^= 1;
+        check(!hamweard::same_links(saved, current), "another neighbour");
+        current[hamweard::adjacency_size] ^= 1;
+        current[0x1C] ^= 1;
+        check(!hamweard::same_links(saved, current), "another type");
+        check(!hamweard::same_links(saved, std::span(current).first(hamweard::adjacency_size)), "another count");
+    }
+    {
+        std::array<std::uint8_t, 2 * hamweard::adjacency_size> first{}, second{};
+        std::array<std::uint8_t, 8> naval{};
+        for (std::size_t i = 0; i < first.size(); ++i) first[i] = second[i] = static_cast<std::uint8_t>(i);
+        for (std::size_t i = 0; i < naval.size(); ++i) naval[i] = static_cast<std::uint8_t>(i);
+        const auto kept_first = first;
+        const auto kept_naval = naval;
+        const hamweard::MapView map{{std::span(first), std::span(second)}, std::span(naval)};
+
+        hamweard::MapSnapshot snapshot;
+        check(!snapshot.restore(map), "nothing to put back before a canal");
+        snapshot.take({});
+        check(!snapshot.taken(), "no map, no snapshot");
+        snapshot.take(map);
+        check(snapshot.taken(), "the map is kept");
+
+        first[0xC] ^= 1;  // a cost
+        naval[0] ^= 1;
+        snapshot.take(map);  // a second canal must not replace the first picture
+        check(snapshot.restore(map), "the same links go back");
+        check(first == kept_first && naval == kept_naval, "costs and naval distances restored");
+
+        first[0xC] ^= 1;
+        naval[0] ^= 1;
+        second[0] ^= 1;  // a neighbour the map did not have
+        const auto changed = first;
+        const auto changed_naval = naval;
+        check(!snapshot.restore(map), "other links do not go back");
+        check(first == changed && naval == changed_naval, "a failed restore writes nothing");
+        second[0] ^= 1;
+
+        check(!snapshot.restore({{std::span(first)}, std::span(naval)}), "another province count");
+        check(!snapshot.restore({{std::span(first), std::span(second)}, std::span(naval).first(4)}), "another naval size");
+    }
     hamweard::WorldResetGate gate;
     int app = 0, old = 0, menu = 0, other = 0, resets = 0;
     for (int cycle = 0; cycle < 1000; ++cycle) {

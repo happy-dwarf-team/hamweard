@@ -49,13 +49,12 @@ both buttons restart the game as usual.
 - **Gameplay.** `affects_gameplay = true`: the next campaign starts in the same process
   instead of a fresh one, so anything the world reset leaves behind could change it. In
   the lab a save made after three returns matched a save from a fresh process, apart from
-  the campaign id and the random seed. With Anbennar a new campaign after a return differed
-  from one in a fresh process, even after a plain **Back** from the lobby, and the cause is
-  not known yet.
-- **Canals restart the game.** A canal rewrites the map itself, and the map outlives the
-  campaign: in the lab a new game after a save with canals differed from a fresh one, even
-  with the canals closed first. So once a save or event has applied a canal, Exit to Menu
-  and Back restart the game for the rest of that sitting, as they do without the plugin.
+  the campaign id and the random seed. Anbennar matched too, after a return and after a plain
+  **Back** from the lobby.
+- **Canals.** A canal changes the map itself, and the map outlives the campaign. The game's
+  reset takes the canal's links out, but leaves other movement costs and naval distances
+  behind. So the plugin copies them before the first canal and puts them back on a return.
+  If they cannot be put back, that return restarts the game, as it does without the plugin.
 - **The Single Player list keeps a game bug.** Click a save in the list and start a new
   campaign from the same screen, and all province triggered modifiers are gone. The game
   does that too, with or without Hamweard. **Back** first clears it: the new campaign then
@@ -100,7 +99,7 @@ log says when the plugin chose a restart, and why.
 | What you see | Why | What to do |
 | --- | --- | --- |
 | Exit to Menu or Back restarts the game | The plugin is not loaded, or Anvil suspended it | Open the Anvil panel (`Ctrl+Shift+F12`): is Hamweard loaded and approved? An ironman campaign needs the opt-in, in the panel or on the Manager's **Plugins** tab. |
-| The same, and the log says `the map has had a canal` | A save or event with a canal changed the map, and only a restart gives the old map back | Nothing to fix: the plugin keeps the restart for the rest of that sitting. |
+| The same, and the log says `the map could not be put back` | A canal changed the map and the saved copy no longer fits it | Nothing to fix: a campaign does not start on the changed map, so the plugin restarts the game. |
 | The same, and the log says `multiplayer` | A multiplayer session ends with a restart | Expected. |
 | Anvil refuses to load Hamweard | The game is another build, or the original EU4 Menu Patch changed the same code | Use EU4 1.37.5 on Steam or GOG 1.37.5.2, and remove the Menu Patch DLL. |
 | The game asks for a restart before multiplayer | The game's own rule after the single player screen, and a return keeps it | Restart the game once. |
@@ -164,8 +163,12 @@ campaign byte by byte, the campaign
 id apart, in a fresh process and after returns from campaigns started in 1444, 1453 and
 1508, from a save of a 1508 start, from a 1519 save, and after Back with a later date or a
 save picked in the list; on GOG after three returns as well. A ten-mod playset gave the same
-result, Anbennar did not (see [Limitations](#limitations)). The menu's checksum stayed
-the same. A save with canals restarted the game on Exit to Menu and on Back.
+result. The menu's checksum stayed the same.
+
+Canals were tested on 5 November 2026: after a 1719 save with canals on Steam and on GOG, a
+new campaign matched a fresh one, with no restart, 0 naval distances different and the
+campaign id the only other difference. Anbennar, which applies a canal at every start,
+matched a fresh start the same day, and returned from ironman without a restart.
 
 The achievement list and the multiplayer check of 1.1.2 were tested that day too, with 27 returns in one process, 13 Exit to Menu and 14 Back, no restart and
 no crash. After a return the list stayed empty, and a normal save had no `achievement`
@@ -181,12 +184,12 @@ code only: the Host a server window was opened and cancelled, nothing was hosted
 
 | Site | The game | The plugin |
 | --- | --- | --- |
-| `0x815CAE`, the Exit to Menu branch of `CInGameIdler::Idle` | sets the exit and restart flags: the game quits and starts again | in single player releases the campaign's leftovers, queues a new main menu and resumes at the stock epilogue; in a multiplayer session, or after a canal, the game's restart |
-| `0x111DFD7`, Back on the country selection screen | the same flags | in single player queues the switch for the menu's next tick; in a multiplayer lobby, or after a canal, the game's restart |
-| slot `+0x20` of the frontend idler vtable | the frontend tick | runs the queued switch, destroys the last campaign's windows, resets the world once the old idler is gone and forgets the achievement list the last loaded save carried, then the stock tick |
+| `0x815CAE`, the Exit to Menu branch of `CInGameIdler::Idle` | sets the exit and restart flags: the game quits and starts again | in single player releases the campaign's leftovers, queues a new main menu and resumes at the stock epilogue; in a multiplayer session, the game's restart |
+| `0x111DFD7`, Back on the country selection screen | the same flags | in single player queues the switch for the menu's next tick; in a multiplayer lobby, the game's restart |
+| slot `+0x20` of the frontend idler vtable | the frontend tick | runs the queued switch, destroys the last campaign's windows, resets the world once the old idler is gone, forgets the achievement list the last loaded save carried and puts a canal's map back, or restarts the game if it cannot, then the stock tick |
 | slot `+0x30` of the frontend idler vtable | builds the menu, starting with the loading screen | clears the last campaign's map objects first, so unit banners do not stand on the loading screen |
-| `0x78F250`, `ApplyCanalLogic` | rewrites the map's neighbours for a canal | the same, and the plugin notes it: from then on both buttons restart the game as usual |
-| `0x7E8470`, `CHistoryDataBase::Execute` | walks the history between two dates | does nothing while a return waits for its world reset: the new menu would walk it on the old world, which crashed after a start from a later date |
+| `0x78F250`, `ApplyCanalLogic` | rewrites the map's neighbours for a canal | the same, and before the first canal the plugin copies the map's links and naval distances, to put them back after the world reset |
+| `0x7E8470`, `CHistoryDataBase::Execute` | walks the history between two dates | does nothing while a return waits for its world reset: the new menu would walk it on the old world, which crashed after a start from a later date. In the reset's own walk it first validates the reloaded history, as the game does at startup: without that, triggers in history files stay unbound, and Anbennar's next campaign differed |
 | `0x14E9030` (GUI manager create), `0x10A0735` (popup window), `0x803270`, `0x81AF10` | create windows, build the campaign GUI | the same, and the plugin notes which windows belong to the campaign |
 
 The world's `PotentialCorruption` flag stays as the game keeps it through its reset. Only

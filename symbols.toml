@@ -211,7 +211,7 @@ build."eu4-1.37.5.2-gog-win64" = { rva = 0x20FFC0 }
 bytes = "48 89 5C 24 10 48 89 6C 24 18 48 89 74 24 20 57"
 memory = "code"
 signature = "void (void* history)"
-note = "the history's post-load validation, which ResetGame runs on its own only for an in-game idler"
+note = "CHistoryDataBase::PostValidateEffects: the history's post-load validation, which ResetGame runs on its own only for an in-game idler"
 build."eu4-1.37.5-steam-win64" = { rva = 0x7E9B70 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x7E8EE0 }
 
@@ -308,6 +308,13 @@ build."eu4-1.37.5.2-gog-win64" = { rva = 0x14E3986 }
 
 # --- data ---
 
+[symbol.map]
+memory = "write"
+type = "uintptr_t"
+note = "CMap::_pMap, which outlives the world"
+build."eu4-1.37.5-steam-win64" = { rva = 0x233FED8 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x2323D58 }
+
 [symbol.world]
 memory = "write"
 type = "uintptr_t"
@@ -321,3 +328,34 @@ type = "uintptr_t"
 note = "the history object history_post_validate takes"
 build."eu4-1.37.5-steam-win64" = { rva = 0x233FEA0 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x2323D18 }
+
+[symbol.trigger_db]
+memory = "write"
+type = "uintptr_t"
+note = "CTriggerDataBase::_pTriggerDataBase: triggers register there only while it exists"
+build."eu4-1.37.5-steam-win64" = { rva = 0x2340010 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x2323E90 }
+
+[symbol.trigger_db_create]
+bytes = "40 53 48 83 EC 20 B9 80 00 00 00"
+memory = "code"
+signature = "void ()"
+note = "CTriggerDataBase::CreateInstance"
+build."eu4-1.37.5-steam-win64" = { rva = 0xB89520 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0xB87CD0 }
+
+[symbol.trigger_db_destroy]
+bytes = "40 53 48 83 EC 20"
+memory = "code"
+signature = "void ()"
+note = "CTriggerDataBase::DestroyInstance"
+build."eu4-1.37.5-steam-win64" = { rva = 0xB89560 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0xB87D10 }
+
+[symbol.trigger_db_validate]
+bytes = "48 89 5C 24 08 57 48 83 EC 30 48 8B F9"
+memory = "code"
+signature = "void (void* database)"
+note = "CTriggerDataBase::ValidateTriggers"
+build."eu4-1.37.5-steam-win64" = { rva = 0xB89690 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0xB87E40 }
