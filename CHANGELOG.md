@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/happy-dwarf-team/hamweard/compare/v1.1.4...v1.2.0) (2026-11-06)
+
+
+### Features
+
+* run in ironman by default ([#38](https://github.com/happy-dwarf-team/hamweard/issues/38)) ([054477d](https://github.com/happy-dwarf-team/hamweard/commit/054477d27d8ed8e0e507ee30f457ec6e8a0cea7d))
+
+
+### Bug Fixes
+
+* keep a played process out of multiplayer after a return ([#43](https://github.com/happy-dwarf-team/hamweard/issues/43)) ([42296de](https://github.com/happy-dwarf-team/hamweard/commit/42296de176152b1275956451565ee6ad55a67650))
+
 ## [1.1.4](https://github.com/happy-dwarf-team/hamweard/compare/v1.1.3...v1.1.4) (2026-11-06)
 
 
