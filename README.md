@@ -18,8 +18,8 @@ It is a port of [EU4 Menu Patch](https://github.com/YozoraTempest/EU4-Menu-Patch
 under the MIT License (see [Thanks](#thanks)).
 
 **Status:** tested in the lab in single player, in ironman and with mods, Anbennar among
-them. Most of that ran on 1.1.0, before the state reset fixes of 1.1.2, which
-had their own runs (see [What was tested](#what-was-tested)). Multiplayer had one test with a second player.
+them, up to 40 returns in one process (see [What was tested](#what-was-tested)). Multiplayer
+had one test with a second player.
 
 ## Install and use
 
@@ -180,6 +180,23 @@ restart. On GOG a month of play after a return ran the game's achievement check 
 achievements, as in a fresh process, and the game state in the save on leaving was the same,
 byte by byte, as with the game's own exit.
 
+A hard return test ran on 6 November 2026, on 1.1.3 and the fixes after it, with the same
+seed each time. Save lines are compared with a campaign from a fresh process.
+
+| Run | Returns in one process | Save after them |
+| --- | --- | --- |
+| Steam, no mods | 40 (30 **Back**, 10 **Exit to Menu**) | 1,681,409 lines, only the campaign id differs |
+| Steam, Anbennar | 7 | 5,764,559 lines, the same |
+| Steam, Anbennar in ironman | 3 | the same |
+| Steam, Warhammer Fantasy Universalis | 4 | 1,964,700 lines, the same |
+| Steam, end of the game in 1821 from a 64.5 MB save | 1 | 1,681,452 lines, the same |
+| GOG, no mods | 16, no crash, then 1 before a compared save | 1,648,632 lines, the same |
+
+A return took 3.3 to 3.8 seconds with **Back** and 5.5 to 6 with **Exit to Menu** without mods,
+and 5.8 to 6.3 and 8 to 10.7 with Anbennar. In that test two bugs came up and are fixed: a
+Random New World map changed the next campaign's missions (such a return now restarts), and a
+custom nation designed in the lobby and left behind with **Back** joined the next campaign.
+
 The achievement list and the multiplayer check of 1.1.2 were tested that day too, with 27 returns in one process, 13 Exit to Menu and 14 Back, no restart and
 no crash. After a return the list stayed empty, and a normal save had no `achievement`
 block, also after an ironman save, a country change and a save that still has the block. An
@@ -188,7 +205,7 @@ campaign said achievements can be earned.
 
 Not tested: the Steam lobby clean-up with a lobby open, and the windows and modes
 listed under [Limitations](#limitations). The multiplayer check was read from the game's
-code only: the Host a server window was opened and cancelled, nothing was hosted or joined.
+code first, then tested with a second player on 6 November 2026.
 
 ## What it changes in the game
 
