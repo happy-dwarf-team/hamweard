@@ -55,6 +55,10 @@ both buttons restart the game as usual.
   reset takes the canal's links out, but leaves other movement costs and naval distances
   behind. So the plugin copies them before the first canal and puts them back on a return.
   If they cannot be put back, that return restarts the game, as it does without the plugin.
+- **Random New World restarts.** After a Random New World map, from a new campaign or a loaded
+  save, Exit to Menu and Back restart the game, as they do without the plugin. The game's own
+  restore of the map misses part of it: in the lab the next campaign gave Tortuga other
+  missions than a fresh start did.
 - **The Single Player list keeps a game bug.** Click a save in the list and start a new
   campaign from the same screen, and all province triggered modifiers are gone. The game
   does that too, with or without Hamweard. **Back** first clears it: the new campaign then
@@ -81,7 +85,7 @@ both buttons restart the game as usual.
   trouble. A mod that does something unusual when a campaign ends may still behave
   differently.
 - **Not seen in a test:** some message popups (an heir to name, a new colonial nation), the
-  window of a lost game, the end of the game in 1821, custom nations and Random New World.
+  window of a lost game and custom nations.
 - **Memory grows with each return, more with a big mod.** The game's reset does not free all
   it read. In the lab that was about 2 MB per **Back** and 8 MB per campaign without mods, and
   about 60 MB and 220 MB with Anbennar. The time of a return stayed the same over 40 returns in
@@ -102,6 +106,7 @@ log says when the plugin chose a restart, and why.
 | Exit to Menu or Back restarts the game | The plugin is not loaded, or Anvil suspended it | Open the Anvil panel (`Ctrl+Shift+F12`): is Hamweard loaded and approved? An ironman campaign needs the opt-in, in the panel or on the Manager's **Plugins** tab. |
 | The same, and the log says `the map could not be put back` | A canal changed the map and the saved copy no longer fits it | Nothing to fix: a campaign does not start on the changed map, so the plugin restarts the game. |
 | The same, and the log says `multiplayer` | A multiplayer session ends with a restart | Expected. |
+| The same, and the log says `Random New World` | Such a map changes more than a return can put back | Expected. |
 | The same, and the log says `too little memory` | Less than 1 GB of the system's commit limit was left | Expected: the restart gives the memory back. |
 | Anvil refuses to load Hamweard | The game is another build, or the original EU4 Menu Patch changed the same code | Use EU4 1.37.5 on Steam or GOG 1.37.5.2, and remove the Menu Patch DLL. |
 | The game asks for a restart before multiplayer | The game's own rule after the single player screen, and a return keeps it | Restart the game once. |
@@ -190,6 +195,7 @@ code only: the Host a server window was opened and cancelled, nothing was hosted
 | `0x111DFD7`, Back on the country selection screen | the same flags | in single player queues the switch for the menu's next tick; in a multiplayer lobby, the game's restart |
 | slot `+0x20` of the frontend idler vtable | the frontend tick | runs the queued switch, destroys the last campaign's windows, resets the world once the old idler is gone, forgets the achievement list the last loaded save carried and puts a canal's map back, or restarts the game if it cannot, then the stock tick |
 | slot `+0x30` of the frontend idler vtable | builds the menu, starting with the loading screen | clears the last campaign's map objects first, so unit banners do not stand on the loading screen |
+| `0x890D00`, `CMapRandomize::Randomize` | builds a Random New World map | the same, and the plugin notes it: from then on a return takes the game's restart |
 | `0x78F250`, `ApplyCanalLogic` | rewrites the map's neighbours for a canal | the same, and before the first canal the plugin copies the map's links and naval distances, to put them back after the world reset |
 | `0x7E8470`, `CHistoryDataBase::Execute` | walks the history between two dates | does nothing while a return waits for its world reset: the new menu would walk it on the old world, which crashed after a start from a later date. In the reset's own walk it first validates the reloaded history, as the game does at startup: without that, triggers in history files stay unbound, and Anbennar's next campaign differed |
 | `0x14E9030` (GUI manager create), `0x10A0735` (popup window), `0x803270`, `0x81AF10` | create windows, build the campaign GUI | the same, and the plugin notes which windows belong to the campaign |
@@ -238,7 +244,7 @@ ctest --test-dir build -C Release --output-on-failure
 cmake --build build --config Release --target hamweard-check
 ```
 
-The check target runs `anvil check --exe` on all 37 symbols and rewrites `symbols.lock`;
+The check target runs `anvil check --exe` on all 43 symbols and rewrites `symbols.lock`;
 commit it with `symbols.toml`. `hamweard-deploy` (with `EU4_DIR`) copies the plugin into
 the game folder.
 

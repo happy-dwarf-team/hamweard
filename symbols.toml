@@ -359,3 +359,10 @@ signature = "void (void* database)"
 note = "CTriggerDataBase::ValidateTriggers"
 build."eu4-1.37.5-steam-win64" = { rva = 0xB89690 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0xB87E40 }
+
+[symbol.map_randomize]
+bytes = "44 88 4C 24 20 4C 89 44 24 18 48 89 54 24 10 48 89 4C 24 08"
+memory = "code"
+note = "CMapRandomize::Randomize: Random New World, for a new map and for a loaded save"
+build."eu4-1.37.5-steam-win64" = { rva = 0x890D00 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x88FF30 }

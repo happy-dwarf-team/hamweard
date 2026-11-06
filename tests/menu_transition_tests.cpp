@@ -105,5 +105,10 @@ int main() {
     check(corruption_after_return(0, 2) == 0, "nothing is set on a clean world");
     check(hamweard::enough_memory_for_return(hamweard::min_commit_for_return), "the limit is enough");
     check(!hamweard::enough_memory_for_return(hamweard::min_commit_for_return - 1), "below the limit the game restarts");
+    const std::uint64_t plenty = hamweard::min_commit_for_return * 8;
+    check(hamweard::restart_reason(false, false, plenty) == nullptr, "a plain return does not restart");
+    check(hamweard::restart_reason(true, false, plenty) != nullptr, "multiplayer restarts");
+    check(hamweard::restart_reason(false, true, plenty) != nullptr, "a Random New World map restarts, whatever the memory");
+    check(hamweard::restart_reason(false, false, 0) != nullptr, "too little memory restarts");
     std::puts("menu transition tests passed");
 }

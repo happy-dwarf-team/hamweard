@@ -134,6 +134,10 @@ std::uint32_t g_returns = 0;
 // the first canal and puts it back after the reset, or restarts when it cannot.
 hamweard::MapSnapshot g_map_before_canals;
 bool g_map_changed = false;  // since the last reset
+// Random New World rewrites the map. The game's own restore misses part of it (lab: the
+// next campaign gave Tortuga other missions than a fresh start), and only a restart
+// reads the map again, so this process has no clean return left.
+bool g_map_randomized = false;
 std::uintptr_t* g_map = nullptr;
 Bytes g_in_game_stock_path = nullptr;
 Bytes g_pregame_stock_path = nullptr;
@@ -448,12 +452,10 @@ bool in_multiplayer_session() {
 
 // Why a return has to be the game's own restart, or null when it does not.
 const char* restart_reason() {
-    if (in_multiplayer_session()) return "in a multiplayer session";
     MEMORYSTATUSEX memory{};
     memory.dwLength = sizeof memory;
-    if (GlobalMemoryStatusEx(&memory) && !hamweard::enough_memory_for_return(memory.ullAvailPageFile))
-        return "with too little memory left";
-    return nullptr;
+    const std::uint64_t commit = GlobalMemoryStatusEx(&memory) ? memory.ullAvailPageFile : UINT64_MAX;
+    return hamweard::restart_reason(in_multiplayer_session(), g_map_randomized, commit);
 }
 
 // In CInGameIdler::Idle, instead of setting exit + restart.
@@ -532,6 +534,7 @@ struct Hamweard : anvil::Plugin {
     anvil::Change idler_construct;
     anvil::Change dialog_store;
     anvil::Change canal_logic;
+    anvil::Change map_randomize;
 
     void load(anvil::Host& h) override {
         g_world = h.data(sym::world);
@@ -581,6 +584,10 @@ struct Hamweard : anvil::Plugin {
                 }
                 g_map_changed = true;
             }
+        });
+        map_randomize = h.mid_hook(sym::map_randomize, [] {
+            g_map_randomized = true;
+            host().info("Random New World: the next return restarts the game");
         });
         h.swap(g_tick, sym::frontend_tick_slot, &on_frontend_tick);
         h.swap(g_restore_device_objects, sym::frontend_restore_slot, &on_frontend_restore);
