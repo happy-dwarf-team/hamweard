@@ -24,6 +24,15 @@ constexpr bool enough_memory_for_return(std::uint64_t commit_available) noexcept
     return commit_available >= min_commit_for_return;
 }
 
+// Why a return has to be the game's own restart, or null when it does not.
+constexpr const char* restart_reason(bool multiplayer, bool map_randomized,
+                                     std::uint64_t commit_available) noexcept {
+    if (multiplayer) return "in a multiplayer session";
+    if (map_randomized) return "after a Random New World map";
+    if (!enough_memory_for_return(commit_available)) return "with too little memory left";
+    return nullptr;
+}
+
 // SetNextIdler hands the new idler over on a later frame. The world is reset
 // only after that hand-over has destroyed the outgoing idler: once the menu is
 // both the updating and the current idler and nothing is queued after it.
