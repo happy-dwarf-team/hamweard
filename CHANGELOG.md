@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.3](https://github.com/happy-dwarf-team/hamweard/compare/v1.1.2...v1.1.3) (2026-11-06)
+
+
+### Bug Fixes
+
+* match a fresh campaign after a return with canals and mods ([#32](https://github.com/happy-dwarf-team/hamweard/issues/32)) ([505b2ee](https://github.com/happy-dwarf-team/hamweard/commit/505b2ee4342647208c995018b2223b03b23def92))
+
 ## [1.1.2](https://github.com/happy-dwarf-team/hamweard/compare/v1.1.1...v1.1.2) (2026-11-04)
 
 
