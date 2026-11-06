@@ -223,13 +223,18 @@ note = "CHistoryDataBase::Execute: walks the history between two dates on the wo
 build."eu4-1.37.5-steam-win64" = { rva = 0x7E8470 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x7E77E0 }
 
-[symbol.multiplayer_availability]
-bytes = "48 89 5C 24 10 57 48 83 EC 20 48 8B 41 08"
+[symbol.multiplayer_click]
 memory = "code"
-signature = "int (void* frontend_state)"
-note = "GetMultiplayerAvailability: 0 lets the player in, 5 asks for a restart first (MUST_RESTART_TO_PLAY_MP); the game reads PotentialCorruption here only in one session state"
-build."eu4-1.37.5-steam-win64" = { rva = 0x10EB5C0 }
-build."eu4-1.37.5.2-gog-win64" = { rva = 0x10E9BB0 }
+signature = "void (void* frontend_state)"
+note = "the main menu's Multiplayer button: the button stays clickable whatever GetMultiplayerAvailability says, because the update that disables it then enables every menu button"
+
+[symbol.multiplayer_click.build."eu4-1.37.5-steam-win64"]
+rva = 0x10F0510
+bytes = "48 83 EC 28 80 3D 81 F9 24 01 00 75 5E"
+
+[symbol.multiplayer_click.build."eu4-1.37.5.2-gog-win64"]
+rva = 0x10EE4C0
+bytes = "48 83 EC 28 80 3D 86 58 23 01 00 75 5E"
 
 [symbol.canal_logic_apply]
 bytes = "4C 8B DC 55 48 8B EC 48 81 EC 80 00 00 00"

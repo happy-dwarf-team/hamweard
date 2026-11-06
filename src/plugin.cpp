@@ -145,7 +145,7 @@ Bytes g_pregame_stock_path = nullptr;
 
 anvil::HookOf<sym::gui_create_window> g_create_window;
 anvil::HookOf<sym::history_execute> g_history_execute;
-anvil::HookOf<sym::multiplayer_availability> g_multiplayer_availability;
+anvil::HookOf<sym::multiplayer_click> g_multiplayer_click;
 bool g_returned_to_menu = false;
 std::uintptr_t* g_manager_global = nullptr;
 std::ptrdiff_t g_registry_begin = 0;
@@ -454,9 +454,12 @@ bool in_multiplayer_session() {
     return session && !at<std::uint8_t>(session, off::session_is_dummy);
 }
 
-int on_multiplayer_availability(void* state) {
-    return hamweard::multiplayer_availability(g_multiplayer_availability.next(state), potential_corruption(),
-                                              g_returned_to_menu);
+void on_multiplayer_click(void* state) {
+    if (hamweard::multiplayer_needs_restart(g_returned_to_menu, potential_corruption())) {
+        host().info("Multiplayer after a return: the game has to restart first");
+        return;
+    }
+    g_multiplayer_click.next(state);
 }
 
 // Why a return has to be the game's own restart, or null when it does not.
@@ -611,7 +614,7 @@ struct Hamweard : anvil::Plugin {
         g_registry_end = static_cast<std::ptrdiff_t>(h.value(sym::widget_registry, "end"));
         h.hook(g_create_window, sym::gui_create_window, on_create_window);
         h.hook(g_history_execute, sym::history_execute, on_history_execute);
-        h.hook(g_multiplayer_availability, sym::multiplayer_availability, on_multiplayer_availability);
+        h.hook(g_multiplayer_click, sym::multiplayer_click, on_multiplayer_click);
         // Recording starts with the in-game idler (its views make windows
         // while a save loads) and again at each GUI build (the HUD reload).
         const auto record = [] {

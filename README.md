@@ -67,11 +67,9 @@ both buttons restart the game as usual.
   session, Exit to Menu and Back restart the game, as without the plugin. While a campaign with
   other players runs, Anvil takes the plugin's changes out. In a lobby, and as a host alone in
   the game, the plugin itself leaves by the game's restart.
-- **Multiplayer after a campaign needs a restart.** The game marks a process that has entered
-  single player as possibly corrupted and, with a Paradox session online, asks for a restart
-  before multiplayer. A return keeps that mark. Offline the game does not check it, so after a
-  return Hamweard asks in its place: the Multiplayer button stays off, with the game's own
-  message, until you restart.
+- **Multiplayer after a campaign needs a restart.** The game marks a process that has played
+  as possibly corrupted, and only a fresh process is meant to go on to multiplayer. After a
+  return the Multiplayer button does nothing, and its tooltip says why. Restart the game once.
 - **The Steam lobby clean-up has never run.** It is ported from the original, but no lobby was
   hosted or joined.
 - **Ironman: off unless you allow it,** with **Allow in ironman** on the Manager's **Plugins**
@@ -109,7 +107,7 @@ log says when the plugin chose a restart, and why.
 | The same, and the log says `Random New World` | Such a map changes more than a return can put back | Expected. |
 | The same, and the log says `too little memory` | Less than 1 GB of the system's commit limit was left | Expected: the restart gives the memory back. |
 | Anvil refuses to load Hamweard | The game is another build, or the original EU4 Menu Patch changed the same code | Use EU4 1.37.5 on Steam or GOG 1.37.5.2, and remove the Menu Patch DLL. |
-| The game asks for a restart before multiplayer | The game's own rule after the single player screen, and a return keeps it | Restart the game once. |
+| The Multiplayer button does nothing after a return | The process has played, and only a fresh one goes on to multiplayer | Restart the game once. |
 | Continue game does not show your ironman campaign | The game does not record ironman saves there | Load it from the Single Player list. |
 | Province triggered modifiers are gone in a new campaign | A game bug: a save was clicked in the list before the new campaign | Press **Back** after clicking a save, then start the campaign. |
 

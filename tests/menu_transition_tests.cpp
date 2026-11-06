@@ -18,15 +18,10 @@ void check(bool condition, const char* what) {
 }  // namespace
 
 int main() {
-    {
-        using namespace hamweard;
-        check(multiplayer_availability(0, 1, true) == multiplayer_must_restart, "a played process waits for a restart");
-        check(multiplayer_availability(0, 2, true) == multiplayer_must_restart, "so does -nudge's reason");
-        check(multiplayer_availability(0, 0, true) == 0, "nothing played, nothing to ask");
-        check(multiplayer_availability(0, 1, false) == 0, "no return, the game decides");
-        check(multiplayer_availability(3, 1, true) == 3, "another state stays");
-        check(multiplayer_availability(5, 1, false) == 5, "the game's own request stays");
-    }
+    check(hamweard::multiplayer_needs_restart(true, 1), "a played process restarts first");
+    check(hamweard::multiplayer_needs_restart(true, 2), "so does -nudge's reason");
+    check(!hamweard::multiplayer_needs_restart(true, 0), "nothing played, nothing to ask");
+    check(!hamweard::multiplayer_needs_restart(false, 1), "no return, as without the plugin");
     {
         std::array<std::uint8_t, 2 * hamweard::adjacency_size> saved{}, current{};
         for (std::size_t i = 0; i < saved.size(); ++i) saved[i] = current[i] = static_cast<std::uint8_t>(i);
