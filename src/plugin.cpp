@@ -115,6 +115,7 @@ anvil::PointerSwap<RestoreFn> g_restore_device_objects;
 std::uintptr_t* g_world = nullptr;    // the global holding the root object
 std::uintptr_t* g_history = nullptr;  // the global holding the history
 std::uintptr_t* g_trigger_db = nullptr;  // CTriggerDataBase's instance: alive only while the game loads
+std::uint8_t* g_custom_nation_used = nullptr;  // only a restart clears it, and the lobby reads it
 void* g_lobby_vtable = nullptr;  // null on a build without the Steam lobby (GOG)
 void* g_minimap_vtable = nullptr;
 UnregisterCallResultFn* g_unregister_call_result = nullptr;
@@ -505,6 +506,11 @@ void on_frontend_tick(void* idler, bool update) {
                              destroy_campaign_windows();
                              const auto windows = Clock::now();
                              if (!*g_trigger_db) game(sym::trigger_db_create);
+                             // A nation designed in the lobby lives outside the world, and only
+                             // the start of a campaign clears it: left alone, it would join the
+                             // next one.
+                             game(sym::custom_countries_clear);
+                             *g_custom_nation_used = 0;
                              g_history_reloading = true;
                              game(sym::reset_game, app, false);
                              validate_reloaded_history();  // a reset that did not walk the history
@@ -540,6 +546,7 @@ struct Hamweard : anvil::Plugin {
         g_world = h.data(sym::world);
         g_history = h.data(sym::history);
         g_trigger_db = h.data(sym::trigger_db);
+        g_custom_nation_used = h.data(sym::custom_nation_used);
         g_map = h.data(sym::map);
         const char* build = h.game().build_id;
         g_layout = build && std::string_view(build) == "eu4-1.37.5.2-gog-win64" ? kGog : kSteam;

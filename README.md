@@ -85,7 +85,7 @@ both buttons restart the game as usual.
   trouble. A mod that does something unusual when a campaign ends may still behave
   differently.
 - **Not seen in a test:** some message popups (an heir to name, a new colonial nation), the
-  window of a lost game and custom nations.
+  window of a lost game.
 - **Memory grows with each return, more with a big mod.** The game's reset does not free all
   it read. In the lab that was about 2 MB per **Back** and 8 MB per campaign without mods, and
   about 60 MB and 220 MB with Anbennar. The time of a return stayed the same over 40 returns in
@@ -195,6 +195,7 @@ code only: the Host a server window was opened and cancelled, nothing was hosted
 | `0x111DFD7`, Back on the country selection screen | the same flags | in single player queues the switch for the menu's next tick; in a multiplayer lobby, the game's restart |
 | slot `+0x20` of the frontend idler vtable | the frontend tick | runs the queued switch, destroys the last campaign's windows, resets the world once the old idler is gone, forgets the achievement list the last loaded save carried and puts a canal's map back, or restarts the game if it cannot, then the stock tick |
 | slot `+0x30` of the frontend idler vtable | builds the menu, starting with the loading screen | clears the last campaign's map objects first, so unit banners do not stand on the loading screen |
+| `0x468430`, `CustomCountryManager::Clear` | forgets the nations of the lobby, only when a campaign starts | calls it on every return too, or a nation designed and left behind by **Back** would join the next campaign |
 | `0x890D00`, `CMapRandomize::Randomize` | builds a Random New World map | the same, and the plugin notes it: from then on a return takes the game's restart |
 | `0x78F250`, `ApplyCanalLogic` | rewrites the map's neighbours for a canal | the same, and before the first canal the plugin copies the map's links and naval distances, to put them back after the world reset |
 | `0x7E8470`, `CHistoryDataBase::Execute` | walks the history between two dates | does nothing while a return waits for its world reset: the new menu would walk it on the old world, which crashed after a start from a later date. In the reset's own walk it first validates the reloaded history, as the game does at startup: without that, triggers in history files stay unbound, and Anbennar's next campaign differed |
@@ -244,7 +245,7 @@ ctest --test-dir build -C Release --output-on-failure
 cmake --build build --config Release --target hamweard-check
 ```
 
-The check target runs `anvil check --exe` on all 43 symbols and rewrites `symbols.lock`;
+The check target runs `anvil check --exe` on all 45 symbols and rewrites `symbols.lock`;
 commit it with `symbols.toml`. `hamweard-deploy` (with `EU4_DIR`) copies the plugin into
 the game folder.
 
