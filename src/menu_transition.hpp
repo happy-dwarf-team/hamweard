@@ -14,6 +14,18 @@ constexpr std::uint32_t corruption_after_return(std::uint32_t after_reset, std::
     return after_reset == 1 && before_return > 1 ? before_return : after_reset;
 }
 
+// The game reads PotentialCorruption before multiplayer only in one session state,
+// so elsewhere a process that has played could host or join after a return, which
+// the game itself never allows: its own return restarts. Then 5, the state that
+// asks for a restart, stands in for 0. Other states and a process that has not
+// returned stay as they are.
+constexpr int multiplayer_available = 0;
+constexpr int multiplayer_must_restart = 5;
+
+constexpr int multiplayer_availability(int game_says, std::uint32_t corruption, bool returned) noexcept {
+    return game_says == multiplayer_available && returned && corruption != 0 ? multiplayer_must_restart : game_says;
+}
+
 // A world reset does not give all its memory back, and a big mod loses tens of MB
 // each time (lab: 66 MB with Anbennar). So a return with less than this left of
 // the system's commit limit restarts the game: the memory comes back, and a

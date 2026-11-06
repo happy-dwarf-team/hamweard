@@ -69,9 +69,9 @@ both buttons restart the game as usual.
   the game, the plugin itself leaves by the game's restart.
 - **Multiplayer after a campaign needs a restart.** The game marks a process that has entered
   single player as possibly corrupted and, with a Paradox session online, asks for a restart
-  before multiplayer. A return keeps that mark. Offline the game does not check it: the
-  Multiplayer button works and the Game Browser opens, a scan included (on GOG the button opens
-  the Paradox login).
+  before multiplayer. A return keeps that mark. Offline the game does not check it, so after a
+  return Hamweard asks in its place: the Multiplayer button stays off, with the game's own
+  message, until you restart.
 - **The Steam lobby clean-up has never run.** It is ported from the original, but no lobby was
   hosted or joined.
 - **Ironman: off unless you allow it,** with **Allow in ironman** on the Manager's **Plugins**
