@@ -14,6 +14,16 @@ constexpr std::uint32_t corruption_after_return(std::uint32_t after_reset, std::
     return after_reset == 1 && before_return > 1 ? before_return : after_reset;
 }
 
+// A world reset does not give all its memory back, and a big mod loses tens of MB
+// each time (lab: 66 MB with Anbennar). So a return with less than this left of
+// the system's commit limit restarts the game: the memory comes back, and a
+// reset cannot fail halfway.
+constexpr std::uint64_t min_commit_for_return = 1ull << 30;
+
+constexpr bool enough_memory_for_return(std::uint64_t commit_available) noexcept {
+    return commit_available >= min_commit_for_return;
+}
+
 // SetNextIdler hands the new idler over on a later frame. The world is reset
 // only after that hand-over has destroyed the outgoing idler: once the menu is
 // both the updating and the current idler and nothing is queued after it.

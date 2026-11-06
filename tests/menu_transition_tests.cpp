@@ -103,5 +103,7 @@ int main() {
     check(corruption_after_return(1, 1) == 1, "the game's flag stays set");
     check(corruption_after_return(1, 2) == 2, "-nudge's reason comes back");
     check(corruption_after_return(0, 2) == 0, "nothing is set on a clean world");
+    check(hamweard::enough_memory_for_return(hamweard::min_commit_for_return), "the limit is enough");
+    check(!hamweard::enough_memory_for_return(hamweard::min_commit_for_return - 1), "below the limit the game restarts");
     std::puts("menu transition tests passed");
 }
