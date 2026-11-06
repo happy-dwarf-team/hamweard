@@ -82,12 +82,13 @@ both buttons restart the game as usual.
   differently.
 - **Not seen in a test:** some message popups (an heir to name, a new colonial nation), the
   window of a lost game, the end of the game in 1821, custom nations and Random New World.
-- **Memory grows by 5 to 15 MB per return,** and the menu stayed at full speed over 23
-  returns in a row. About eight windows per campaign stay in the GUI root too (see
+- **Memory grows with each return, more with a big mod.** The game's reset does not free all
+  it read. In the lab that was about 2 MB per **Back** and 8 MB per campaign without mods, and
+  about 60 MB and 220 MB with Anbennar. The time of a return stayed the same over 40 returns in
+  a row. About eight windows per campaign stay in the GUI root too (see
   [Windows a campaign leaves behind](#windows-a-campaign-leaves-behind)), but they are not the
-  cause: the game's own reload in a campaign leaves 29 windows each
-  time and memory stays flat. After many returns in one sitting, restart the game now and
-  then.
+  cause. When less than 1 GB of the system's commit limit is left, a return restarts the game
+  instead.
 - EU4 1.37.5 on Steam and the GOG build 1.37.5.2. On any other build Anvil does not load
   the plugin. The GOG build has no Steam lobby, so there is nothing to clean up there.
 
@@ -101,6 +102,7 @@ log says when the plugin chose a restart, and why.
 | Exit to Menu or Back restarts the game | The plugin is not loaded, or Anvil suspended it | Open the Anvil panel (`Ctrl+Shift+F12`): is Hamweard loaded and approved? An ironman campaign needs the opt-in, in the panel or on the Manager's **Plugins** tab. |
 | The same, and the log says `the map could not be put back` | A canal changed the map and the saved copy no longer fits it | Nothing to fix: a campaign does not start on the changed map, so the plugin restarts the game. |
 | The same, and the log says `multiplayer` | A multiplayer session ends with a restart | Expected. |
+| The same, and the log says `too little memory` | Less than 1 GB of the system's commit limit was left | Expected: the restart gives the memory back. |
 | Anvil refuses to load Hamweard | The game is another build, or the original EU4 Menu Patch changed the same code | Use EU4 1.37.5 on Steam or GOG 1.37.5.2, and remove the Menu Patch DLL. |
 | The game asks for a restart before multiplayer | The game's own rule after the single player screen, and a return keeps it | Restart the game once. |
 | Continue game does not show your ironman campaign | The game does not record ironman saves there | Load it from the Single Player list. |

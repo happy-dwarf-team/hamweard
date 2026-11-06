@@ -446,6 +446,16 @@ bool in_multiplayer_session() {
     return session && !at<std::uint8_t>(session, off::session_is_dummy);
 }
 
+// Why a return has to be the game's own restart, or null when it does not.
+const char* restart_reason() {
+    if (in_multiplayer_session()) return "in a multiplayer session";
+    MEMORYSTATUSEX memory{};
+    memory.dwLength = sizeof memory;
+    if (GlobalMemoryStatusEx(&memory) && !hamweard::enough_memory_for_return(memory.ullAvailPageFile))
+        return "with too little memory left";
+    return nullptr;
+}
+
 // In CInGameIdler::Idle, instead of setting exit + restart.
 void return_to_menu(Bytes idler) {
     Bytes app = at<Bytes>(idler, g_layout.idler_app);
@@ -546,8 +556,8 @@ struct Hamweard : anvil::Plugin {
         g_in_game_stock_path = static_cast<Bytes>(h.address(sym::in_game_menu_block)) + 7;
         g_pregame_stock_path = static_cast<Bytes>(h.address(sym::pregame_menu_block)) + 9;
         in_game = h.replace_block(sym::in_game_menu_block, [](anvil::Cpu& cpu) {
-            if (in_multiplayer_session()) {
-                host().info("Exit to Menu in a multiplayer session: the game restarts");
+            if (const char* why = restart_reason()) {
+                host().info("Exit to Menu {}: the game restarts", why);
                 cpu.rcx = cpu.rbp + 0x240;  // the block's own lea
                 cpu.rip = reinterpret_cast<std::uintptr_t>(g_in_game_stock_path);
                 return;
@@ -555,8 +565,8 @@ struct Hamweard : anvil::Plugin {
             return_to_menu(reinterpret_cast<Bytes>(cpu.r13));
         });
         pregame = h.replace_block(sym::pregame_menu_block, [](anvil::Cpu& cpu) {
-            if (in_multiplayer_session()) {
-                host().info("Back in a multiplayer lobby: the game restarts");
+            if (const char* why = restart_reason()) {
+                host().info("Back {}: the game restarts", why);
                 at<std::uint16_t>(reinterpret_cast<void*>(cpu.rbx), off::app_exit) = 0x0101;  // the block's own mov
                 cpu.rip = reinterpret_cast<std::uintptr_t>(g_pregame_stock_path);
                 return;
