@@ -8,11 +8,10 @@ anvil = ">=1.9.0"
 entry = "hamweard.dll"
 phase = "main"
 symbols = "symbols.toml"   # the game build comes from here
-# The next campaign starts in the same process instead of a fresh one, so state
-# the reset leaves behind could change it. Suspended in ironman (unless allowed) and in
-# multiplayer, where Exit to Menu restarts the game as without the plugin.
-affects_gameplay = true
-allow_ironman = "opt-in"
-allow_multiplayer = false
+# A return does not change the simulation: a new campaign after it matches one from a
+# fresh process with the same seed (lab: docs/hamweard-ironman-default.md). So Anvil does
+# not suspend the plugin, and multiplayer stays out by the plugin's own check: any session
+# ends with the game's restart, as without the plugin.
+affects_gameplay = false
 issues = "https://github.com/happy-dwarf-team/hamweard/issues"
 repository = "https://github.com/happy-dwarf-team/hamweard"

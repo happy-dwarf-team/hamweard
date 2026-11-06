@@ -17,10 +17,9 @@ starting the game again.
 It is a port of [EU4 Menu Patch](https://github.com/YozoraTempest/EU4-Menu-Patch) by VulonLok,
 under the MIT License (see [Thanks](#thanks)).
 
-**Status:** tested in the lab in single player, in ironman with the opt-in and with mods,
-Anbennar among them. Most of that ran on 1.1.0, before the state reset fixes of 1.1.2, which
-had their own runs (see [What was tested](#what-was-tested)). Multiplayer sessions are not
-tested.
+**Status:** tested in the lab in single player, in ironman and with mods, Anbennar among
+them. Most of that ran on 1.1.0, before the state reset fixes of 1.1.2, which
+had their own runs (see [What was tested](#what-was-tested)). Multiplayer had one test with a second player.
 
 ## Install and use
 
@@ -41,16 +40,15 @@ To go back to the main menu:
 - On the country selection screen: **Back**.
 
 The main menu comes back in a few seconds, in the same process, and **Continue game** points at
-your latest save, as after a restart. Without the plugin, or while Anvil keeps it suspended,
-both buttons restart the game as usual.
+your latest save, as after a restart. Without the plugin both buttons restart the game as usual.
 
 ## Limitations
 
-- **Gameplay.** `affects_gameplay = true`: the next campaign starts in the same process
-  instead of a fresh one, so anything the world reset leaves behind could change it. In
-  the lab a save made after three returns matched a save from a fresh process, apart from
-  the campaign id and the random seed. Anbennar matched too, after a return and after a plain
-  **Back** from the lobby.
+- **Gameplay.** `affects_gameplay = false`: a return does not change the simulation. The next
+  campaign starts in the same process instead of a fresh one, and in the lab a save made after
+  three returns matched a save from a fresh process, apart from the campaign id and the random
+  seed. Anbennar matched too, after a return and after a plain **Back** from the lobby. That is
+  a comparison of the campaigns and mods tested, not a proof for every mod.
 - **Canals.** A canal changes the map itself, and the map outlives the campaign. The game's
   reset takes the canal's links out, but leaves other movement costs and naval distances
   behind. So the plugin copies them before the first canal and puts them back on a return.
@@ -63,21 +61,23 @@ both buttons restart the game as usual.
   campaign from the same screen, and all province triggered modifiers are gone. The game
   does that too, with or without Hamweard. **Back** first clears it: the new campaign then
   matches one from a fresh start.
-- **Multiplayer: off, and sessions not tested.** `allow_multiplayer = false`. In any multiplayer
-  session, Exit to Menu and Back restart the game, as without the plugin. While a campaign with
-  other players runs, Anvil takes the plugin's changes out. In a lobby, and as a host alone in
-  the game, the plugin itself leaves by the game's restart.
+- **Multiplayer: no return, and one test with a second player.** In any multiplayer session,
+  Exit to Menu and Back restart the game, as without the plugin. The plugin checks that itself:
+  it stays loaded, in a lobby and in a game with other players, and Anvil does not take its
+  changes out. Tested on Steam with a host and a client, both with Hamweard: no desync in about
+  four months of game, a client who left and came back into the running campaign included.
 - **Multiplayer after a campaign needs a restart.** The game marks a process that has played
   as possibly corrupted, and only a fresh process is meant to go on to multiplayer. After a
   return the Multiplayer button does nothing, and its tooltip says why. Restart the game once.
-- **The Steam lobby clean-up has never run.** It is ported from the original, but no lobby was
-  hosted or joined.
-- **Ironman: off unless you allow it,** with **Allow in ironman** on the Manager's **Plugins**
-  tab (the plugin declares `allow_ironman = "opt-in"`). With the opt-in it worked on Steam and
-  GOG: the game saves when you leave and the save loads again. Without it the plugin is
-  suspended and Exit to Menu restarts the game. An ironman save does not update the game's
-  Continue game record, so after a return Continue game points at your last normal save. Load
-  the ironman save from the Single Player list.
+- **The Steam lobby clean-up has not run with a lobby open.** It is ported from the original,
+  and in a multiplayer session the game restarts instead.
+- **Ironman: on, with nothing to allow.** It works on Steam and GOG: the game saves when you
+  leave, the save loads again, and a new ironman campaign after a return says achievements can
+  be earned. One achievement was earned for real on Steam in a campaign after a return, so the
+  proof is one case and the game's own state. An `allow_ironman` entry for Hamweard in `anvil.toml` no longer does
+  anything. An ironman save does not update the game's Continue game record, so after a return
+  Continue game points at your last normal save. Load the ironman save from the Single Player
+  list.
 - **Mods: tested, not all of them.** No game file changes, so the checksum stays the same.
   Anbennar with Proper 2K UI and a playset of ten interface and graphics mods ran without
   trouble. A mod that does something unusual when a campaign ends may still behave
@@ -101,7 +101,7 @@ log says when the plugin chose a restart, and why.
 
 | What you see | Why | What to do |
 | --- | --- | --- |
-| Exit to Menu or Back restarts the game | The plugin is not loaded, or Anvil suspended it | Open the Anvil panel (`Ctrl+Shift+F12`): is Hamweard loaded and approved? An ironman campaign needs the opt-in, in the panel or on the Manager's **Plugins** tab. |
+| Exit to Menu or Back restarts the game | The plugin is not loaded | Open the Anvil panel (`Ctrl+Shift+F12`): is Hamweard loaded and approved? |
 | The same, and the log says `the map could not be put back` | A canal changed the map and the saved copy no longer fits it | Nothing to fix: a campaign does not start on the changed map, so the plugin restarts the game. |
 | The same, and the log says `multiplayer` | A multiplayer session ends with a restart | Expected. |
 | The same, and the log says `Random New World` | Such a map changes more than a return can put back | Expected. |
@@ -154,9 +154,8 @@ Game, or with a clean restart. 1.1.1 changes no code.
   windows.
 - **Multiplayer menu:** the Game Browser and a scan of the Internet list after a return,
   then Back. No hosting.
-- **Ironman with the opt-in:** Steam and GOG, new campaigns after a return, two in a row,
-  the save on leaving and loading it again. Without the opt-in: suspended, and Exit to Menu
-  restarted the game.
+- **Ironman with the opt-in of that version:** Steam and GOG, new campaigns after a return,
+  two in a row, the save on leaving and loading it again.
 - **Mods:** Anbennar with Proper 2K UI Enhanced (9 returns, returns in 5.5 to 6.6 seconds),
   and a copy of a ten-mod playset (8 returns, one campaign over a year long).
 - **Bellows 0.19.0 and the Anvil overlay alongside:** 23 returns in a row, the menu at
@@ -175,13 +174,19 @@ new campaign matched a fresh one, with no restart, 0 naval distances different a
 campaign id the only other difference. Anbennar, which applies a canal at every start,
 matched a fresh start the same day, and returned from ironman without a restart.
 
+Ironman on by default was tested on 5 November 2026, with no `anvil.toml` entry for the
+plugin, on Steam and GOG: no warning, achievements can be earned, and a return without a
+restart. On GOG a month of play after a return ran the game's achievement check on all 175
+achievements, as in a fresh process, and the game state in the save on leaving was the same,
+byte by byte, as with the game's own exit.
+
 The achievement list and the multiplayer check of 1.1.2 were tested that day too, with 27 returns in one process, 13 Exit to Menu and 14 Back, no restart and
 no crash. After a return the list stayed empty, and a normal save had no `achievement`
 block, also after an ironman save, a country change and a save that still has the block. An
 ironman save loaded after each of those had its 52 achievements, and a new ironman
 campaign said achievements can be earned.
 
-Not tested: multiplayer sessions and the Steam lobby clean-up, and the windows and modes
+Not tested: the Steam lobby clean-up with a lobby open, and the windows and modes
 listed under [Limitations](#limitations). The multiplayer check was read from the game's
 code only: the Host a server window was opened and cancelled, nothing was hosted or joined.
 
