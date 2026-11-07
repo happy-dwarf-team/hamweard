@@ -236,6 +236,19 @@ bytes = "48 83 EC 28 80 3D 81 F9 24 01 00 75 5E"
 rva = 0x10EE4C0
 bytes = "48 83 EC 28 80 3D 86 58 23 01 00 75 5E"
 
+[symbol.multiplayer_availability]
+memory = "code"
+signature = "int (void* frontend_view)"
+note = "CFrontEndView::GetMultiplayerAvailability: 5 is the tooltip's restart reason, which the game gives only with a Paradox session"
+
+[symbol.multiplayer_availability.build."eu4-1.37.5-steam-win64"]
+rva = 0x10EB5C0
+bytes = "48 89 5C 24 10 57 48 83 EC 20 48 8B 41 08 48 8B 88 30 03 00 00"
+
+[symbol.multiplayer_availability.build."eu4-1.37.5.2-gog-win64"]
+rva = 0x10E9BB0
+bytes = "48 89 5C 24 10 57 48 83 EC 20 48 8B 41 08 48 8B 88 28 03 00 00"
+
 [symbol.canal_logic_apply]
 bytes = "4C 8B DC 55 48 8B EC 48 81 EC 80 00 00 00"
 memory = "code"
