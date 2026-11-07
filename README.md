@@ -113,6 +113,9 @@ log says when the plugin chose a restart, and why.
 A crash or anything odd after a return: open an
 [issue](https://github.com/happy-dwarf-team/hamweard/issues) with `anvil.log`, and
 `Documents/Paradox Interactive/Europa Universalis IV/logs/error.log`, from that sitting.
+A question, or not sure it is a bug? Ask in `#help-and-bugs` on the team's
+[Discord server](https://discord.happydwarf.dev/) with the Hamweard tag; what the team confirms
+there is tracked in an issue.
 
 ## What was tested
 
