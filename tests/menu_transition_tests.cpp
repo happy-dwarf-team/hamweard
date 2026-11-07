@@ -22,6 +22,12 @@ int main() {
     check(hamweard::multiplayer_needs_restart(true, 2), "so does -nudge's reason");
     check(!hamweard::multiplayer_needs_restart(true, 0), "nothing played, nothing to ask");
     check(!hamweard::multiplayer_needs_restart(false, 1), "no return, as without the plugin");
+    check(hamweard::multiplayer_availability(0, true, 1) == hamweard::multiplayer_must_restart,
+          "without a Paradox session the tooltip still gives the reason");
+    check(hamweard::multiplayer_availability(5, true, 1) == 5, "the game's own answer stays");
+    check(hamweard::multiplayer_availability(4, true, 1) == 4, "so does another reason");
+    check(hamweard::multiplayer_availability(0, false, 1) == 0, "a fresh process stays available");
+    check(hamweard::multiplayer_availability(0, true, 0) == 0, "nothing played, nothing to say");
     {
         std::array<std::uint8_t, 2 * hamweard::adjacency_size> saved{}, current{};
         for (std::size_t i = 0; i < saved.size(); ++i) saved[i] = current[i] = static_cast<std::uint8_t>(i);

@@ -224,6 +224,7 @@ code first, then tested with a second player on 6 November 2026.
 | `0x78F250`, `ApplyCanalLogic` | rewrites the map's neighbours for a canal | the same, and before the first canal the plugin copies the map's links and naval distances, to put them back after the world reset |
 | `0x7E8470`, `CHistoryDataBase::Execute` | walks the history between two dates | does nothing while a return waits for its world reset: the new menu would walk it on the old world, which crashed after a start from a later date. In the reset's own walk it first validates the reloaded history, as the game does at startup: without that, triggers in history files stay unbound, and Anbennar's next campaign differed |
 | `0x10F0510`, the main menu's Multiplayer button | opens the multiplayer screen, whatever the game's check says | does nothing after a return in a process that has played |
+| `0x10EB5C0`, `CFrontEndView::GetMultiplayerAvailability` | gives the restart reason only with a Paradox session | gives it after a return without one too, so the button's tooltip always says why |
 | `0x14E9030` (GUI manager create), `0x10A0735` (popup window), `0x803270`, `0x81AF10` | create windows, build the campaign GUI | the same, and the plugin notes which windows belong to the campaign |
 
 The world's `PotentialCorruption` flag stays as the game keeps it through its reset. Only
@@ -270,7 +271,7 @@ ctest --test-dir build -C Release --output-on-failure
 cmake --build build --config Release --target hamweard-check
 ```
 
-The check target runs `anvil check --exe` on all 46 symbols and rewrites `symbols.lock`;
+The check target runs `anvil check --exe` on all 47 symbols and rewrites `symbols.lock`;
 commit it with `symbols.toml`. `hamweard-deploy` (with `EU4_DIR`) copies the plugin into
 the game folder.
 

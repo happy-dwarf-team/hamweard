@@ -22,6 +22,16 @@ constexpr bool multiplayer_needs_restart(bool returned, std::uint32_t corruption
     return returned && corruption != 0;
 }
 
+// GetMultiplayerAvailability's "restart first", the only answer that shows the reason.
+constexpr int multiplayer_must_restart = 5;
+
+// The game answers that only with a Paradox session, so without one (GOG without
+// an account, lab) the click stopped with no word. Another reason the game
+// already gives stays: only "available" turns into "restart first".
+constexpr int multiplayer_availability(int stock, bool returned, std::uint32_t corruption) noexcept {
+    return stock == 0 && multiplayer_needs_restart(returned, corruption) ? multiplayer_must_restart : stock;
+}
+
 // A world reset does not give all its memory back, and a big mod loses tens of MB
 // each time (lab: 66 MB with Anbennar). So a return with less than this left of
 // the system's commit limit restarts the game: the memory comes back, and a
