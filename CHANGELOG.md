@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/happy-dwarf-team/hamweard/compare/v1.2.0...v1.2.1) (2026-11-07)
+
+
+### Bug Fixes
+
+* explain the Multiplayer click after a return without a Paradox session ([#48](https://github.com/happy-dwarf-team/hamweard/issues/48)) ([78ca9ec](https://github.com/happy-dwarf-team/hamweard/commit/78ca9ec051447dcc950bd37bd51fc41136762157))
+
 ## [1.2.0](https://github.com/happy-dwarf-team/hamweard/compare/v1.1.4...v1.2.0) (2026-11-06)
 
 
