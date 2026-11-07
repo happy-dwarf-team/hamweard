@@ -82,8 +82,7 @@ your latest save, as after a restart. Without the plugin both buttons restart th
   Anbennar with Proper 2K UI and a playset of ten interface and graphics mods ran without
   trouble. A mod that does something unusual when a campaign ends may still behave
   differently.
-- **Not seen in a test:** some message popups (an heir to name, a new colonial nation), the
-  window of a lost game.
+- **Not seen in a test:** some message popups (an heir to name, a new colonial nation).
 - **Memory grows with each return, more with a big mod.** The game's reset does not free all
   it read. In the lab that was about 2 MB per **Back** and 8 MB per campaign without mods, and
   about 60 MB and 220 MB with Anbennar. The time of a return stayed the same over 40 returns in
@@ -194,6 +193,7 @@ seed each time. Save lines are compared with a campaign from a fresh process.
 | Steam, Anbennar in ironman | 3 | the same |
 | Steam, Warhammer Fantasy Universalis | 4 | 1,964,700 lines, the same |
 | Steam, end of the game in 1821 from a 64.5 MB save | 1 | 1,681,452 lines, the same |
+| Steam, the window of a lost game, then Quit | 1 | 1,681,409 lines, the same |
 | GOG, no mods | 16, no crash, then 1 before a compared save | 1,648,632 lines, the same |
 
 A return took 3.3 to 3.8 seconds with **Back** and 5.5 to 6 with **Exit to Menu** without mods,
