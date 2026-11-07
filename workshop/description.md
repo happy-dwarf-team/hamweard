@@ -39,6 +39,9 @@ Yes, on the GOG build 1.37.5.2. GOG has no Workshop, so install Hamweard from th
 ### Why "Hamweard"?
 Old English *hāmweard* means "homeward". The mod takes you from a campaign back to the main menu as if back home, without a restart on the way. Our other tools are named after the forge (Anvil, Bellows, Tongs, Etch); this one is the walk home after a day at it.
 
+### Something's wrong. Where do I ask?
+In **#help-and-bugs** on our [Discord server](https://discord.happydwarf.dev/) (pick the Hamweard tag), or in a [GitHub issue](https://github.com/happy-dwarf-team/hamweard/issues/new/choose). What we confirm on Discord goes to GitHub too.
+
 ### What is that little dwarf head on the thumbnail?
 If you check the mod's GitHub page, you will notice the repository belongs to Happy Dwarf Team.
 
