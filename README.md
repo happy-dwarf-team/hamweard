@@ -153,7 +153,7 @@ Game, or with a clean restart. 1.1.1 changes no code.
 - **Naval battles:** four campaigns with a war at sea and at least six end-of-naval-battle
   windows.
 - **Multiplayer menu:** the Game Browser and a scan of the Internet list after a return,
-  then Back. No hosting.
+  then Back. No hosting. From 1.2.0 the button does nothing after a return.
 - **Ironman with the opt-in of that version:** Steam and GOG, new campaigns after a return,
   two in a row, the save on leaving and loading it again.
 - **Mods:** Anbennar with Proper 2K UI Enhanced (9 returns, returns in 5.5 to 6.6 seconds),
@@ -219,6 +219,7 @@ code first, then tested with a second player on 6 November 2026.
 | `0x890D00`, `CMapRandomize::Randomize` | builds a Random New World map | the same, and the plugin notes it: from then on a return takes the game's restart |
 | `0x78F250`, `ApplyCanalLogic` | rewrites the map's neighbours for a canal | the same, and before the first canal the plugin copies the map's links and naval distances, to put them back after the world reset |
 | `0x7E8470`, `CHistoryDataBase::Execute` | walks the history between two dates | does nothing while a return waits for its world reset: the new menu would walk it on the old world, which crashed after a start from a later date. In the reset's own walk it first validates the reloaded history, as the game does at startup: without that, triggers in history files stay unbound, and Anbennar's next campaign differed |
+| `0x10F0510`, the main menu's Multiplayer button | opens the multiplayer screen, whatever the game's check says | does nothing after a return in a process that has played |
 | `0x14E9030` (GUI manager create), `0x10A0735` (popup window), `0x803270`, `0x81AF10` | create windows, build the campaign GUI | the same, and the plugin notes which windows belong to the campaign |
 
 The world's `PotentialCorruption` flag stays as the game keeps it through its reset. Only
@@ -265,7 +266,7 @@ ctest --test-dir build -C Release --output-on-failure
 cmake --build build --config Release --target hamweard-check
 ```
 
-The check target runs `anvil check --exe` on all 45 symbols and rewrites `symbols.lock`;
+The check target runs `anvil check --exe` on all 46 symbols and rewrites `symbols.lock`;
 commit it with `symbols.toml`. `hamweard-deploy` (with `EU4_DIR`) copies the plugin into
 the game folder.
 
