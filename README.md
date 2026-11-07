@@ -160,6 +160,10 @@ Game, or with a clean restart. 1.1.1 changes no code.
   and a copy of a ten-mod playset (8 returns, one campaign over a year long).
 - **Bellows 0.19.0 and the Anvil overlay alongside:** 23 returns in a row, the menu at
   163 frames per second at the end.
+- **Bellows 1.3.0 with default settings and the overlay alongside (7 November 2026, Steam,
+  Hamweard 1.2.0 and Anvil 1.13.0 from the release files):** after 5 returns without mods and
+  3 with Anbennar, a new campaign matched one from a fresh process with Bellows, 1,681,409 and
+  5,764,559 lines, only the campaign id differs. One run each, no crash.
 - **GOG:** a save made on GOG, Continue game, ironman, a campaign of 400 days, 5 returns.
 
 The state reset fixes of 1.1.2 were tested the same day. The same seed gave the same new
