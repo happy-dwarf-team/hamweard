@@ -16,6 +16,8 @@ Your next campaign starts in a game that already played one, and that changes no
 
 [![](https://anvil.happydwarf.dev/workshop/hamweard-docs.png)](https://anvil.happydwarf.dev/plugins/hamweard/) [![](https://anvil.happydwarf.dev/workshop/hamweard-github.png)](https://github.com/happy-dwarf-team/hamweard)
 
+[![](https://anvil.happydwarf.dev/workshop/discord-en.png)](https://discord.happydwarf.dev/)
+
 ![](https://anvil.happydwarf.dev/workshop/hamweard-faq.png)
 
 ### Why do I have to approve it?
