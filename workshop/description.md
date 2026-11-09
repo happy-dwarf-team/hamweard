@@ -12,7 +12,7 @@ Needs [Anvil](https://anvil.happydwarf.dev/) 1.9 or newer and EU4 1.37.5 (Steam;
 
 ![](https://anvil.happydwarf.dev/workshop/hamweard-tiles.png)
 
-Your next campaign starts in a game that already played one, and that changes nothing we could find: in our tests a new campaign after a return matched one from a fresh start, with Anbennar and with canals too. So Hamweard works in ironman, with nothing to allow. Not tested yet: a multiplayer game itself, and earning an achievement for real after a return.
+Your next campaign starts in a game that already played one, and that changes nothing we could find: in our tests a new campaign after a return matched one from a fresh start, with Anbennar and with canals too. So Hamweard works in ironman, with nothing to allow. Tested only once each so far: a multiplayer game with a second player, and an achievement earned for real after a return.
 
 [![](https://anvil.happydwarf.dev/workshop/hamweard-docs.png)](https://anvil.happydwarf.dev/plugins/hamweard/) [![](https://anvil.happydwarf.dev/workshop/hamweard-github.png)](https://github.com/happy-dwarf-team/hamweard)
 
