@@ -550,7 +550,7 @@ void* on_if_effect_delete(void* effect, std::uint32_t flags) noexcept {
 
 // ReadCountryFiles gives each country a bool[] of its idea groups (operator new[]),
 // and CCountry's destructor never frees it, so each reset lost one per country
-// (lab: 2.5 MB with Anbennar, 0.7 MB without). Freed with the game's own delete
+// (lab: 2.6 MB with Anbennar, 0.8 MB without). Freed with the game's own delete
 // just before the reset destroys the countries; the countries that the reset reads
 // get a new one, and the game checks for a missing one before it clears it.
 std::size_t free_idea_group_flags() {
