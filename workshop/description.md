@@ -6,7 +6,7 @@ Normally **Exit to Menu** in a campaign and **Back** on the country selection sc
 
 ![](https://anvil.happydwarf.dev/workshop/hamweard-steps.png)
 
-Needs [Anvil](https://anvil.happydwarf.dev/) 1.9 or newer and EU4 1.37.5 (Steam; the GOG build 1.37.5.2 too, see the FAQ). If Windows warns about Anvil, choose **More info**, then **Run anyway**. If you use the original EU4 Menu Patch, remove it first.
+Needs [Anvil](https://anvil.happydwarf.dev/) 1.9 or newer and EU4 1.37.5 (Steam; GOG's 1.37.5.2 and 1.37.5.0 too, see the FAQ). If Windows warns about Anvil, choose **More info**, then **Run anyway**. If you use the original EU4 Menu Patch, remove it first.
 
 ![](https://anvil.happydwarf.dev/workshop/hamweard-tiles-title.png)
 
@@ -36,7 +36,7 @@ Ironman, yes, with nothing to allow. The checksum stays the same and the game sa
 It is a port of it, with the original author's research and licence. It runs on Anvil instead of its own loader, and it also clears the windows a campaign leaves behind, which in our tests made a later campaign crash. Use one or the other, not both.
 
 ### I play on GOG. Can I use it?
-Yes, on the GOG build 1.37.5.2. GOG has no Workshop, so install Hamweard from the **Catalog** tab in Anvil Manager, or from the release zip on [GitHub](https://github.com/happy-dwarf-team/hamweard/releases). The road home is the same from either gate.
+Yes, on the GOG builds 1.37.5.2 and 1.37.5.0 (1.37.5.0 needs Anvil 1.16 or newer). GOG has no Workshop, so install Hamweard from the **Catalog** tab in Anvil Manager, or from the release zip on [GitHub](https://github.com/happy-dwarf-team/hamweard/releases). The road home is the same from either gate.
 
 ### Why "Hamweard"?
 Old English *hāmweard* means "homeward". The mod takes you from a campaign back to the main menu as if back home, without a restart on the way. Our other tools are named after the forge (Anvil, Bellows, Tongs, Etch); this one is the walk home after a day at it.

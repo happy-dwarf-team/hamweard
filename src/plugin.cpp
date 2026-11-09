@@ -90,10 +90,11 @@ constexpr std::ptrdiff_t achievements_loaded_begin = 0x88;  // CArray<short>
 constexpr std::ptrdiff_t achievements_loaded_end = 0x90;
 }  // namespace off
 
-// The offsets that differ on GOG 1.37.5.2 (its eu4.pdb, and the same code in
-// both builds): CInGameIdler's fields from its CEU4Application pointer on, and
-// CFrontEnd's view state and size. CEU4Application, the widgets and the
-// world's PotentialCorruption have the same layout.
+// The offsets that differ on the GOG builds 1.37.5.2 and 1.37.5.0 (their
+// eu4.pdb, and the same code in all builds): CInGameIdler's fields from its
+// CEU4Application pointer on, and CFrontEnd's view state and size.
+// CEU4Application, the widgets and the world's PotentialCorruption have the
+// same layout. Both GOG builds have the same layouts.
 struct Layout {
     std::ptrdiff_t idler_app;
     std::ptrdiff_t idler_minimap;
@@ -105,6 +106,13 @@ struct Layout {
 constexpr Layout kSteam{0x330, 0x10E0, 0x12E9, 0x1400, 0x900, 0xB48};
 constexpr Layout kGog{0x328, 0x10D0, 0x12D9, 0x13F0, 0x8F0, 0xB38};
 Layout g_layout = kSteam;
+
+// A build symbols.toml declares for GOG. Anvil loads the plugin only on a build the file lists.
+bool is_gog_build(const char* build) {
+    if (!build) return false;
+    const std::string_view id(build);
+    return id == "eu4-1.37.5.2-gog-win64" || id == "eu4-1.37.5.0-gog-win64";
+}
 
 using TickFn = void(void* idler, bool update);
 using RestoreFn = void(void* idler);
@@ -566,7 +574,7 @@ struct Hamweard : anvil::Plugin {
         g_custom_nation_used = h.data(sym::custom_nation_used);
         g_map = h.data(sym::map);
         const char* build = h.game().build_id;
-        g_layout = build && std::string_view(build) == "eu4-1.37.5.2-gog-win64" ? kGog : kSteam;
+        g_layout = is_gog_build(build) ? kGog : kSteam;
         g_minimap_vtable = h.address(sym::minimap_vtable);
         // The GOG build has no Steam lobby: its four symbols are absent there.
         if (h.present(sym::steam_lobby_vtable)) {

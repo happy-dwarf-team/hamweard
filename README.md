@@ -7,7 +7,7 @@
 
 **Back to the main menu without restarting the game.** Hamweard is an
 [Anvil](https://github.com/happy-dwarf-team/anvil) plugin for Europa Universalis IV 1.37.5
-(Steam, and GOG 1.37.5.2, Windows x64). **Back** on the country selection screen and **Exit to
+(Steam, and GOG 1.37.5.2 and 1.37.5.0, Windows x64). **Back** on the country selection screen and **Exit to
 Menu** in a campaign take you to the main menu in a few seconds, instead of closing and
 starting the game again.
 
@@ -90,8 +90,8 @@ your latest save, as after a restart. Without the plugin both buttons restart th
   [Windows a campaign leaves behind](#windows-a-campaign-leaves-behind)), but they are not the
   cause. When less than 1 GB of the system's commit limit is left, a return restarts the game
   instead.
-- EU4 1.37.5 on Steam and the GOG build 1.37.5.2. On any other build Anvil does not load
-  the plugin. The GOG build has no Steam lobby, so there is nothing to clean up there.
+- EU4 1.37.5 on Steam and the GOG builds 1.37.5.2 and 1.37.5.0 (1.37.5.0 from Anvil 1.16). On any
+  other build Anvil does not load the plugin. The GOG builds have no Steam lobby, so there is nothing to clean up there.
 
 ## Troubleshooting
 
@@ -105,7 +105,7 @@ log says when the plugin chose a restart, and why.
 | The same, and the log says `multiplayer` | A multiplayer session ends with a restart | Expected. |
 | The same, and the log says `Random New World` | Such a map changes more than a return can put back | Expected. |
 | The same, and the log says `too little memory` | Less than 1 GB of the system's commit limit was left | Expected: the restart gives the memory back. |
-| Anvil refuses to load Hamweard | The game is another build, or the original EU4 Menu Patch changed the same code | Use EU4 1.37.5 on Steam or GOG 1.37.5.2, and remove the Menu Patch DLL. |
+| Anvil refuses to load Hamweard | The game is another build, or the original EU4 Menu Patch changed the same code | Use EU4 1.37.5 on Steam or GOG 1.37.5.2 or 1.37.5.0, and remove the Menu Patch DLL. |
 | The Multiplayer button does nothing after a return | The process has played, and only a fresh one goes on to multiplayer | Restart the game once. |
 | Continue game does not show your ironman campaign | The game does not record ironman saves there | Load it from the Single Player list. |
 | Province triggered modifiers are gone in a new campaign | A game bug: a save was clicked in the list before the new campaign | Press **Back** after clicking a save, then start the campaign. |
