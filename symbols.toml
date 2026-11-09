@@ -486,6 +486,15 @@ build."eu4-1.37.5-steam-win64" = { rva = 0x5ED370 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x5ECE40 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x5ECE40 }
 
+[symbol.history_move]
+bytes = "48 89 5C 24 20 57 41 54 41 55 41 56 41 57 48 83 EC 20"
+memory = "code"
+signature = "void (void* history, const void* date)"
+note = "CHistoryDataBase::MoveIntoGameState (from CCurrentGameState::InitializeNewGame, a new campaign): moves the history into the countries and deletes the entries that cannot move, the effects among them"
+build."eu4-1.37.5-steam-win64" = { rva = 0x7E9490 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x7E8800 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x7E8800 }
+
 [symbol.country_db]
 memory = "write"
 type = "uintptr_t"

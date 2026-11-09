@@ -162,6 +162,7 @@ anvil::HookOf<sym::history_execute> g_history_execute;
 anvil::HookOf<sym::multiplayer_click> g_multiplayer_click;
 anvil::HookOf<sym::multiplayer_availability> g_multiplayer_availability;
 anvil::HookOf<sym::if_effect_delete> g_if_effect_delete;
+anvil::HookOf<sym::history_move> g_history_move;
 bool g_returned_to_menu = false;
 std::uintptr_t* g_manager_global = nullptr;
 std::ptrdiff_t g_registry_begin = 0;
@@ -514,8 +515,11 @@ void return_to_menu(Bytes idler) {
 // the if but not _pElse, the else_if/else branch AddElse chained to it, which only
 // that pointer holds; so each reset lost every such branch with its subtree (lab:
 // about 60 MB per return with Anbennar, whose country history
-// calls scripted effects full of else_if). Only during the plugin's own reset: in
-// the rest of the game the detour passes the call on unchanged.
+// calls scripted effects full of else_if). The start of a new campaign deletes the
+// history's effect entries too (MoveIntoGameState: they cannot move into the game
+// state), and lost their branches the same way, about 60 MB per campaign there. Only
+// during the plugin's own reset and that move: in the rest of the game the detour
+// passes the call on unchanged.
 std::atomic<bool> g_resetting{false};
 std::atomic<std::uint32_t> g_else_branches_freed{0};
 
@@ -562,6 +566,15 @@ void reset_world(Bytes app) {
     game(sym::reset_game, app, false);
     g_resetting.store(false, std::memory_order_relaxed);
     host().info("memory the reset would lose: {} idea group tables, {} else branches freed", idea_groups,
+                g_else_branches_freed.load(std::memory_order_relaxed));
+}
+
+void on_history_move(void* history, const void* date) noexcept {
+    g_else_branches_freed.store(0, std::memory_order_relaxed);
+    g_resetting.store(true, std::memory_order_relaxed);
+    g_history_move.next(history, date);
+    g_resetting.store(false, std::memory_order_relaxed);
+    host().info("new campaign: {} else branches of the history's effects freed",
                 g_else_branches_freed.load(std::memory_order_relaxed));
 }
 
@@ -694,6 +707,7 @@ struct Hamweard : anvil::Plugin {
         h.hook(g_multiplayer_click, sym::multiplayer_click, on_multiplayer_click);
         h.hook(g_multiplayer_availability, sym::multiplayer_availability, on_multiplayer_availability);
         h.hook(g_if_effect_delete, sym::if_effect_delete, on_if_effect_delete);
+        h.hook(g_history_move, sym::history_move, on_history_move);
         // Recording starts with the in-game idler (its views make windows
         // while a save loads) and again at each GUI build (the HUD reload).
         const auto record = [] {
