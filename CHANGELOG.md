@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/happy-dwarf-team/hamweard/compare/v1.3.0...v1.3.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* free the memory a return lost to else branches and idea group tables ([#61](https://github.com/happy-dwarf-team/hamweard/issues/61)) ([4422df5](https://github.com/happy-dwarf-team/hamweard/commit/4422df5bc36a32b102b315cfe590d191ddee595e))
+
 ## [1.3.0](https://github.com/happy-dwarf-team/hamweard/compare/v1.2.1...v1.3.0) (2026-11-09)
 
 ### Features
