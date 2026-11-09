@@ -203,6 +203,15 @@ build."eu4-1.37.5-steam-win64" = { rva = 0x1A332D4 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x1A1CF54 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x1A1CF54 }
 
+[symbol.game_free]
+bytes = "E9 2B 45 02 00"                  # jmp to the allocator's free
+memory = "code"
+signature = "void (void* memory)"
+note = "the game's operator delete[] (and the other deletes folded into it), which frees what operator new[] gave"
+build."eu4-1.37.5-steam-win64" = { rva = 0x17394F0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1723170 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1723170 }
+
 [symbol.main_menu_construct]
 bytes = "48 8B C4 48 89 58 10 48 89 70 18 48 89 78 20 48 89 48 08 55"
 memory = "code"
@@ -465,3 +474,49 @@ note = "CustomCountryManager::_bAnyActionTaken: a custom nation was created in t
 build."eu4-1.37.5-steam-win64" = { rva = 0x233D911 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x2321791 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x2321791 }
+
+# --- memory a return would lose ---
+
+[symbol.if_effect_delete]
+bytes = "48 89 5C 24 08 48 89 74 24 10 57 48 83 EC 20 48 8B D9 8B F2"
+memory = "code"
+signature = "void* (void* effect, uint32_t flags)"
+note = "CIfEffect's scalar deleting destructor (vtable slot 0): it never frees _pElse (+0xF0), the else_if/else branch chained to the if"
+build."eu4-1.37.5-steam-win64" = { rva = 0x5ED370 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x5ECE40 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x5ECE40 }
+
+[symbol.history_move]
+bytes = "48 89 5C 24 20 57 41 54 41 55 41 56 41 57 48 83 EC 20"
+memory = "code"
+signature = "void (void* history, const void* date)"
+note = "CHistoryDataBase::MoveIntoGameState (from CCurrentGameState::InitializeNewGame, a new campaign): moves the history into the countries and deletes the entries that cannot move, the effects among them"
+build."eu4-1.37.5-steam-win64" = { rva = 0x7E9490 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x7E8800 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x7E8800 }
+
+[symbol.history_destroy]
+bytes = "48 89 5C 24 18 48 89 74 24 20 57 41 56 41 57 48 83 EC 40"
+memory = "code"
+signature = "void (void* history)"
+note = "CHistoryDataBase::DestroyDatabase: from ResetGame, the load of a save (CGameStateLoadTask) and the application's destructor"
+build."eu4-1.37.5-steam-win64" = { rva = 0x7E9820 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x7E8B90 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x7E8B90 }
+
+[symbol.save_load_task]
+bytes = "48 89 4C 24 08 53 56 57 41 54 41 55 41 56 41 57 48 81 EC C0 01 00 00"
+memory = "code"
+signature = "void (void* task)"
+note = "CGameStateLoadTask::operator(): the load of a save, which destroys the history first"
+build."eu4-1.37.5-steam-win64" = { rva = 0x5CF740 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x5CF210 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x5CF210 }
+
+[symbol.country_db]
+memory = "write"
+type = "uintptr_t"
+note = "CCountryDataBase::_pInstance: the country count at +0x100, the CCountry* array at +0x118"
+build."eu4-1.37.5-steam-win64" = { rva = 0x233D8D0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x2321750 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x2321750 }

@@ -85,10 +85,13 @@ your latest save, as after a restart. Without the plugin both buttons restart th
   trouble. A mod that does something unusual when a campaign ends may still behave
   differently.
 - **Not seen in a test:** some message popups (an heir to name, a new colonial nation).
-- **Memory grows with each return, more with a big mod.** The game's reset does not free all
-  it read. In the lab that was about 2 MB per **Back** and 8 MB per campaign without mods, and
-  about 60 MB and 220 MB with Anbennar. The time of a return stayed the same over 40 returns in
-  a row. About eight windows per campaign stay in the GUI root too (see
+- **Memory still grows with each return, more with a big mod.** The game's reset does not
+  free all it read. Hamweard frees what the lab found in the history and the country files
+  (see [Memory a return used to lose](#memory-a-return-used-to-lose)): with Anbennar that was
+  about 60 MB per **Back** and per campaign. What stays is mostly the last campaign's world and
+  GUI: in the lab a **Back** left about 5 MB with Anbennar and 8 MB without mods, and in a row
+  of returns the game grew by about 45 MB per return with Anbennar and 20 MB without mods. The time of a return
+  stayed the same over 40 returns in a row. About eight windows per campaign stay in the GUI root too (see
   [Windows a campaign leaves behind](#windows-a-campaign-leaves-behind)), but they are not the
   cause. When less than 1 GB of the system's commit limit is left, a return restarts the game
   instead.
@@ -212,6 +215,15 @@ block, also after an ironman save, a country change and a save that still has th
 ironman save loaded after each of those had its 52 achievements, and a new ironman
 campaign said achievements can be earned.
 
+The memory fixes were tested on 9 November 2026 (lab `docs/hamweard-memory-fix.md`), with
+a heap tracer and in returns in a row with new and loaded campaigns, the save of a new
+campaign after the returns compared with one from a fresh start (`-seed=12345`):
+
+| Game | Returns in one process | Crashes | New campaign after the returns |
+| --- | --- | --- | --- |
+| Steam, Anbennar | 22 (12 campaigns, 5 of them loaded; before the fix for loaded saves) and 11 (8, 5 loaded) | 0 | 5,764,559 lines, the same as a fresh start with Hamweard and one without it |
+| GOG 1.37.5.2, no mods | 22 (12, 5 loaded; before the fix for loaded saves) and 11 (8, 5 loaded) | 0 | 1,648,632 lines, the same |
+
 Not tested: the Steam lobby clean-up with a lobby open, and the windows and modes
 listed under [Limitations](#limitations). The multiplayer check was read from the game's
 code first, then tested with a second player on 6 November 2026.
@@ -231,6 +243,9 @@ code first, then tested with a second player on 6 November 2026.
 | `0x10F0510`, the main menu's Multiplayer button | opens the multiplayer screen, whatever the game's check says | does nothing after a return in a process that has played |
 | `0x10EB5C0`, `CFrontEndView::GetMultiplayerAvailability` | gives the restart reason only with a Paradox session | gives it after a return without one too, so the button's tooltip always says why |
 | `0x14E9030` (GUI manager create), `0x10A0735` (popup window), `0x803270`, `0x81AF10` | create windows, build the campaign GUI | the same, and the plugin notes which windows belong to the campaign |
+| `0x5ED370`, `CIfEffect`'s deleting destructor | frees an `if` effect but not the `else_if`/`else` branches chained to it | while the world resets, a new campaign starts or a save loads, deletes those branches too; elsewhere the stock destructor alone (see [Memory a return used to lose](#memory-a-return-used-to-lose)) |
+| `0x7E9490`, `CHistoryDataBase::MoveIntoGameState`; `0x7E9820`, `DestroyDatabase`; `0x5CF740`, `CGameStateLoadTask` | a new campaign deletes the history's effects; a save's load and the reset destroy the history | the same, with the branches freed for their duration; the game's exit stays the stock one |
+| `0x233D8D0`, `CCountryDataBase` | each country keeps a table of its idea groups, which the country's destructor never frees | frees the tables with the game's own `delete[]` just before the world reset |
 
 The world's `PotentialCorruption` flag stays as the game keeps it through its reset. Only
 the `-nudge` reason (2), which the reset flattens to 1, is put back. Earlier versions, like
@@ -242,6 +257,30 @@ A return took 3.5 to 4 seconds in the lab, and about 3 of those are the game's o
 reset (`ResetGame`). Almost all of that re-reads the databases and the history from disk,
 which is what gives the next campaign a clean start, so the plugin does not skip it.
 Loading a save from the menu is the game's own path, and Hamweard adds nothing to it.
+
+## Memory a return used to lose
+
+The game's reset destroys the history it read and reads it again, and in three places the
+game loses part of what it destroys. 1.37.5 restarts the process instead, so it never adds up
+there. The lab found them with a heap tracer (eu4-engine-lab, 9 November 2026):
+
+- **`else_if`/`else` branches.** `CIfEffect`'s destructor frees the `if` but not `_pElse`
+  (`+0xF0`), the chain of branches that follows it in a script, and nothing else points to
+  them. Each time the history was destroyed, every such branch was lost with all it holds.
+  Anbennar's country history calls scripted effects full of `else_if`: about 60 MB each
+  time, at every **Back**, every new campaign and every save loaded. Without mods it is a few
+  kilobytes. The plugin deletes the branches only while the world resets, a new campaign
+  moves the history in, or a save's load destroys the old history; the rest of the game,
+  its exit among it, keeps the stock destructor.
+- **Idea group tables.** Each country gets a `bool[]` of its idea groups when the country
+  files are read, and the country's destructor never frees it: 2.6 MB per return with
+  Anbennar, 0.8 MB without mods. The plugin frees them with the game's own `delete[]` just
+  before the reset.
+
+With both, the tracer found nothing left of either after a **Back**, a new campaign, or a
+loaded one. What a return still leaves is mostly the last campaign's world and GUI (about
+35 to 55 MB without mods and 70 to 100 MB with Anbennar after a campaign, as before), and a
+small part of the history of each campaign's countries.
 
 ## Windows a campaign leaves behind
 

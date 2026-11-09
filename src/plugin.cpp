@@ -88,6 +88,11 @@ constexpr std::ptrdiff_t session_is_dummy = 0x55;    // CSession::_bIsDummy, sin
 
 constexpr std::ptrdiff_t achievements_loaded_begin = 0x88;  // CArray<short>
 constexpr std::ptrdiff_t achievements_loaded_end = 0x90;
+
+constexpr std::ptrdiff_t if_effect_else = 0xF0;          // CIfEffect::_pElse, the next else_if/else branch
+constexpr std::ptrdiff_t country_db_count = 0x100;       // CCountryDataBase::_nNumberOfCountries
+constexpr std::ptrdiff_t country_db_countries = 0x118;   // its CCountry* array, as ReadCountryFiles walks it
+constexpr std::ptrdiff_t country_has_idea_group = 0x10A0;  // CCountry::_HasIdeaGroup, a bool[]
 }  // namespace off
 
 // The offsets that differ on the GOG builds 1.37.5.2 and 1.37.5.0 (their
@@ -124,6 +129,7 @@ std::uintptr_t* g_world = nullptr;    // the global holding the root object
 std::uintptr_t* g_history = nullptr;  // the global holding the history
 std::uintptr_t* g_trigger_db = nullptr;  // CTriggerDataBase's instance: alive only while the game loads
 std::uint8_t* g_custom_nation_used = nullptr;  // only a restart clears it, and the lobby reads it
+std::uintptr_t* g_country_db = nullptr;
 void* g_lobby_vtable = nullptr;  // null on a build without the Steam lobby (GOG)
 void* g_minimap_vtable = nullptr;
 UnregisterCallResultFn* g_unregister_call_result = nullptr;
@@ -155,6 +161,10 @@ anvil::HookOf<sym::gui_create_window> g_create_window;
 anvil::HookOf<sym::history_execute> g_history_execute;
 anvil::HookOf<sym::multiplayer_click> g_multiplayer_click;
 anvil::HookOf<sym::multiplayer_availability> g_multiplayer_availability;
+anvil::HookOf<sym::if_effect_delete> g_if_effect_delete;
+anvil::HookOf<sym::history_move> g_history_move;
+anvil::HookOf<sym::history_destroy> g_history_destroy;
+anvil::HookOf<sym::save_load_task> g_save_load_task;
 bool g_returned_to_menu = false;
 std::uintptr_t* g_manager_global = nullptr;
 std::ptrdiff_t g_registry_begin = 0;
@@ -503,6 +513,108 @@ void return_to_menu(Bytes idler) {
     construct_menu(app, reason);
 }
 
+// ResetGame destroys the history and reads it again. CIfEffect's destructor frees
+// the if but not _pElse, the else_if/else branch AddElse chained to it, which only
+// that pointer holds; so each reset lost every such branch with its subtree (lab:
+// about 60 MB per return with Anbennar, whose country history calls scripted effects
+// full of else_if). The game loses them the same way where it deletes the history's
+// effects elsewhere: the start of a new campaign (MoveIntoGameState: effects cannot
+// move into the game state) and the load of a save (DestroyDatabase). Only in those
+// windows: in the rest of the game, the game's exit among it, the detour passes the
+// call on unchanged. A counter, as the history's destruction runs inside the reset.
+std::atomic<int> g_free_else{0};
+std::atomic<int> g_loading_save{0};  // inside CGameStateLoadTask, which destroys the history first
+
+class FreeElseWindow {
+public:
+    FreeElseWindow() { g_free_else.fetch_add(1, std::memory_order_relaxed); }
+    ~FreeElseWindow() { g_free_else.fetch_sub(1, std::memory_order_relaxed); }
+    FreeElseWindow(const FreeElseWindow&) = delete;
+    FreeElseWindow& operator=(const FreeElseWindow&) = delete;
+};
+std::atomic<std::uint32_t> g_else_branches_freed{0};
+
+void* on_if_effect_delete(void* effect, std::uint32_t flags) noexcept {
+    if (g_free_else.load(std::memory_order_relaxed) <= 0) return g_if_effect_delete.next(effect, flags);
+    void* branch = std::exchange(at<void*>(effect, off::if_effect_else), nullptr);
+    void* result = g_if_effect_delete.next(effect, flags);
+    if (branch) {
+        // Slot 0 with 1, as the game deletes an effect: a CIfEffect again, so a
+        // chain of branches goes through this detour one by one.
+        using DeleteFn = void* (*)(void* effect, std::uint32_t flags);
+        at<DeleteFn>(at<void*>(branch, 0), 0)(branch, 1);
+        g_else_branches_freed.fetch_add(1, std::memory_order_relaxed);
+    }
+    return result;
+}
+
+// ReadCountryFiles gives each country a bool[] of its idea groups (operator new[]),
+// and CCountry's destructor never frees it, so each reset lost one per country
+// (lab: 2.6 MB with Anbennar, 0.8 MB without). Freed with the game's own delete
+// just before the reset destroys the countries; the countries that the reset reads
+// get a new one, and the game checks for a missing one before it clears it.
+std::size_t free_idea_group_flags() {
+    Bytes db = reinterpret_cast<Bytes>(*g_country_db);
+    if (!db) return 0;
+    const std::int32_t count = at<std::int32_t>(db, off::country_db_count);
+    Bytes* countries = at<Bytes*>(db, off::country_db_countries);
+    if (!countries) return 0;
+    std::size_t freed = 0;
+    for (std::int32_t i = 0; i < count; ++i) {
+        if (!countries[i]) continue;
+        if (void* flags = std::exchange(at<void*>(countries[i], off::country_has_idea_group), nullptr)) {
+            game(sym::game_free, flags);
+            ++freed;
+        }
+    }
+    return freed;
+}
+
+void reset_world(Bytes app) {
+    const std::size_t idea_groups = free_idea_group_flags();
+    g_else_branches_freed.store(0, std::memory_order_relaxed);
+    {
+        FreeElseWindow window;
+        game(sym::reset_game, app, false);
+    }
+    host().info("memory the reset would lose: {} idea group tables, {} else branches freed", idea_groups,
+                g_else_branches_freed.load(std::memory_order_relaxed));
+}
+
+void on_history_move(void* history, const void* date) noexcept {
+    const std::uint32_t before = g_else_branches_freed.load(std::memory_order_relaxed);
+    {
+        FreeElseWindow window;
+        g_history_move.next(history, date);
+    }
+    host().info("new campaign: {} else branches of the history's effects freed",
+                g_else_branches_freed.load(std::memory_order_relaxed) - before);
+}
+
+// Run by ResetGame (inside its own window), by the load of a save and by the
+// game's exit; only the first two free the branches.
+void on_history_destroy(void* history) noexcept {
+    const bool in_reset = g_free_else.load(std::memory_order_relaxed) > 0;
+    if (!in_reset && g_loading_save.load(std::memory_order_relaxed) <= 0) {
+        g_history_destroy.next(history);
+        return;
+    }
+    const std::uint32_t before = g_else_branches_freed.load(std::memory_order_relaxed);
+    {
+        FreeElseWindow window;
+        g_history_destroy.next(history);
+    }
+    if (!in_reset)
+        host().info("a save loads: {} else branches of the old history freed",
+                    g_else_branches_freed.load(std::memory_order_relaxed) - before);
+}
+
+void on_save_load_task(void* task) noexcept {
+    g_loading_save.fetch_add(1, std::memory_order_relaxed);
+    g_save_load_task.next(task);
+    g_loading_save.fetch_sub(1, std::memory_order_relaxed);
+}
+
 // The frontend idler's first act after the hand-over: the outgoing idler is gone.
 void on_frontend_restore(void* idler) {
     if (g_pending_menu_app && idler == g_pending_menu_idler) clear_province_graphics(g_pending_menu_app, idler);
@@ -537,7 +649,7 @@ void on_frontend_tick(void* idler, bool update) {
                              game(sym::custom_countries_clear);
                              *g_custom_nation_used = 0;
                              g_history_reloading = true;
-                             game(sym::reset_game, app, false);
+                             reset_world(app);
                              validate_reloaded_history();  // a reset that did not walk the history
                              forget_loaded_achievements();
                              if (g_map_changed) {
@@ -573,6 +685,7 @@ struct Hamweard : anvil::Plugin {
         g_trigger_db = h.data(sym::trigger_db);
         g_custom_nation_used = h.data(sym::custom_nation_used);
         g_map = h.data(sym::map);
+        g_country_db = h.data(sym::country_db);
         const char* build = h.game().build_id;
         g_layout = is_gog_build(build) ? kGog : kSteam;
         g_minimap_vtable = h.address(sym::minimap_vtable);
@@ -630,6 +743,10 @@ struct Hamweard : anvil::Plugin {
         h.hook(g_history_execute, sym::history_execute, on_history_execute);
         h.hook(g_multiplayer_click, sym::multiplayer_click, on_multiplayer_click);
         h.hook(g_multiplayer_availability, sym::multiplayer_availability, on_multiplayer_availability);
+        h.hook(g_if_effect_delete, sym::if_effect_delete, on_if_effect_delete);
+        h.hook(g_history_move, sym::history_move, on_history_move);
+        h.hook(g_history_destroy, sym::history_destroy, on_history_destroy);
+        h.hook(g_save_load_task, sym::save_load_task, on_save_load_task);
         // Recording starts with the in-game idler (its views make windows
         // while a save loads) and again at each GUI build (the HUD reload).
         const auto record = [] {
