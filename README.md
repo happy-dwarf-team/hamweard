@@ -64,8 +64,10 @@ your latest save, as after a restart. Without the plugin both buttons restart th
 - **Multiplayer: no return, and one test with a second player.** In any multiplayer session,
   Exit to Menu and Back restart the game, as without the plugin. The plugin checks that itself:
   it stays loaded, in a lobby and in a game with other players, and Anvil does not take its
-  changes out. Tested on Steam with a host and a client, both with Hamweard: no desync in about
-  four months of game, a client who left and came back into the running campaign included.
+  changes out. Tested on Steam with a host and a client, both with Hamweard: the game's usual
+  out-of-sync check, which compares the random-number count and seed, reported nothing in about
+  four months of game, a client who left and came back into the running campaign included. The
+  test did not use `-hardoos`, which compares all 140 checksums of the game state.
 - **Multiplayer after a campaign needs a restart.** The game marks a process that has played
   as possibly corrupted, and only a fresh process is meant to go on to multiplayer. After a
   return the Multiplayer button does nothing, and its tooltip says why. Restart the game once.
