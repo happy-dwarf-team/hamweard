@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.1](https://github.com/happy-dwarf-team/hamweard/compare/v1.3.0...v1.3.1) (2026-11-09)
+
+### Bug Fixes
+
+* Going back to the main menu no longer leaves the old campaign's scripts in memory. The game forgets to free the `else` branches of `if` blocks and some idea group tables each time it drops its history: at a return to the menu, at the start of a new campaign and when a save loads. Hamweard now frees them at those three moments, and only then; at the game's exit nothing changes. In the lab with Anbennar on Steam, memory left over after a return to the menu went from about 74 MB to about 4.5 MB, and after a campaign and its exit from about 70 MB to 2.4 MB. Over the whole test the game's memory grew by 424 MB instead of 937 MB. 22 returns to the menu in vanilla (new and loaded campaigns) had no crash, and saves made after the returns were the same as saves from a fresh start, in vanilla and in Anbennar. ([#61](https://github.com/happy-dwarf-team/hamweard/issues/61))
+
 ## [1.3.0](https://github.com/happy-dwarf-team/hamweard/compare/v1.2.1...v1.3.0) (2026-11-09)
 
 ### Features
