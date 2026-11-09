@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.0](https://github.com/happy-dwarf-team/hamweard/compare/v1.2.1...v1.3.0) (2026-11-09)
+
+### Features
+
+* Hamweard runs on the GOG build 1.37.5.0, the version GOG Galaxy installs when you roll EU4 back. On that build it loads with Anvil 1.15.0 or later, which knows the build. Tested in the lab on a copy of a GOG 1.37.5.0 install with Bellows, Tongs and Mei: Exit to Menu returned to the main menu in the same process, a new campaign started after it, and an autosave loaded. Nothing changes on Steam or on GOG 1.37.5.2. ([#60](https://github.com/happy-dwarf-team/hamweard/issues/60))
+
 ## [1.2.1](https://github.com/happy-dwarf-team/hamweard/compare/v1.2.0...v1.2.1) (2026-11-09)
 
 
