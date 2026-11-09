@@ -269,7 +269,7 @@ first. With the popups destroyed it had nothing left to do, and the runs under
 
 ```
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DEU4_EXE="<EU4>/eu4.exe" -DEU4_DIR="<EU4>"
-cmake --build build --config Release
+cmake --build build --config Release --parallel
 ctest --test-dir build -C Release --output-on-failure
 cmake --build build --config Release --target hamweard-check
 ```
