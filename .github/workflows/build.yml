@@ -1,4 +1,5 @@
 name: build
+# Skip check of the c-cpp gate (throwaway).
 
 on:
   push:
