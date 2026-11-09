@@ -163,6 +163,8 @@ anvil::HookOf<sym::multiplayer_click> g_multiplayer_click;
 anvil::HookOf<sym::multiplayer_availability> g_multiplayer_availability;
 anvil::HookOf<sym::if_effect_delete> g_if_effect_delete;
 anvil::HookOf<sym::history_move> g_history_move;
+anvil::HookOf<sym::history_destroy> g_history_destroy;
+anvil::HookOf<sym::save_load_task> g_save_load_task;
 bool g_returned_to_menu = false;
 std::uintptr_t* g_manager_global = nullptr;
 std::ptrdiff_t g_registry_begin = 0;
@@ -514,17 +516,26 @@ void return_to_menu(Bytes idler) {
 // ResetGame destroys the history and reads it again. CIfEffect's destructor frees
 // the if but not _pElse, the else_if/else branch AddElse chained to it, which only
 // that pointer holds; so each reset lost every such branch with its subtree (lab:
-// about 60 MB per return with Anbennar, whose country history
-// calls scripted effects full of else_if). The start of a new campaign deletes the
-// history's effect entries too (MoveIntoGameState: they cannot move into the game
-// state), and lost their branches the same way, about 60 MB per campaign there. Only
-// during the plugin's own reset and that move: in the rest of the game the detour
-// passes the call on unchanged.
-std::atomic<bool> g_resetting{false};
+// about 60 MB per return with Anbennar, whose country history calls scripted effects
+// full of else_if). The game loses them the same way where it deletes the history's
+// effects elsewhere: the start of a new campaign (MoveIntoGameState: effects cannot
+// move into the game state) and the load of a save (DestroyDatabase). Only in those
+// windows: in the rest of the game, the game's exit among it, the detour passes the
+// call on unchanged. A counter, as the history's destruction runs inside the reset.
+std::atomic<int> g_free_else{0};
+std::atomic<int> g_loading_save{0};  // inside CGameStateLoadTask, which destroys the history first
+
+class FreeElseWindow {
+public:
+    FreeElseWindow() { g_free_else.fetch_add(1, std::memory_order_relaxed); }
+    ~FreeElseWindow() { g_free_else.fetch_sub(1, std::memory_order_relaxed); }
+    FreeElseWindow(const FreeElseWindow&) = delete;
+    FreeElseWindow& operator=(const FreeElseWindow&) = delete;
+};
 std::atomic<std::uint32_t> g_else_branches_freed{0};
 
 void* on_if_effect_delete(void* effect, std::uint32_t flags) noexcept {
-    if (!g_resetting.load(std::memory_order_relaxed)) return g_if_effect_delete.next(effect, flags);
+    if (g_free_else.load(std::memory_order_relaxed) <= 0) return g_if_effect_delete.next(effect, flags);
     void* branch = std::exchange(at<void*>(effect, off::if_effect_else), nullptr);
     void* result = g_if_effect_delete.next(effect, flags);
     if (branch) {
@@ -562,20 +573,46 @@ std::size_t free_idea_group_flags() {
 void reset_world(Bytes app) {
     const std::size_t idea_groups = free_idea_group_flags();
     g_else_branches_freed.store(0, std::memory_order_relaxed);
-    g_resetting.store(true, std::memory_order_relaxed);
-    game(sym::reset_game, app, false);
-    g_resetting.store(false, std::memory_order_relaxed);
+    {
+        FreeElseWindow window;
+        game(sym::reset_game, app, false);
+    }
     host().info("memory the reset would lose: {} idea group tables, {} else branches freed", idea_groups,
                 g_else_branches_freed.load(std::memory_order_relaxed));
 }
 
 void on_history_move(void* history, const void* date) noexcept {
-    g_else_branches_freed.store(0, std::memory_order_relaxed);
-    g_resetting.store(true, std::memory_order_relaxed);
-    g_history_move.next(history, date);
-    g_resetting.store(false, std::memory_order_relaxed);
+    const std::uint32_t before = g_else_branches_freed.load(std::memory_order_relaxed);
+    {
+        FreeElseWindow window;
+        g_history_move.next(history, date);
+    }
     host().info("new campaign: {} else branches of the history's effects freed",
-                g_else_branches_freed.load(std::memory_order_relaxed));
+                g_else_branches_freed.load(std::memory_order_relaxed) - before);
+}
+
+// Run by ResetGame (inside its own window), by the load of a save and by the
+// game's exit; only the first two free the branches.
+void on_history_destroy(void* history) noexcept {
+    const bool in_reset = g_free_else.load(std::memory_order_relaxed) > 0;
+    if (!in_reset && g_loading_save.load(std::memory_order_relaxed) <= 0) {
+        g_history_destroy.next(history);
+        return;
+    }
+    const std::uint32_t before = g_else_branches_freed.load(std::memory_order_relaxed);
+    {
+        FreeElseWindow window;
+        g_history_destroy.next(history);
+    }
+    if (!in_reset)
+        host().info("a save loads: {} else branches of the old history freed",
+                    g_else_branches_freed.load(std::memory_order_relaxed) - before);
+}
+
+void on_save_load_task(void* task) noexcept {
+    g_loading_save.fetch_add(1, std::memory_order_relaxed);
+    g_save_load_task.next(task);
+    g_loading_save.fetch_sub(1, std::memory_order_relaxed);
 }
 
 // The frontend idler's first act after the hand-over: the outgoing idler is gone.
@@ -708,6 +745,8 @@ struct Hamweard : anvil::Plugin {
         h.hook(g_multiplayer_availability, sym::multiplayer_availability, on_multiplayer_availability);
         h.hook(g_if_effect_delete, sym::if_effect_delete, on_if_effect_delete);
         h.hook(g_history_move, sym::history_move, on_history_move);
+        h.hook(g_history_destroy, sym::history_destroy, on_history_destroy);
+        h.hook(g_save_load_task, sym::save_load_task, on_save_load_task);
         // Recording starts with the in-game idler (its views make windows
         // while a save loads) and again at each GUI build (the HUD reload).
         const auto record = [] {

@@ -495,6 +495,24 @@ build."eu4-1.37.5-steam-win64" = { rva = 0x7E9490 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x7E8800 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x7E8800 }
 
+[symbol.history_destroy]
+bytes = "48 89 5C 24 18 48 89 74 24 20 57 41 56 41 57 48 83 EC 40"
+memory = "code"
+signature = "void (void* history)"
+note = "CHistoryDataBase::DestroyDatabase: from ResetGame, the load of a save (CGameStateLoadTask) and the application's destructor"
+build."eu4-1.37.5-steam-win64" = { rva = 0x7E9820 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x7E8B90 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x7E8B90 }
+
+[symbol.save_load_task]
+bytes = "48 89 4C 24 08 53 56 57 41 54 41 55 41 56 41 57 48 81 EC C0 01 00 00"
+memory = "code"
+signature = "void (void* task)"
+note = "CGameStateLoadTask::operator(): the load of a save, which destroys the history first"
+build."eu4-1.37.5-steam-win64" = { rva = 0x5CF740 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x5CF210 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x5CF210 }
+
 [symbol.country_db]
 memory = "write"
 type = "uintptr_t"
