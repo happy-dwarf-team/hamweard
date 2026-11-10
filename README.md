@@ -84,6 +84,12 @@ your latest save, as after a restart. Without the plugin both buttons restart th
   Anbennar with Proper 2K UI and a playset of ten interface and graphics mods ran without
   trouble. A mod that does something unusual when a campaign ends may still behave
   differently.
+- **With Anbennar, a campaign after a return can drift from a fresh one after some days.**
+  It starts the same, but in the lab a new Anbennar campaign after 2 returns differed from a
+  fresh start after 10 days, first in its rebel factions. Hamweard 1.3.1 gave the same save, so
+  every version so far does it; the cause is not known yet. Without mods a campaign after 5
+  returns was still the same after 30 days. Both are normal games with the same rules;
+  multiplayer is not affected, since it always starts from a fresh process.
 - **Not seen in a test:** some message popups (an heir to name, a new colonial nation).
 - **Memory still grows with each return, more with a big mod.** The game's reset does not
   free all it read. Hamweard frees what the lab found in the history and the country files
