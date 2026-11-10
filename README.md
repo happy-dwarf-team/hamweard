@@ -95,7 +95,7 @@ your latest save, as after a restart. Without the plugin both buttons restart th
   [Windows a campaign leaves behind](#windows-a-campaign-leaves-behind)), but they are not the
   cause. When less than 1 GB of the system's commit limit is left, a return restarts the game
   instead.
-- EU4 1.37.5 on Steam and the GOG builds 1.37.5.2 and 1.37.5.0 (1.37.5.0 from Anvil 1.16). On any
+- EU4 1.37.5 on Steam and the GOG builds 1.37.5.2 and 1.37.5.0 (1.37.5.0 from Anvil 1.15). On any
   other build Anvil does not load the plugin. The GOG builds have no Steam lobby, so there is nothing to clean up there.
 
 ## Troubleshooting
