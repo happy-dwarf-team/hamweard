@@ -5,7 +5,7 @@
 
 ### Bug Fixes
 
-* free the subject modifiers each recalculation of an overlord lost ([#68](https://github.com/happy-dwarf-team/hamweard/issues/68)) ([145dee7](https://github.com/happy-dwarf-team/hamweard/commit/145dee79d920012ccc7201bddd9b5828dd3386c0))
+* A long campaign no longer makes the game's memory grow by itself. Each time the game recalculates a country that has subjects (every day for some countries), it gave the overlord a new modifier for each subject and never freed the old ones. In the lab that was about 2 MB per year of play without mods and about 5 MB with Anbennar, so over a whole campaign it added up to hundreds of MB, with or without a return to the menu. Hamweard now frees them when the game drops them. With the fix a year without mods left 0.16 MB behind instead of 2.2 MB. Saves were the same as without the plugin: a new campaign after returns to the menu in vanilla, at the start and after 30 days, and a fresh Anbennar start after 10 days. ([#68](https://github.com/happy-dwarf-team/hamweard/issues/68)) ([145dee7](https://github.com/happy-dwarf-team/hamweard/commit/145dee79d920012ccc7201bddd9b5828dd3386c0))
 
 ## [1.3.1](https://github.com/happy-dwarf-team/hamweard/compare/v1.3.0...v1.3.1) (2026-11-09)
 
