@@ -260,9 +260,9 @@ Loading a save from the menu is the game's own path, and Hamweard adds nothing t
 
 ## Memory a return used to lose
 
-The game's reset destroys the history it read and reads it again, and in three places the
-game loses part of what it destroys. 1.37.5 restarts the process instead, so it never adds up
-there. The lab found them with a heap tracer (eu4-engine-lab, 9 November 2026):
+The game's reset destroys the history and the countries it read and reads them again, and it
+loses part of what it destroys. 1.37.5 restarts the process instead, so it never adds up
+there. The lab found two such leaks with a heap tracer (eu4-engine-lab, 9 November 2026):
 
 - **`else_if`/`else` branches.** `CIfEffect`'s destructor frees the `if` but not `_pElse`
   (`+0xF0`), the chain of branches that follows it in a script, and nothing else points to
