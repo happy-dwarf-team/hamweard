@@ -32,6 +32,9 @@ Yes. They do different jobs, Bellows the start of the game and Hamweard the way 
 ### Does it work in ironman or with big mods?
 Ironman, yes, with nothing to allow. The checksum stays the same and the game says achievements can be earned, after a return too. Continue game won't show your ironman campaign: load it from Single Player. Mods: Anbennar and a ten-mod playset ran clean, but no dwarf has walked every road.
 
+### Does the game use more memory after many returns?
+A little. The game's own reset never frees everything it read, and Hamweard 1.3.1 frees the biggest part the lab found, about 60 MB per return with Anbennar. What still stays is mostly the last campaign's world and interface: in our tests about 45 MB per return with Anbennar and 20 MB without mods over a row of returns, and a return took as long after 40 in a row as at the start. If your computer runs low on memory, a return restarts the game instead.
+
 ### Is it the same as EU4 Menu Patch?
 It is a port of it, with the original author's research and licence. It runs on Anvil instead of its own loader, and it also clears the windows a campaign leaves behind, which in our tests made a later campaign crash. Use one or the other, not both.
 
