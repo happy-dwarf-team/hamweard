@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.2](https://github.com/happy-dwarf-team/hamweard/compare/v1.3.1...v1.3.2) (2026-11-10)
+
+
+### Bug Fixes
+
+* free the subject modifiers each recalculation of an overlord lost ([#68](https://github.com/happy-dwarf-team/hamweard/issues/68)) ([145dee7](https://github.com/happy-dwarf-team/hamweard/commit/145dee79d920012ccc7201bddd9b5828dd3386c0))
+
 ## [1.3.1](https://github.com/happy-dwarf-team/hamweard/compare/v1.3.0...v1.3.1) (2026-11-09)
 
 ### Bug Fixes
