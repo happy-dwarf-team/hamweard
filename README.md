@@ -246,6 +246,7 @@ code first, then tested with a second player on 6 November 2026.
 | `0x5ED370`, `CIfEffect`'s deleting destructor | frees an `if` effect but not the `else_if`/`else` branches chained to it | while the world resets, a new campaign starts or a save loads, deletes those branches too; elsewhere the stock destructor alone (see [Memory a return used to lose](#memory-a-return-used-to-lose)) |
 | `0x7E9490`, `CHistoryDataBase::MoveIntoGameState`; `0x7E9820`, `DestroyDatabase`; `0x5CF740`, `CGameStateLoadTask` | a new campaign deletes the history's effects; a save's load and the reset destroy the history | the same, with the branches freed for their duration; the game's exit stays the stock one |
 | `0x233D8D0`, `CCountryDataBase` | each country keeps a table of its idea groups, which the country's destructor never frees | frees the tables with the game's own `delete[]` just before the world reset |
+| `0x93AE10`, `CCountryModifiers`' destructor | rebuilds a country's modifiers in place and frees the list of its subjects' modifiers, but not the modifiers in it | deletes those modifiers first, in the whole game (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
 
 The world's `PotentialCorruption` flag stays as the game keeps it through its reset. Only
 the `-nudge` reason (2), which the reset flattens to 1, is put back. Earlier versions, like
@@ -276,6 +277,17 @@ there. The lab found two such leaks with a heap tracer (eu4-engine-lab, 9 Novemb
   files are read, and the country's destructor never frees it: 2.6 MB per return with
   Anbennar, 0.8 MB without mods. The plugin frees them with the game's own `delete[]` just
   before the reset.
+
+## Memory a long campaign lost
+
+This one grows while you play, with or without a return. Each time the game recalculates the
+modifiers of a country with subjects (every day for some countries, and after many actions), it
+gives the overlord one new modifier per subject (`CalcModifiersFromSubjects`) and keeps it in a
+list (`ModifiersFromSubjectToOverlord`). The next recalculation throws the list away but not the
+modifiers in it. In the lab that lost about 2 MB per year of play without mods (a heap tracer,
+10 November 2026), so a full campaign from 1444 kept several hundred MB it never used again. The
+plugin deletes those modifiers when the game rebuilds or destroys the list. Nothing else in the
+game points to them but the modifier they were added to, which goes with the same list.
 
 With both, the tracer found nothing left of either after a **Back**, a new campaign, or a
 loaded one. What a return still leaves is mostly the last campaign's world and GUI (about

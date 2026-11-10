@@ -93,6 +93,8 @@ constexpr std::ptrdiff_t if_effect_else = 0xF0;          // CIfEffect::_pElse, t
 constexpr std::ptrdiff_t country_db_count = 0x100;       // CCountryDataBase::_nNumberOfCountries
 constexpr std::ptrdiff_t country_db_countries = 0x118;   // its CCountry* array, as ReadCountryFiles walks it
 constexpr std::ptrdiff_t country_has_idea_group = 0x10A0;  // CCountry::_HasIdeaGroup, a bool[]
+constexpr std::ptrdiff_t subject_modifiers_begin = 0x6440;  // CCountryModifiers::ModifiersFromSubjectToOverlord
+constexpr std::ptrdiff_t subject_modifiers_end = 0x6448;
 }  // namespace off
 
 // The offsets that differ on the GOG builds 1.37.5.2 and 1.37.5.0 (their
@@ -163,6 +165,7 @@ anvil::HookOf<sym::multiplayer_click> g_multiplayer_click;
 anvil::HookOf<sym::multiplayer_availability> g_multiplayer_availability;
 anvil::HookOf<sym::if_effect_delete> g_if_effect_delete;
 anvil::HookOf<sym::history_move> g_history_move;
+anvil::HookOf<sym::country_modifiers_destroy> g_country_modifiers_destroy;
 anvil::HookOf<sym::history_destroy> g_history_destroy;
 anvil::HookOf<sym::save_load_task> g_save_load_task;
 bool g_returned_to_menu = false;
@@ -570,6 +573,30 @@ std::size_t free_idea_group_flags() {
     return freed;
 }
 
+// A country's modifiers are rebuilt in place (CalculateModifiers: the destructor, then the
+// constructor), every day for some countries. Each rebuild of an overlord gives each subject a new
+// CStaticModifier (operator new, CalcModifiersFromSubjects) in ModifiersFromSubjectToOverlord,
+// and the destructor frees only that array: lab, about 2 MB per year of play without mods,
+// so a long campaign kept the game's memory growing even without a return. Nothing else
+// points to them but the _Added list of the same object's total modifier (copies of a CModifier
+// do not take that list), which the same destructor ends. So the detour deletes them first,
+// with slot 0 and 1 as the game deletes a modifier, everywhere: they belong to this object only.
+// They hold no game state; a rebuild makes new ones.
+std::atomic<std::uint64_t> g_subject_modifiers_freed{0};
+
+void on_country_modifiers_destroy(void* modifiers) noexcept {
+    void** begin = at<void**>(modifiers, off::subject_modifiers_begin);
+    void** end = at<void**>(modifiers, off::subject_modifiers_end);
+    for (void** p = begin; p && p != end; ++p) {
+        if (void* modifier = std::exchange(*p, nullptr)) {
+            using DeleteFn = void* (*)(void* modifier, std::uint32_t flags);
+            at<DeleteFn>(at<void*>(modifier, 0), 0)(modifier, 1);
+            g_subject_modifiers_freed.fetch_add(1, std::memory_order_relaxed);
+        }
+    }
+    g_country_modifiers_destroy.next(modifiers);
+}
+
 void reset_world(Bytes app) {
     const std::size_t idea_groups = free_idea_group_flags();
     g_else_branches_freed.store(0, std::memory_order_relaxed);
@@ -577,8 +604,9 @@ void reset_world(Bytes app) {
         FreeElseWindow window;
         game(sym::reset_game, app, false);
     }
-    host().info("memory the reset would lose: {} idea group tables, {} else branches freed", idea_groups,
-                g_else_branches_freed.load(std::memory_order_relaxed));
+    host().info("memory the reset would lose: {} idea group tables, {} else branches freed; {} subject modifiers freed since the last reset",
+                idea_groups, g_else_branches_freed.load(std::memory_order_relaxed),
+                g_subject_modifiers_freed.exchange(0, std::memory_order_relaxed));
 }
 
 void on_history_move(void* history, const void* date) noexcept {
@@ -745,6 +773,7 @@ struct Hamweard : anvil::Plugin {
         h.hook(g_multiplayer_availability, sym::multiplayer_availability, on_multiplayer_availability);
         h.hook(g_if_effect_delete, sym::if_effect_delete, on_if_effect_delete);
         h.hook(g_history_move, sym::history_move, on_history_move);
+        h.hook(g_country_modifiers_destroy, sym::country_modifiers_destroy, on_country_modifiers_destroy);
         h.hook(g_history_destroy, sym::history_destroy, on_history_destroy);
         h.hook(g_save_load_task, sym::save_load_task, on_save_load_task);
         // Recording starts with the in-game idler (its views make windows

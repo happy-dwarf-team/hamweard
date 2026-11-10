@@ -486,6 +486,15 @@ build."eu4-1.37.5-steam-win64" = { rva = 0x5ED370 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x5ECE40 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x5ECE40 }
 
+[symbol.country_modifiers_destroy]
+bytes = "40 53 48 83 EC 20 48 8B D9 48 81 C1 78 6C 00 00"
+memory = "code"
+signature = "void (void* modifiers)"
+note = "CCountryModifiers' destructor: CalculateModifiers runs it and the constructor to rebuild a country's modifiers in place; it frees the array of ModifiersFromSubjectToOverlord (+0x6440) but not the CStaticModifier each subject added to it"
+build."eu4-1.37.5-steam-win64" = { rva = 0x93AE10 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x93A040 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x93A040 }
+
 [symbol.history_move]
 bytes = "48 89 5C 24 20 57 41 54 41 55 41 56 41 57 48 83 EC 20"
 memory = "code"
