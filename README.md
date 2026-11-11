@@ -44,11 +44,16 @@ your latest save, as after a restart. Without the plugin both buttons restart th
 
 ## Limitations
 
-- **Gameplay.** `affects_gameplay = false`: a return does not change the simulation. The next
-  campaign starts in the same process instead of a fresh one, and in the lab a save made after
+- **Gameplay.** `affects_gameplay = false`: a return is meant not to change the simulation. The
+  next campaign starts in the same process instead of a fresh one, so whatever the game keeps
+  outside the campaign carries over unless Hamweard puts it back. In the lab a save made after
   three returns matched a save from a fresh process, apart from the campaign id and the random
-  seed. Anbennar matched too, after a return and after a plain **Back** from the lobby. That is
-  a comparison of the campaigns and mods tested, not a proof for every mod.
+  seed. With Anbennar a new campaign after 2 returns matched a fresh start draw by draw for 10
+  days of play, the random log and the save included. Before, it drifted after a week: the
+  game's one "no heir" character, shared by every country without an heir, kept the culture a
+  mod event gave it in the last campaign, and Hamweard now puts it back with the "no ruler" and
+  "no consort" ones. That is a comparison of the campaigns and mods tested, not a proof for
+  every mod or for a long game.
 - **Canals.** A canal changes the map itself, and the map outlives the campaign. The game's
   reset takes the canal's links out, but leaves other movement costs and naval distances
   behind. So the plugin copies them before the first canal and puts them back on a return.
@@ -84,12 +89,6 @@ your latest save, as after a restart. Without the plugin both buttons restart th
   Anbennar with Proper 2K UI and a playset of ten interface and graphics mods ran without
   trouble. A mod that does something unusual when a campaign ends may still behave
   differently.
-- **With Anbennar, a campaign after a return can drift from a fresh one after some days.**
-  It starts the same, but in the lab a new Anbennar campaign after 2 returns differed from a
-  fresh start after 10 days, first in its rebel factions. Hamweard 1.3.1 gave the same save, so
-  every version so far does it; the cause is not known yet. Without mods a campaign after 5
-  returns was still the same after 30 days. Both are normal games with the same rules;
-  multiplayer is not affected, since it always starts from a fresh process.
 - **Not seen in a test:** some message popups (an heir to name, a new colonial nation).
 - **Memory still grows with each return, more with a big mod.** The game's reset does not
   free all it read. Hamweard frees what the lab found in the history and the country files
@@ -214,6 +213,14 @@ A return took 3.3 to 3.8 seconds with **Back** and 5.5 to 6 with **Exit to Menu*
 and 5.8 to 6.3 and 8 to 10.7 with Anbennar. In that test two bugs came up and are fixed: a
 Random New World map changed the next campaign's missions (such a return now restarts), and a
 custom nation designed in the lobby and left behind with **Back** joined the next campaign.
+
+The characters of a country without one were tested on 11 November 2026, with `-seed=12345`:
+the game's "no heir" character kept the culture an Anbennar event gave it, and a new campaign
+after a return then took another path on its eighth day. With the fix, on Steam with Anbennar
+and 2 returns, the random log of 10 days of play equalled a fresh start's in two runs, all
+738,015 lines, and the save after them differed only in the campaign id. On GOG 1.37.5.2
+without mods, after 6 returns, a 30-day campaign matched a fresh start run by the same test
+driver, the campaign id and its length apart. No crash in either.
 
 The achievement list and the multiplayer check of 1.1.2 were tested that day too, with 27 returns in one process, 13 Exit to Menu and 14 Back, no restart and
 no crash. After a return the list stayed empty, and a normal save had no `achievement`
