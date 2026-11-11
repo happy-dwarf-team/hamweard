@@ -237,6 +237,16 @@ campaign after the returns compared with one from a fresh start (`-seed=12345`):
 | Steam, Anbennar | 22 (12 campaigns, 5 of them loaded; before the fix for loaded saves) and 11 (8, 5 loaded) | 0 | 5,764,559 lines, the same as a fresh start with Hamweard and one without it |
 | GOG 1.37.5.2, no mods | 22 (12, 5 loaded; before the fix for loaded saves) and 11 (8, 5 loaded) | 0 | 1,648,632 lines, the same |
 
+The fix for fired delayed events was tested on 11 November 2026 (lab eu4-engine-lab#39):
+- Anbennar on Steam, `-seed=12345`, a new campaign after 2 returns, 10 days:
+  - the random log (`-randomlog`) was the same as without Hamweard, 738,015 lines;
+  - the save of day 10 differed only in `campaign_id`.
+- 11 returns in a row with 8 campaigns, 5 of them loaded, without a crash, in Anbennar on Steam and
+  on GOG 1.37.5.2 without mods.
+- The plugin deleted the same number of events after each campaign of a kind: 6,033 after a new
+  Anbennar campaign of 3 days and 10,061 after a loaded one. Without mods it deleted none, as the
+  tracer led to expect.
+
 Not tested: the Steam lobby clean-up with a lobby open, and the windows and modes
 listed under [Limitations](#limitations). The multiplayer check was read from the game's
 code first, then tested with a second player on 6 November 2026.
@@ -312,8 +322,8 @@ goes on. The game keeps running as before: the plugin only notes the events it f
 out of the list, and deletes them, as the country's destructor does, once their world is gone,
 after the reset of a return and after a save's load.
 
-With both, the tracer found nothing left of either after a **Back**, a new campaign, or a
-loaded one. What a return still leaves is mostly the last campaign's world and GUI (about
+With the first, the tracer found nothing left of it after a **Back**, a new campaign, or a
+loaded one. For the second, the plugin's log counts the fired events it deletes at each reset. What a return still leaves is mostly the last campaign's world and GUI (about
 35 to 55 MB without mods and 70 to 100 MB with Anbennar after a campaign, as before), and a
 small part of the history of each campaign's countries.
 
