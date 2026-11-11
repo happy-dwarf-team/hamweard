@@ -20,6 +20,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <mutex>
 #include <string_view>
 #include <string>
 #include <unordered_map>
@@ -95,6 +96,10 @@ constexpr std::ptrdiff_t country_db_countries = 0x118;   // its CCountry* array,
 constexpr std::ptrdiff_t country_has_idea_group = 0x10A0;  // CCountry::_HasIdeaGroup, a bool[]
 constexpr std::ptrdiff_t subject_modifiers_begin = 0x6440;  // CCountryModifiers::ModifiersFromSubjectToOverlord
 constexpr std::ptrdiff_t subject_modifiers_end = 0x6448;
+constexpr std::ptrdiff_t country_delayed_begin = 0x2200;  // CCountry::_DelayedEvents, a vector of CDelayedEvent*
+constexpr std::ptrdiff_t country_delayed_end = 0x2208;
+constexpr std::ptrdiff_t fired_events = 0x168;  // DailyUpdateSerial's rbp: the events it fired today (their data)
+constexpr std::ptrdiff_t fired_count = 0x174;   // and their count
 
 constexpr std::ptrdiff_t monarch_religion = 0x58;   // CMonarch::_pReligion
 constexpr std::ptrdiff_t monarch_culture = 0x60;    // CMonarch::_pCulture
@@ -667,6 +672,53 @@ void restore_null_characters() {
     }
 }
 
+// A country's delayed event (an event with days = N) is a CDelayedEvent in _DelayedEvents.
+// When its days run out, CCountry::DailyUpdateSerial fires it and takes it out of the vector,
+// but never deletes it: only ~CCountry deletes the ones still waiting. TriggerEvent copies the
+// scope it needs (AddPendingEvent), so nothing points to a fired one any more (lab: with
+// Anbennar, whose start-up events wait a few days, about 2 MB per campaign). The game keeps
+// running unchanged: right after that loop the plugin only notes the events it fired and took
+// out, and deletes them, as ~CCountry deletes an event, once the world they came from is gone:
+// after the reset of a return and after the load of a save.
+std::mutex g_fired_mutex;
+std::vector<void*> g_fired_events;
+void* g_delayed_event_vtable = nullptr;
+
+void note_fired_events(const anvil::Cpu& cpu) noexcept {
+    auto* country = reinterpret_cast<Bytes>(cpu.r14);
+    auto* frame = reinterpret_cast<Bytes>(cpu.rbp);
+    const std::int32_t count = at<std::int32_t>(frame, off::fired_count);
+    if (count <= 0) return;
+    void* const* fired = at<void**>(frame, off::fired_events);
+    void** begin = at<void**>(country, off::country_delayed_begin);
+    void** end = at<void**>(country, off::country_delayed_end);
+    std::lock_guard lock(g_fired_mutex);
+    for (std::int32_t i = 0; i < count; ++i) {
+        void* event = fired[i];
+        // Only one the loop took out: one still in the vector is ~CCountry's to delete.
+        if (event && std::find(begin, end, event) == end) g_fired_events.push_back(event);
+    }
+}
+
+std::size_t free_fired_events() {
+    std::vector<void*> events;
+    {
+        std::lock_guard lock(g_fired_mutex);
+        events.swap(g_fired_events);
+    }
+    std::sort(events.begin(), events.end());
+    events.erase(std::unique(events.begin(), events.end()), events.end());
+    std::size_t freed = 0;
+    for (void* event : events) {
+        if (at<void*>(event, 0) != g_delayed_event_vtable) continue;  // not a CDelayedEvent any more
+        // Slot 0 with 1, as the game deletes one: the scope's destructor, then the 0xF0 bytes.
+        using DeleteFn = void* (*)(void* event, std::uint32_t flags);
+        at<DeleteFn>(g_delayed_event_vtable, 0)(event, 1);
+        ++freed;
+    }
+    return freed;
+}
+
 void reset_world(Bytes app) {
     const std::size_t idea_groups = free_idea_group_flags();
     g_else_branches_freed.store(0, std::memory_order_relaxed);
@@ -675,8 +727,9 @@ void reset_world(Bytes app) {
         game(sym::reset_game, app, false);
     }
     restore_null_characters();
-    host().info("memory the reset would lose: {} idea group tables, {} else branches freed; {} subject modifiers freed since the last reset",
-                idea_groups, g_else_branches_freed.load(std::memory_order_relaxed),
+    const std::size_t fired = free_fired_events();
+    host().info("memory the reset would lose: {} idea group tables, {} else branches freed, {} fired delayed events freed; {} subject modifiers freed since the last reset",
+                idea_groups, g_else_branches_freed.load(std::memory_order_relaxed), fired,
                 g_subject_modifiers_freed.exchange(0, std::memory_order_relaxed));
 }
 
@@ -712,6 +765,8 @@ void on_save_load_task(void* task) noexcept {
     g_loading_save.fetch_add(1, std::memory_order_relaxed);
     g_save_load_task.next(task);
     g_loading_save.fetch_sub(1, std::memory_order_relaxed);
+    // The load replaced the world the noted events came from.
+    if (const std::size_t fired = free_fired_events()) host().info("a save loaded: {} fired delayed events freed", fired);
 }
 
 // The frontend idler's first act after the hand-over: the outgoing idler is gone.
@@ -778,6 +833,7 @@ struct Hamweard : anvil::Plugin {
     anvil::Change dialog_store;
     anvil::Change canal_logic;
     anvil::Change map_randomize;
+    anvil::Change delayed_events_fired;
 
     void load(anvil::Host& h) override {
         g_world = h.data(sym::world);
@@ -792,6 +848,7 @@ struct Hamweard : anvil::Plugin {
         const char* build = h.game().build_id;
         g_layout = is_gog_build(build) ? kGog : kSteam;
         g_minimap_vtable = h.address(sym::minimap_vtable);
+        g_delayed_event_vtable = h.address(sym::delayed_event_vtable);
         // The GOG build has no Steam lobby: its four symbols are absent there.
         if (h.present(sym::steam_lobby_vtable)) {
             g_lobby_vtable = h.address(sym::steam_lobby_vtable);
@@ -837,6 +894,7 @@ struct Hamweard : anvil::Plugin {
             g_map_randomized = true;
             host().info("Random New World: the next return restarts the game");
         });
+        delayed_events_fired = h.mid_hook(sym::delayed_events_fired, [](anvil::Cpu& cpu) { note_fired_events(cpu); });
         h.swap(g_tick, sym::frontend_tick_slot, &on_frontend_tick);
         h.swap(g_restore_device_objects, sym::frontend_restore_slot, &on_frontend_restore);
         g_manager_global = reinterpret_cast<std::uintptr_t*>(h.game().image_base + h.value(sym::gui_manager_store, "manager"));

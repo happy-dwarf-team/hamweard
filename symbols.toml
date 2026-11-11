@@ -564,3 +564,20 @@ note = "CIntegerFlags::Clear: frees and empties the flag and date arrays (+0x10,
 build."eu4-1.37.5-steam-win64" = { rva = 0x43F200 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x43F0D0 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x43F0D0 }
+
+# --- delayed events the game fires and never deletes ---
+
+[symbol.delayed_events_fired]
+bytes = "41 8B 85 D0 1D 00 00 89 85 78 06 00 00 45 33 E4"   # mov eax, [r13+0x1DD0]; mov [rbp+0x678], eax; xor r12d, r12d
+memory = "code"
+note = "CCountry::DailyUpdateSerial, right after it took the delayed events it fired today out of _DelayedEvents (r14 = the country, +0x2200): they are in the local array at rbp+0x168, their count at rbp+0x174, and nothing deletes them"
+build."eu4-1.37.5-steam-win64" = { rva = 0x2EF4B8 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x2EF468 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x2EF468 }
+
+[symbol.delayed_event_vtable]
+memory = "read"
+note = "CDelayedEvent's vtable; slot 0 is its deleting destructor (the scope's destructor, then the 0xF0 bytes)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1C57878, points_to = 0x2C6B10 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1C405F8, points_to = 0x2C6AC0 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1C405F8, points_to = 0x2C6AC0 }
