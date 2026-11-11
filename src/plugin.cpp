@@ -95,6 +95,14 @@ constexpr std::ptrdiff_t country_db_countries = 0x118;   // its CCountry* array,
 constexpr std::ptrdiff_t country_has_idea_group = 0x10A0;  // CCountry::_HasIdeaGroup, a bool[]
 constexpr std::ptrdiff_t subject_modifiers_begin = 0x6440;  // CCountryModifiers::ModifiersFromSubjectToOverlord
 constexpr std::ptrdiff_t subject_modifiers_end = 0x6448;
+
+constexpr std::ptrdiff_t monarch_religion = 0x58;   // CMonarch::_pReligion
+constexpr std::ptrdiff_t monarch_culture = 0x60;    // CMonarch::_pCulture
+constexpr std::ptrdiff_t monarch_dynasty = 0x68;    // CMonarch::_pDynasty
+constexpr std::ptrdiff_t monarch_flags = 0xA0;      // CMonarch::_RulerFlags, a CIntegerFlags
+constexpr std::ptrdiff_t flags_begin = 0x10;        // CIntegerFlags::_Flags, a CArray<short>
+constexpr std::ptrdiff_t flags_end = 0x18;
+constexpr std::ptrdiff_t culture_name = 0x48;       // CCulture's tag (std::string)
 }  // namespace off
 
 // The offsets that differ on the GOG builds 1.37.5.2 and 1.37.5.0 (their
@@ -597,6 +605,68 @@ void on_country_modifiers_destroy(void* modifiers) noexcept {
     g_country_modifiers_destroy.next(modifiers);
 }
 
+// The ruler, heir and consort of a country that has none are three objects the game
+// makes once per process (CNullMonarch, CNullHeir, CNullQueen) and never resets, and
+// effects on a country without one write into them: set_heir_culture on a country
+// without an heir sets the culture of every such country's heir. So a campaign after a
+// return started with what the last one wrote (lab#150: Anbennar's racial_misc.10 left
+// tamran in the null heir, and the next campaign took another path on 19.11.1444
+// than a fresh start, which has noculture there). Their culture, religion and dynasty
+// are kept from the first main menu and put back after each reset, with their flags
+// cleared; the objects stay where they are, as the game compares heirs with them.
+struct NullCharacter {
+    const char* name;
+    std::uintptr_t* global = nullptr;
+    Bytes object = nullptr;  // as the first main menu saw it
+    void* religion = nullptr;
+    void* culture = nullptr;
+    void* dynasty = nullptr;
+};
+NullCharacter g_null_characters[] = {{"ruler"}, {"heir"}, {"consort"}};
+
+std::string_view culture_name(const void* culture) noexcept {
+    return culture ? game_string(static_cast<const std::uint8_t*>(culture) + off::culture_name) : "none";
+}
+
+// From the frontend's first ticks until a campaign starts: the state of a fresh process.
+void keep_null_characters() {
+    for (auto& c : g_null_characters) {
+        if (c.object) continue;
+        Bytes o = reinterpret_cast<Bytes>(*c.global);
+        if (!o) continue;
+        c.object = o;
+        c.religion = at<void*>(o, off::monarch_religion);
+        c.culture = at<void*>(o, off::monarch_culture);
+        c.dynasty = at<void*>(o, off::monarch_dynasty);
+        host().info("null {} kept: culture {}, religion {}, dynasty {}", c.name, culture_name(c.culture), c.religion,
+                    c.dynasty);
+    }
+}
+
+void restore_null_characters() {
+    for (auto& c : g_null_characters) {
+        Bytes o = reinterpret_cast<Bytes>(*c.global);
+        if (!o) continue;
+        if (o != c.object) {
+            host().warn("null {} not put back: not the object the first main menu had", c.name);
+            continue;
+        }
+        Bytes flags = o + off::monarch_flags;
+        const auto flag_count = (at<Bytes>(flags, off::flags_end) - at<Bytes>(flags, off::flags_begin)) / 2;
+        const std::string before(culture_name(at<void*>(o, off::monarch_culture)));
+        const bool changed = at<void*>(o, off::monarch_culture) != c.culture ||
+                             at<void*>(o, off::monarch_religion) != c.religion ||
+                             at<void*>(o, off::monarch_dynasty) != c.dynasty || flag_count != 0;
+        at<void*>(o, off::monarch_religion) = c.religion;
+        at<void*>(o, off::monarch_culture) = c.culture;
+        at<void*>(o, off::monarch_dynasty) = c.dynasty;
+        game(sym::integer_flags_clear, flags);
+        if (changed)
+            host().info("null {} put back: culture {} -> {}, {} flags cleared", c.name, before, culture_name(c.culture),
+                        flag_count);
+    }
+}
+
 void reset_world(Bytes app) {
     const std::size_t idea_groups = free_idea_group_flags();
     g_else_branches_freed.store(0, std::memory_order_relaxed);
@@ -604,6 +674,7 @@ void reset_world(Bytes app) {
         FreeElseWindow window;
         game(sym::reset_game, app, false);
     }
+    restore_null_characters();
     host().info("memory the reset would lose: {} idea group tables, {} else branches freed; {} subject modifiers freed since the last reset",
                 idea_groups, g_else_branches_freed.load(std::memory_order_relaxed),
                 g_subject_modifiers_freed.exchange(0, std::memory_order_relaxed));
@@ -651,6 +722,7 @@ void on_frontend_restore(void* idler) {
 
 // The frontend idler's tick: the queued Back, then the deferred world reset.
 void on_frontend_tick(void* idler, bool update) {
+    if (!g_campaign_seen) keep_null_characters();
     if (auto* app = static_cast<Bytes>(g_pending_frontend_app.exchange(nullptr))) {
         host().info("Back: returning from the country selection");
         const std::uint32_t reason = potential_corruption();
@@ -714,6 +786,9 @@ struct Hamweard : anvil::Plugin {
         g_custom_nation_used = h.data(sym::custom_nation_used);
         g_map = h.data(sym::map);
         g_country_db = h.data(sym::country_db);
+        g_null_characters[0].global = h.data(sym::null_monarch);
+        g_null_characters[1].global = h.data(sym::null_heir);
+        g_null_characters[2].global = h.data(sym::null_queen);
         const char* build = h.game().build_id;
         g_layout = is_gog_build(build) ? kGog : kSteam;
         g_minimap_vtable = h.address(sym::minimap_vtable);

@@ -529,3 +529,38 @@ note = "CCountryDataBase::_pInstance: the country count at +0x100, the CCountry*
 build."eu4-1.37.5-steam-win64" = { rva = 0x233D8D0 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x2321750 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x2321750 }
+
+# --- the characters a country has when it has none ---
+
+[symbol.null_monarch]
+memory = "write"
+type = "uintptr_t"
+note = "CNullMonarch::_pNullMonarch: the no-ruler CMonarch, made once per process (GetNullMonarch) and never reset"
+build."eu4-1.37.5-steam-win64" = { rva = 0x233FFA0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x2323E20 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x2323E20 }
+
+[symbol.null_heir]
+memory = "write"
+type = "uintptr_t"
+note = "CNullHeir::_pNullHeir: the heir of every country without one (ClearCurrentHeir); set_heir_culture there writes into it"
+build."eu4-1.37.5-steam-win64" = { rva = 0x233FFA8 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x2323E28 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x2323E28 }
+
+[symbol.null_queen]
+memory = "write"
+type = "uintptr_t"
+note = "CNullQueen::_pNullQueen: the consort of every country without one"
+build."eu4-1.37.5-steam-win64" = { rva = 0x233FFB0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x2323E30 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x2323E30 }
+
+[symbol.integer_flags_clear]
+bytes = "48 89 5C 24 08 48 89 74 24 10 57 48 83 EC 40 48 8D 59 10"
+memory = "code"
+signature = "void (void* flags)"
+note = "CIntegerFlags::Clear: frees and empties the flag and date arrays (+0x10, +0x28)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x43F200 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x43F0D0 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x43F0D0 }
