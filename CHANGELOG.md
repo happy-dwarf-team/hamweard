@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.3](https://github.com/happy-dwarf-team/hamweard/compare/v1.3.2...v1.3.3) (2026-11-11)
+
+
+### Bug Fixes
+
+* put back the characters of countries without one on each return ([#72](https://github.com/happy-dwarf-team/hamweard/issues/72)) ([24dc8d2](https://github.com/happy-dwarf-team/hamweard/commit/24dc8d25d41a9298e682bb2e00292f9b51ad41aa))
+
 ## [1.3.2](https://github.com/happy-dwarf-team/hamweard/compare/v1.3.1...v1.3.2) (2026-11-10)
 
 ### Bug Fixes
