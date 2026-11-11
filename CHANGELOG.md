@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.4](https://github.com/happy-dwarf-team/hamweard/compare/v1.3.3...v1.3.4) (2026-11-11)
+
+
+### Bug Fixes
+
+* delete the delayed events a country fired once their world is gone ([#74](https://github.com/happy-dwarf-team/hamweard/issues/74)) ([455c041](https://github.com/happy-dwarf-team/hamweard/commit/455c04112686720dacb5521170ce5ef5d5a16aca))
+
 ## [1.3.3](https://github.com/happy-dwarf-team/hamweard/compare/v1.3.2...v1.3.3) (2026-11-11)
 
 ### Bug Fixes
