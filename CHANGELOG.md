@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.3](https://github.com/happy-dwarf-team/hamweard/compare/v1.3.2...v1.3.3) (2026-11-11)
+
+### Bug Fixes
+
+* A new campaign after a return to the main menu now plays out like the same campaign in a freshly started game. The game keeps one shared stand-in for "no ruler", "no heir" and "no consort", used by every country that has none, and events could change it: in Anbennar an event writes a culture into the "no heir" of a country without an heir. That change outlived the return, so in the next campaign an event's condition came out differently, and after 10 days its rebel factions, missions and battles differed from the same campaign started in a fresh game. Hamweard now puts the culture, religion, dynasty and flags of these three stand-ins back to what they were at the first main menu, on each return. In the lab with Anbennar on Steam and the same seed, a campaign after 2 returns drew the same random numbers in the same order as a fresh game over 10 days, in 2 of 2 runs, and its save matched. A base-game campaign on GOG 1.37.5.2 after 6 returns matched a fresh one after 30 days. On Steam without mods and on GOG 1.37.5.0 only the game addresses were checked, without playing. ([#72](https://github.com/happy-dwarf-team/hamweard/issues/72)) ([24dc8d2](https://github.com/happy-dwarf-team/hamweard/commit/24dc8d25d41a9298e682bb2e00292f9b51ad41aa))
+
 ## [1.3.2](https://github.com/happy-dwarf-team/hamweard/compare/v1.3.1...v1.3.2) (2026-11-10)
 
 ### Bug Fixes
