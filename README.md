@@ -276,6 +276,7 @@ code first, then tested with a second player on 6 November 2026.
 | `0x233D8D0`, `CCountryDataBase` | each country keeps a table of its idea groups, which the country's destructor never frees | frees the tables with the game's own `delete[]` just before the world reset |
 | `0x93AE10`, `CCountryModifiers`' destructor | rebuilds a country's modifiers in place and frees the list of its subjects' modifiers, but not the modifiers in it | deletes those modifiers first, in the whole game (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
 | `0x2EF4B8`, `CCountry::DailyUpdateSerial` after its delayed events | fires the delayed events whose days ran out and takes them out of the country's list without deleting them | notes those events, and deletes them after the reset of a return and after a save's load (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
+| `0x152AAF0`, `CInstantTextBox`'s destructor | destroys a text box but not the pan gesture it made, unless the box has a scrollbar | first deletes that gesture, in the whole game, when the box's scrollbar never took it over (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
 
 The world's `PotentialCorruption` flag stays as the game keeps it through its reset. Only
 the `-nudge` reason (2), which the reset flattens to 1, is put back. Earlier versions, like
@@ -309,7 +310,7 @@ there. The lab found two such leaks with a heap tracer (eu4-engine-lab, 9 Novemb
 
 ## Memory a long campaign lost
 
-Two leaks grow while you play, with or without a return. Each time the game recalculates the
+Three leaks grow while you play, with or without a return. Each time the game recalculates the
 modifiers of a country with subjects (every day for some countries, and after many actions), it
 gives the overlord one new modifier per subject (`CalcModifiersFromSubjects`) and keeps it in a
 list (`ModifiersFromSubjectToOverlord`). The next recalculation throws the list away but not the
@@ -326,6 +327,15 @@ fired one. Without mods few fire this way, but Anbennar's start-up events wait a
 goes on. The game keeps running as before: the plugin only notes the events it fired and took
 out of the list, and deletes them, as the country's destructor does, once their world is gone,
 after the reset of a return and after a save's load.
+
+The third is in the GUI. Every text box makes a pan gesture (`CPanGestureRecognizer`, for
+dragging its text), and only the list of gestures a widget owns gets deleted with it. A box
+without a scrollbar, or a hidden one, takes its gesture off that list, and the box's destructor
+leaves it: about 0.6 to 0.8 MB per campaign and 0.15 MB per **Back** without mods (heap tracer,
+lab eu4-engine-lab#39, 12 November 2026). Off the list the gesture gets no input and nothing but
+the box points to it. The plugin deletes it with the box, the way a widget deletes the gestures
+it owns, and only in the state the box left it in: off the list, tracking no finger, with the
+box as its only observer. Anything else is left as the game leaves it.
 
 With the first, the tracer found nothing left of it after a **Back**, a new campaign, or a
 loaded one. For the second, the plugin's log counts the fired events it deletes at each reset. What a return still leaves is mostly the last campaign's world and GUI (about

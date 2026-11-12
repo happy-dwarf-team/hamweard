@@ -581,3 +581,22 @@ note = "CDelayedEvent's vtable; slot 0 is its deleting destructor (the scope's d
 build."eu4-1.37.5-steam-win64" = { rva = 0x1C57878, points_to = 0x2C6B10 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x1C405F8, points_to = 0x2C6AC0 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x1C405F8, points_to = 0x2C6AC0 }
+
+# --- the pan gesture a text box without a scrollbar loses ---
+
+[symbol.text_box_destroy]
+memory = "code"
+signature = "void (void* box)"
+note = "CInstantTextBox's destructor (the deleting one and CNullInstantTextBox's call it): never deletes _pPanGesture (+0x210), which only CGuiObject's gesture list (+0x90) frees, and a box without a scrollbar takes it off that list"
+
+[symbol.text_box_destroy.build."eu4-1.37.5-steam-win64"]
+rva = 0x152AAF0
+bytes = "40 53 48 83 EC 20 48 8B D9 48 8D 05 10 52 86 00"   # lea rax, CInstantTextBox's vtable
+
+[symbol.text_box_destroy.build."eu4-1.37.5.2-gog-win64"]
+rva = 0x15219F0
+bytes = "40 53 48 83 EC 20 48 8B D9 48 8D 05 C8 66 85 00"
+
+[symbol.text_box_destroy.build."eu4-1.37.5.0-gog-win64"]
+rva = 0x15219F0
+bytes = "40 53 48 83 EC 20 48 8B D9 48 8D 05 C8 66 85 00"
