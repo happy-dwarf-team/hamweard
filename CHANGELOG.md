@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.0](https://github.com/happy-dwarf-team/hamweard/compare/v1.3.4...v1.4.0) (2026-11-12)
+
+
+### Features
+
+* show the settings and the description in eight languages ([#77](https://github.com/happy-dwarf-team/hamweard/issues/77)) ([2a072ce](https://github.com/happy-dwarf-team/hamweard/commit/2a072ced3fe4f5e53e4630e7dad7e0be91dc097c))
+
+
+### Bug Fixes
+
+* delete the pan gesture of a text box without a scrollbar ([#79](https://github.com/happy-dwarf-team/hamweard/issues/79)) ([3aa53fb](https://github.com/happy-dwarf-team/hamweard/commit/3aa53fbbb880dedb8c37fc22dc327d6ecbb32d0b))
+
 ## [1.3.4](https://github.com/happy-dwarf-team/hamweard/compare/v1.3.3...v1.3.4) (2026-11-11)
 
 ### Bug Fixes
