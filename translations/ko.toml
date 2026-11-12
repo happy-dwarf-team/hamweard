@@ -1,0 +1,7 @@
+# The plugin's texts in Korean: the description in plugin.toml, by its
+# English words.
+# Change them together with the English text: anvil check reports an entry that no longer matches.
+status = "draft"            # "checked" once a native speaker checked it
+
+[text]
+"Back on the country selection screen and Exit to Menu in a campaign return to the main menu without restarting the game. A port of EU4 Menu Patch by VulonLok (MIT)." = "국가 선택 화면의 '뒤로'와 캠페인 중 '메뉴로 나가기'가 게임을 다시 시작하지 않고 메인 메뉴로 돌아갑니다. VulonLok의 EU4 Menu Patch(MIT)를 이식했습니다."

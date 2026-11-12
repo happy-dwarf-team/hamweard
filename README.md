@@ -42,6 +42,11 @@ To go back to the main menu:
 The main menu comes back in a few seconds, in the same process, and **Continue game** points at
 your latest save, as after a restart. Without the plugin both buttons restart the game as usual.
 
+With Anvil 1.20 or newer, the Anvil panel and Anvil Manager show the plugin's description in the player's
+language: French, German, Spanish, Simplified and Traditional Chinese, Japanese, Korean or
+Polish, from [`translations/`](translations/). The translations are drafts that native speakers
+have not checked yet; a correction is welcome in an issue or a pull request.
+
 ## Limitations
 
 - **Gameplay.** `affects_gameplay = false`: a return is meant not to change the simulation. The

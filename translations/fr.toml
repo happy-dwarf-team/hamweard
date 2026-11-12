@@ -1,0 +1,7 @@
+# The plugin's texts in French: the description in plugin.toml, by its
+# English words.
+# Change them together with the English text: anvil check reports an entry that no longer matches.
+status = "draft"            # "checked" once a native speaker checked it
+
+[text]
+"Back on the country selection screen and Exit to Menu in a campaign return to the main menu without restarting the game. A port of EU4 Menu Patch by VulonLok (MIT)." = "« Retour » sur l'écran de sélection du pays et « Quitter vers le menu » en campagne ramènent au menu principal sans redémarrer le jeu. Portage d'EU4 Menu Patch de VulonLok (MIT)."

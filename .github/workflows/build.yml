@@ -42,8 +42,10 @@ jobs:
         run: ctest --test-dir build -C Release --output-on-failure
 
       # CI has no eu4.exe, so `anvil check` checks what it can without the game:
-      # the schemas of plugin.toml, symbols.toml and settings.toml, and that
-      # symbols.lock matches symbols.toml with result = "ok" (the lock check).
+      # the schemas of plugin.toml, symbols.toml and settings.toml, that the
+      # description has a translation in all eight files of translations/
+      # (--complete-translations), and that symbols.lock matches symbols.toml
+      # with result = "ok" (the lock check).
       # Problems show up as annotations on the files.
       - name: anvil check
         shell: pwsh
@@ -52,7 +54,7 @@ jobs:
           $anvil = 'build/_deps/anvil_sdk-src/bin/anvil.exe'
           if (-not (Test-Path $anvil)) { Write-Output "::error::$anvil not found"; exit 1 }
           & $anvil --version
-          & $anvil check . --format github
+          & $anvil check . --format github --complete-translations
           exit $LASTEXITCODE
 
       # The release assets, built on every change so a release never packages
