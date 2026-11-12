@@ -252,6 +252,20 @@ The fix for fired delayed events was tested on 11 November 2026 (lab eu4-engine-
   Anbennar campaign of 3 days and 10,061 after a loaded one. Without mods it deleted none, as the
   tracer led to expect.
 
+The fix for the text box pan gestures was tested on 12 November 2026 (lab eu4-engine-lab#39):
+- A heap tracer, GOG 1.37.5.2 without mods, three **Back** and two campaigns, compared with 1.3.3:
+  - a campaign left no pan gesture behind, where 1.3.3 left 3,111 (0.61 MB);
+  - a **Back** left 0 to 3, where 1.3.3 left about 890;
+  - nothing else the text boxes made was lost instead, and every part of the memory a return
+    left was the same size or smaller.
+- With Anbennar on Steam, the tracer found no pan gesture left after a campaign and two **Back**.
+- Anbennar on Steam, `-seed=12345`, a new campaign after 2 returns, 10 days:
+  - the random log was the same as without Hamweard, 738,015 lines;
+  - the save of day 10 differed only in `campaign_id`.
+- 11 returns in a row with 8 campaigns, 5 of them loaded, without a crash, in Anbennar on Steam and
+  on GOG 1.37.5.2 without mods. The plugin deleted about 890 pan gestures after each **Back** and
+  3,500 to 4,200 after each campaign.
+
 Not tested: the Steam lobby clean-up with a lobby open, and the windows and modes
 listed under [Limitations](#limitations). The multiplayer check was read from the game's
 code first, then tested with a second player on 6 November 2026.
