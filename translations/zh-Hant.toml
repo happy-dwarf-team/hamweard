@@ -1,0 +1,7 @@
+# The plugin's texts in Traditional Chinese: the description in plugin.toml, by its
+# English words.
+# Change them together with the English text: anvil check reports an entry that no longer matches.
+status = "draft"            # "checked" once a native speaker checked it
+
+[text]
+"Back on the country selection screen and Exit to Menu in a campaign return to the main menu without restarting the game. A port of EU4 Menu Patch by VulonLok (MIT)." = "在國家選擇畫面點選「返回」、在戰役中點選「離開至選單」時，無需重新啟動遊戲即可回到主選單。移植自 VulonLok 的 EU4 Menu Patch（MIT）。"
