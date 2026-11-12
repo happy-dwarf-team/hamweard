@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.4](https://github.com/happy-dwarf-team/hamweard/compare/v1.3.3...v1.3.4) (2026-11-11)
+
+### Bug Fixes
+
+* A return to the main menu and a save's load now free the delayed events the old campaign had already fired. When a `country_event` with `days` fires, the game takes it off the country's waiting list but never frees it, and nothing points to it any more. Hamweard notes these events as they fire and frees them once their campaign is gone: after a return and after a load. While you play, the game runs as before, so within one campaign they still pile up (about 0.17 MB a year in Anbennar after the first month). Anbennar's start-up events wait a few days, so the lab's heap trace found about 2.4 MB of them in each 5-day Anbennar campaign, and about none without mods. In the lab with Anbennar on Steam and the same seed, a new campaign after 2 returns drew the same random numbers in the same order as the game without Hamweard over 10 days, and its save differed only in the campaign id. 11 returns in one process, with 8 campaigns of which 5 were loaded, ran without a crash in Anbennar on Steam and in the base game on GOG 1.37.5.2. Hamweard freed 6,033 events after each new 3-day Anbennar campaign and 10,061 after each loaded one, and none in the base game. The saving is too small to show in the game's total memory. On GOG 1.37.5.0 only the game addresses were checked, without playing ([#74](https://github.com/happy-dwarf-team/hamweard/issues/74)) ([455c041](https://github.com/happy-dwarf-team/hamweard/commit/455c04112686720dacb5521170ce5ef5d5a16aca))
+
 ## [1.3.3](https://github.com/happy-dwarf-team/hamweard/compare/v1.3.2...v1.3.3) (2026-11-11)
 
 ### Bug Fixes
