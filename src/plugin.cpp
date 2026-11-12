@@ -108,6 +108,18 @@ constexpr std::ptrdiff_t monarch_flags = 0xA0;      // CMonarch::_RulerFlags, a 
 constexpr std::ptrdiff_t flags_begin = 0x10;        // CIntegerFlags::_Flags, a CArray<short>
 constexpr std::ptrdiff_t flags_end = 0x18;
 constexpr std::ptrdiff_t culture_name = 0x48;       // CCulture's tag (std::string)
+
+constexpr std::ptrdiff_t gui_gestures_begin = 0x90;   // CGuiObject: the recognizers it owns, {pointer, owned} of 16 bytes
+constexpr std::ptrdiff_t gui_gestures_end = 0x98;
+constexpr std::ptrdiff_t gui_gesture_size = 0x10;
+constexpr std::ptrdiff_t text_box_observer = 0xC8;    // CInstantTextBox's CGestureObserver base
+constexpr std::ptrdiff_t text_box_pan = 0x210;        // CInstantTextBox::_pPanGesture
+constexpr std::ptrdiff_t gesture_fingers_begin = 0x8;    // CGestureRecognizer::_TrackedFingers
+constexpr std::ptrdiff_t gesture_fingers_end = 0x10;
+constexpr std::ptrdiff_t gesture_observers_begin = 0x28;  // CGestureRecognizer::_Observers, CGestureObserver*
+constexpr std::ptrdiff_t gesture_observers_end = 0x30;
+constexpr std::ptrdiff_t gesture_waiters_begin = 0x40;    // CGestureRecognizer::_FailureWaiters
+constexpr std::ptrdiff_t gesture_waiters_end = 0x48;
 }  // namespace off
 
 // The offsets that differ on the GOG builds 1.37.5.2 and 1.37.5.0 (their
@@ -181,6 +193,7 @@ anvil::HookOf<sym::history_move> g_history_move;
 anvil::HookOf<sym::country_modifiers_destroy> g_country_modifiers_destroy;
 anvil::HookOf<sym::history_destroy> g_history_destroy;
 anvil::HookOf<sym::save_load_task> g_save_load_task;
+anvil::HookOf<sym::text_box_destroy> g_text_box_destroy;
 bool g_returned_to_menu = false;
 std::uintptr_t* g_manager_global = nullptr;
 std::ptrdiff_t g_registry_begin = 0;
@@ -610,6 +623,47 @@ void on_country_modifiers_destroy(void* modifiers) noexcept {
     g_country_modifiers_destroy.next(modifiers);
 }
 
+// Each CInstantTextBox makes a CPanGestureRecognizer (_pPanGesture), and only CGuiObject's
+// destructor deletes recognizers: those on the box's gesture list. A box without a scrollbar
+// (or a hidden one) takes it off that list, and the box's destructor leaves it, so every such
+// box lost one (lab#39: 0.6-0.8 MB per campaign, 0.15 MB per Back). Off the list it gets no
+// input and nothing else points to it; the box is its only observer. The detour deletes it,
+// everywhere, before the box's own destructor runs, and only in the state the box left it:
+// off the list, no fingers tracked (so not among CTouchGestures' active ones), no failure
+// waiters, the box as its one observer, which is taken off first. Anything else stays as the
+// game leaves it.
+std::atomic<std::uint64_t> g_pan_gestures_freed{0};
+
+bool owns_gesture(Bytes object, const void* gesture) noexcept {
+    const Bytes begin = at<Bytes>(object, off::gui_gestures_begin);
+    const Bytes end = at<Bytes>(object, off::gui_gestures_end);
+    for (Bytes p = begin; p && p < end; p += off::gui_gesture_size)
+        if (at<void*>(p, 0) == gesture) return true;
+    return false;
+}
+
+bool pan_gesture_left_alone(Bytes box, Bytes pan) noexcept {
+    if (owns_gesture(box, pan)) return false;  // ~CGuiObject deletes it
+    if (at<void*>(pan, off::gesture_fingers_begin) != at<void*>(pan, off::gesture_fingers_end)) return false;
+    if (at<void*>(pan, off::gesture_waiters_begin) != at<void*>(pan, off::gesture_waiters_end)) return false;
+    void** observers = at<void**>(pan, off::gesture_observers_begin);
+    void** observers_end = at<void**>(pan, off::gesture_observers_end);
+    return observers && observers_end - observers == 1 && observers[0] == box + off::text_box_observer;
+}
+
+void on_text_box_destroy(void* object) noexcept {
+    auto* box = static_cast<Bytes>(object);
+    if (auto* pan = at<Bytes>(box, off::text_box_pan); pan && pan_gesture_left_alone(box, pan)) {
+        at<void*>(box, off::text_box_pan) = nullptr;
+        at<void**>(pan, off::gesture_observers_end) = at<void**>(pan, off::gesture_observers_begin);
+        // Slot 0 with 1, as ~CGuiObject deletes a recognizer it owns.
+        using DeleteFn = void* (*)(void* gesture, std::uint32_t flags);
+        at<DeleteFn>(at<void*>(pan, 0), 0)(pan, 1);
+        g_pan_gestures_freed.fetch_add(1, std::memory_order_relaxed);
+    }
+    g_text_box_destroy.next(object);
+}
+
 // The ruler, heir and consort of a country that has none are three objects the game
 // makes once per process (CNullMonarch, CNullHeir, CNullQueen) and never resets, and
 // effects on a country without one write into them: set_heir_culture on a country
@@ -728,9 +782,10 @@ void reset_world(Bytes app) {
     }
     restore_null_characters();
     const std::size_t fired = free_fired_events();
-    host().info("memory the reset would lose: {} idea group tables, {} else branches freed, {} fired delayed events freed; {} subject modifiers freed since the last reset",
+    host().info("memory the reset would lose: {} idea group tables, {} else branches freed, {} fired delayed events freed; {} subject modifiers and {} text box pan gestures freed since the last reset",
                 idea_groups, g_else_branches_freed.load(std::memory_order_relaxed), fired,
-                g_subject_modifiers_freed.exchange(0, std::memory_order_relaxed));
+                g_subject_modifiers_freed.exchange(0, std::memory_order_relaxed),
+                g_pan_gestures_freed.exchange(0, std::memory_order_relaxed));
 }
 
 void on_history_move(void* history, const void* date) noexcept {
@@ -909,6 +964,7 @@ struct Hamweard : anvil::Plugin {
         h.hook(g_country_modifiers_destroy, sym::country_modifiers_destroy, on_country_modifiers_destroy);
         h.hook(g_history_destroy, sym::history_destroy, on_history_destroy);
         h.hook(g_save_load_task, sym::save_load_task, on_save_load_task);
+        h.hook(g_text_box_destroy, sym::text_box_destroy, on_text_box_destroy);
         // Recording starts with the in-game idler (its views make windows
         // while a save loads) and again at each GUI build (the HUD reload).
         const auto record = [] {
