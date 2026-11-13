@@ -26,6 +26,9 @@ Hamweard is a real program running inside your game, not just a pile of text fil
 ### Exit to Menu still restarts the game.
 Check the **Mods** tab in Anvil's panel (Ctrl+Shift+F12): it says whether Hamweard is approved, and if it was kept out, why (another game version, say). In a multiplayer session the restart is on purpose. A dwarf who isn't let in can't show you the way home.
 
+### How do I restart the game on purpose?
+Hold **Shift** on the click that leaves: **Quit** on the end-of-game screen, or **Back** on the country selection screen. The game restarts as it would without Hamweard, with the same mods, and an ironman campaign is saved first. You need a fresh start before multiplayer after a campaign, and after changing a mod's files. Anvil 1.23 and newer also have a **Restart game** button in their panel (Ctrl+Shift+F12).
+
 ### Does it work with Bellows?
 Yes. They do different jobs, Bellows the start of the game and Hamweard the way back to the menu, and they don't change the same parts of the game. We ran them side by side for many returns in a row without a hitch.
 

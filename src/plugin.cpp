@@ -515,12 +515,20 @@ int on_multiplayer_availability(void* view) {
                                               potential_corruption());
 }
 
+// Whether Shift is down now. Both blocks run on the main thread in the frame
+// that handles the click that leaves (Quit on the end-of-game screen, Back), a
+// moment after it, so the key's physical state is the one of that click;
+// GetKeyState adds what the window's messages last said.
+bool shift_held() {
+    return ((GetAsyncKeyState(VK_SHIFT) | GetKeyState(VK_SHIFT)) & 0x8000) != 0;
+}
+
 // Why a return has to be the game's own restart, or null when it does not.
 const char* restart_reason() {
     MEMORYSTATUSEX memory{};
     memory.dwLength = sizeof memory;
     const std::uint64_t commit = GlobalMemoryStatusEx(&memory) ? memory.ullAvailPageFile : UINT64_MAX;
-    return hamweard::restart_reason(in_multiplayer_session(), g_map_randomized, commit);
+    return hamweard::restart_reason(shift_held(), in_multiplayer_session(), g_map_randomized, commit);
 }
 
 // In CInGameIdler::Idle, instead of setting exit + restart.
