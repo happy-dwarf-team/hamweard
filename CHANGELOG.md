@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/happy-dwarf-team/hamweard/compare/v1.4.0...v1.5.0) (2026-11-13)
+
+
+### Features
+
+* Shift+Back and Shift+Exit to Menu restart the game ([#82](https://github.com/happy-dwarf-team/hamweard/issues/82)) ([66e7975](https://github.com/happy-dwarf-team/hamweard/commit/66e7975568cf1aecd07cc1bf3885ebc0866ae963))
+
 ## [1.4.0](https://github.com/happy-dwarf-team/hamweard/compare/v1.3.4...v1.4.0) (2026-11-12)
 
 ### Features
