@@ -3,10 +3,11 @@
 #include "map_snapshot.hpp"
 #include "menu_transition.hpp"
 
-#include <cstdio>
 #include <array>
+#include <cstdio>
 #include <cstdlib>
 #include <stdexcept>
+#include <string_view>
 
 namespace {
 void check(bool condition, const char* what) {
@@ -116,9 +117,11 @@ int main() {
     check(hamweard::enough_memory_for_return(hamweard::min_commit_for_return), "the limit is enough");
     check(!hamweard::enough_memory_for_return(hamweard::min_commit_for_return - 1), "below the limit the game restarts");
     const std::uint64_t plenty = hamweard::min_commit_for_return * 8;
-    check(hamweard::restart_reason(false, false, plenty) == nullptr, "a plain return does not restart");
-    check(hamweard::restart_reason(true, false, plenty) != nullptr, "multiplayer restarts");
-    check(hamweard::restart_reason(false, true, plenty) != nullptr, "a Random New World map restarts, whatever the memory");
-    check(hamweard::restart_reason(false, false, 0) != nullptr, "too little memory restarts");
+    check(hamweard::restart_reason(false, false, false, plenty) == nullptr, "a plain return does not restart");
+    check(hamweard::restart_reason(true, false, false, plenty) != nullptr, "Shift held restarts");
+    check(std::string_view(hamweard::restart_reason(true, true, true, 0)) == "with Shift held", "and says so first");
+    check(hamweard::restart_reason(false, true, false, plenty) != nullptr, "multiplayer restarts");
+    check(hamweard::restart_reason(false, false, true, plenty) != nullptr, "a Random New World map restarts, whatever the memory");
+    check(hamweard::restart_reason(false, false, false, 0) != nullptr, "too little memory restarts");
     std::puts("menu transition tests passed");
 }

@@ -42,6 +42,13 @@ To go back to the main menu:
 The main menu comes back in a few seconds, in the same process, and **Continue game** points at
 your latest save, as after a restart. Without the plugin both buttons restart the game as usual.
 
+To restart the game instead, as without the plugin, hold **Shift** on the click that leaves:
+**Quit** on the end-of-game screen, or **Back**. The game closes and starts again with the same
+launch options and mods; an ironman campaign is saved first, as at every Exit to Menu. Restart
+before multiplayer after a campaign, after you change a mod's files (a return does not read
+them again), or to get back the memory a return keeps. Anvil 1.23 and newer also have a
+**Restart game** button in the Anvil panel (`Ctrl+Shift+F12`), on any screen.
+
 With Anvil 1.20 or newer, the Anvil panel and Anvil Manager show the plugin's description in the player's
 language: French, German, Spanish, Simplified and Traditional Chinese, Japanese, Korean or
 Polish, from [`translations/`](translations/). The translations are drafts that native speakers
@@ -80,7 +87,8 @@ have not checked yet; a correction is welcome in an issue or a pull request.
   test did not use `-hardoos`, which compares all 140 checksums of the game state.
 - **Multiplayer after a campaign needs a restart.** The game marks a process that has played
   as possibly corrupted, and only a fresh process is meant to go on to multiplayer. After a
-  return the Multiplayer button does nothing, and its tooltip says why. Restart the game once.
+  return the Multiplayer button does nothing, and its tooltip says why. Restart the game once:
+  **Shift**+**Back** on the country selection screen, or Anvil's **Restart game**.
 - **The Steam lobby clean-up has not run with a lobby open.** It is ported from the original,
   and in a multiplayer session the game restarts instead.
 - **Ironman: on, with nothing to allow.** It works on Steam and GOG: the game saves when you
@@ -120,8 +128,9 @@ log says when the plugin chose a restart, and why.
 | The same, and the log says `multiplayer` | A multiplayer session ends with a restart | Expected. |
 | The same, and the log says `Random New World` | Such a map changes more than a return can put back | Expected. |
 | The same, and the log says `too little memory` | Less than 1 GB of the system's commit limit was left | Expected: the restart gives the memory back. |
+| The same, and the log says `with Shift held` | Shift was down on the click that left | Expected: Shift asks for the game's own restart. Let go of Shift for a return. |
 | Anvil refuses to load Hamweard | The game is another build, or the original EU4 Menu Patch changed the same code | Use EU4 1.37.5 on Steam or GOG 1.37.5.2 or 1.37.5.0, and remove the Menu Patch DLL. |
-| The Multiplayer button does nothing after a return | The process has played, and only a fresh one goes on to multiplayer | Restart the game once. |
+| The Multiplayer button does nothing after a return | The process has played, and only a fresh one goes on to multiplayer | Restart the game once: **Shift**+**Back** on the country selection screen, or **Restart game** in the Anvil panel (Anvil 1.23+). |
 | Continue game does not show your ironman campaign | The game does not record ironman saves there | Load it from the Single Player list. |
 | Province triggered modifiers are gone in a new campaign | A game bug: a save was clicked in the list before the new campaign | Press **Back** after clicking a save, then start the campaign. |
 
