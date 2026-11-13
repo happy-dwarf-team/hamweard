@@ -6,13 +6,13 @@ Normally **Exit to Menu** in a campaign and **Back** on the country selection sc
 
 ![](https://anvil.happydwarf.dev/workshop/hamweard-steps.png)
 
-Needs [Anvil](https://anvil.happydwarf.dev/) 1.9 or newer and EU4 1.37.5 (Steam; GOG's 1.37.5.2 and 1.37.5.0 too, see the FAQ). If Windows warns about Anvil, choose **More info**, then **Run anyway**. If you use the original EU4 Menu Patch, remove it first.
+Get Anvil Manager from [anvil.happydwarf.dev](https://anvil.happydwarf.dev/). Hamweard needs Anvil 1.9 or newer (take the latest) and EU4 1.37.5 (Steam; GOG's 1.37.5.2 and 1.37.5.0 too, see the FAQ). If Windows warns about Anvil Manager, choose **More info**, then **Run anyway**. If you use the original EU4 Menu Patch, remove it first.
 
 ![](https://anvil.happydwarf.dev/workshop/hamweard-tiles-title.png)
 
 ![](https://anvil.happydwarf.dev/workshop/hamweard-tiles.png)
 
-Your next campaign starts in a game that already played one, and that changes nothing we could find: in our tests a new campaign after a return matched one from a fresh start, with Anbennar and with canals too. So Hamweard works in ironman, with nothing to allow. Tested only once each so far: a multiplayer game with a second player, and an achievement earned for real after a return.
+Your next campaign starts in a game that already played one, and that changes nothing we could find: in our tests a new campaign after a return matched one from a fresh start, with Anbennar and with canals too. So Hamweard works in ironman, with nothing to allow, and an achievement earned after a return counted (tested once so far). In multiplayer Hamweard steps aside, and Exit to Menu restarts the game as usual.
 
 [![](https://anvil.happydwarf.dev/workshop/hamweard-docs.png)](https://anvil.happydwarf.dev/plugins/hamweard/) [![](https://anvil.happydwarf.dev/workshop/hamweard-github.png)](https://github.com/happy-dwarf-team/hamweard)
 
@@ -27,19 +27,19 @@ Hamweard is a real program running inside your game, not just a pile of text fil
 Check the **Mods** tab in Anvil's panel (Ctrl+Shift+F12): it says whether Hamweard is approved, and if it was kept out, why (another game version, say). In a multiplayer session the restart is on purpose. A dwarf who isn't let in can't show you the way home.
 
 ### Does it work with Bellows?
-Yes. They do different jobs, Bellows the start of the game and Hamweard the way back to the menu, and they don't change the same parts of the game. We ran them side by side for 23 returns in a row without a hitch.
+Yes. They do different jobs, Bellows the start of the game and Hamweard the way back to the menu, and they don't change the same parts of the game. We ran them side by side for many returns in a row without a hitch.
 
 ### Does it work in ironman or with big mods?
 Ironman, yes, with nothing to allow. The checksum stays the same and the game says achievements can be earned, after a return too. Continue game won't show your ironman campaign: load it from Single Player. Mods: Anbennar and a ten-mod playset ran clean, but no dwarf has walked every road.
 
 ### Does the game use more memory after many returns?
-A little. The game's own reset never frees everything it read, and Hamweard 1.3.1 frees the biggest part the lab found, about 60 MB per return with Anbennar. What still stays is mostly the last campaign's world and interface: in our tests about 45 MB per return with Anbennar and 20 MB without mods over a row of returns, and a return took as long after 40 in a row as at the start. If your computer runs low on memory, a return restarts the game instead.
+A little: the game never quite forgets the last campaign, so each return keeps a few dozen MB (less without big mods). Returns don't get slower after many in a row, and if your computer runs low on memory, a return simply restarts the game instead.
 
 ### Is it the same as EU4 Menu Patch?
 It is a port of it, with the original author's research and licence. It runs on Anvil instead of its own loader, and it also clears the windows a campaign leaves behind, which in our tests made a later campaign crash. Use one or the other, not both.
 
 ### I play on GOG. Can I use it?
-Yes, on the GOG builds 1.37.5.2 and 1.37.5.0 (1.37.5.0 needs Anvil 1.15 or newer). GOG has no Workshop, so install Hamweard from the **Catalog** tab in Anvil Manager, or from the release zip on [GitHub](https://github.com/happy-dwarf-team/hamweard/releases). The road home is the same from either gate.
+Yes, on the GOG builds 1.37.5.2 and 1.37.5.0, with the latest Anvil. GOG has no Workshop, so install Hamweard from the **Catalog** tab in Anvil Manager, or from the release zip on [GitHub](https://github.com/happy-dwarf-team/hamweard/releases). The road home is the same from either gate.
 
 ### Why "Hamweard"?
 Old English *hāmweard* means "homeward". The mod takes you from a campaign back to the main menu as if back home, without a restart on the way. Our other tools are named after the forge (Anvil, Bellows, Tongs, Etch); this one is the walk home after a day at it.
