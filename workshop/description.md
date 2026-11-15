@@ -24,28 +24,22 @@ Your next campaign starts in a game that already played one, and that changes no
 Hamweard is a real program running inside your game, not just a pile of text files. Anvil makes sure nothing like that runs without your nod. Trust, but verify. Dwarf law.
 
 ### Exit to Menu still restarts the game.
-Check the **Mods** tab in Anvil's panel (Ctrl+Shift+F12): it says whether Hamweard is approved, and if it was kept out, why (another game version, say). In a multiplayer session the restart is on purpose. A dwarf who isn't let in can't show you the way home.
+Check the **Mods** tab in Anvil's panel (Ctrl+Shift+F12): it says whether Hamweard is approved, or why it was kept out. In a multiplayer session the restart is on purpose.
 
 ### How do I restart the game on purpose?
-Hold **Shift** on the click that leaves: **Quit** on the end-of-game screen, or **Back** on the country selection screen. The game restarts as it would without Hamweard, with the same mods, and an ironman campaign is saved first. You need a fresh start before multiplayer after a campaign, and after changing a mod's files. Anvil 1.23 and newer also have a **Restart game** button in their panel (Ctrl+Shift+F12).
+Hold **Shift** on the click that leaves (**Quit** at the end of a game, **Back** on country selection) or, with Anvil 1.23 or newer, use **Restart game** in Anvil's panel. Do it before multiplayer after a campaign and after changing a mod's files.
 
-### Does it work with Bellows?
-Yes. They do different jobs, Bellows the start of the game and Hamweard the way back to the menu, and they don't change the same parts of the game. We ran them side by side for many returns in a row without a hitch.
-
-### Does it work in ironman or with big mods?
-Ironman, yes, with nothing to allow. The checksum stays the same and the game says achievements can be earned, after a return too. Continue game won't show your ironman campaign: load it from Single Player. Mods: Anbennar and a ten-mod playset ran clean, but no dwarf has walked every road.
-
-### Does the game use more memory after many returns?
-A little: the game never quite forgets the last campaign, so each return keeps a few dozen MB (less without big mods). Returns don't get slower after many in a row, and if your computer runs low on memory, a return simply restarts the game instead.
+### Does it work in ironman, with big mods or with Bellows?
+Yes: an ironman campaign still says achievements can be earned, and Anbennar, a ten-mod playset and Bellows ran clean in our tests. Continue game won't show an ironman campaign, so load it from Single Player.
 
 ### Is it the same as EU4 Menu Patch?
-It is a port of it, with the original author's research and licence. It runs on Anvil instead of its own loader, and it also clears the windows a campaign leaves behind, which in our tests made a later campaign crash. Use one or the other, not both.
+It is a port of it, with the original author's research and licence, that runs on Anvil and also clears the windows a campaign leaves behind. Use one or the other, not both.
 
 ### I play on GOG. Can I use it?
-Yes, on the GOG builds 1.37.5.2 and 1.37.5.0, with the latest Anvil. GOG has no Workshop, so install Hamweard from the **Catalog** tab in Anvil Manager, or from the release zip on [GitHub](https://github.com/happy-dwarf-team/hamweard/releases). The road home is the same from either gate.
+Yes, 1.37.5.2 and 1.37.5.0: GOG has no Workshop, so install it from the **Catalog** page of Anvil Manager. The road home is the same from either gate.
 
 ### Why "Hamweard"?
-Old English *hāmweard* means "homeward". The mod takes you from a campaign back to the main menu as if back home, without a restart on the way. Our other tools are named after the forge (Anvil, Bellows, Tongs, Etch); this one is the walk home after a day at it.
+Old English *hāmweard* means "homeward": the mod takes you from a campaign back to the main menu without a restart. Our other tools are named after the forge; this one is the walk home after a day at it.
 
 ### Something's wrong. Where do I ask?
 In **#help-and-bugs** on our [Discord server](https://discord.happydwarf.dev/) (pick the Hamweard tag), or in a [GitHub issue](https://github.com/happy-dwarf-team/hamweard/issues/new/choose). What we confirm on Discord goes to GitHub too.
