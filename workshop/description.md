@@ -12,8 +12,6 @@ Get Anvil Manager from [anvil.happydwarf.dev](https://anvil.happydwarf.dev/). Ha
 
 ![](https://anvil.happydwarf.dev/workshop/hamweard-tiles.png)
 
-Your next campaign starts in a game that already played one, and that changes nothing we could find: in our tests a new campaign after a return matched one from a fresh start, with Anbennar and with canals too. So Hamweard works in ironman, with nothing to allow, and an achievement earned after a return counted (tested once so far). In multiplayer Hamweard steps aside, and Exit to Menu restarts the game as usual.
-
 [![](https://anvil.happydwarf.dev/workshop/hamweard-docs.png)](https://anvil.happydwarf.dev/plugins/hamweard/) [![](https://anvil.happydwarf.dev/workshop/hamweard-github.png)](https://github.com/happy-dwarf-team/hamweard)
 
 [![](https://anvil.happydwarf.dev/workshop/discord-en.png)](https://discord.happydwarf.dev/)
