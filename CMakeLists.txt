@@ -32,3 +32,5 @@ add_executable(menu_transition_tests tests/menu_transition_tests.cpp)
 target_include_directories(menu_transition_tests PRIVATE src)
 target_compile_features(menu_transition_tests PRIVATE cxx_std_20)
 add_test(NAME menu_transition_tests COMMAND menu_transition_tests)
+add_test(NAME symbols_check
+         COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/symbols_check.cmake)

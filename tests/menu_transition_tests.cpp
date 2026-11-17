@@ -1,5 +1,6 @@
 // The world-reset gate, after EU4 Menu Patch's tests/menu_transition_tests.cpp
 // (MIT License, Copyright (c) 2026 VulonLok).
+#include "build_layout.hpp"
 #include "map_snapshot.hpp"
 #include "menu_transition.hpp"
 
@@ -123,5 +124,33 @@ int main() {
     check(hamweard::restart_reason(false, true, false, plenty) != nullptr, "multiplayer restarts");
     check(hamweard::restart_reason(false, false, true, plenty) != nullptr, "a Random New World map restarts, whatever the memory");
     check(hamweard::restart_reason(false, false, false, 0) != nullptr, "too little memory restarts");
+    check(std::string_view(hamweard::restart_reason(false, true, true, 0)) == "in a multiplayer session",
+          "multiplayer is named before the map and the memory");
+
+    // hamweard#88: a reset on the frontend gets the validation of a fresh start.
+    {
+        int multiplayer_asked = 0, idler_asked = 0;
+        auto needs = [&](bool keep_history, bool reloading, bool multiplayer, bool idler_validates) {
+            return hamweard::reset_needs_validation(
+                keep_history, reloading, [&] { ++multiplayer_asked; return multiplayer; },
+                [&] { ++idler_asked; return idler_validates; });
+        };
+        check(needs(false, false, false, false), "a frontend reset that reloads the history is validated");
+        check(!needs(true, false, false, false), "a reset that keeps the history is left alone");
+        check(!needs(false, true, false, false), "Hamweard's own return validates by itself");
+        check(!needs(false, false, false, true), "an idler that validates is left alone");
+        multiplayer_asked = idler_asked = 0;
+        check(!needs(false, false, true, false), "a multiplayer reset runs as stock");
+        check(multiplayer_asked == 1 && idler_asked == 0, "a multiplayer reset never asks the idler");
+        multiplayer_asked = idler_asked = 0;
+        check(!needs(true, false, true, false) && multiplayer_asked == 0, "a kept history asks nothing");
+    }
+
+    using hamweard::BuildLayout;
+    check(hamweard::build_layout("eu4-1.37.5-steam-win64") == BuildLayout::steam, "the Steam build");
+    check(hamweard::build_layout("eu4-1.37.5.2-gog-win64") == BuildLayout::gog, "GOG 1.37.5.2");
+    check(hamweard::build_layout("eu4-1.37.5.0-gog-win64") == BuildLayout::gog, "GOG 1.37.5.0");
+    check(hamweard::build_layout("eu4-1.37.5-msstore-win64") == BuildLayout::unknown, "another store has no layout");
+    check(hamweard::build_layout("") == BuildLayout::unknown, "no build has no layout");
     std::puts("menu transition tests passed");
 }
