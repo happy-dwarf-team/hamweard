@@ -540,11 +540,11 @@ void return_to_menu(Bytes idler) {
     g_recording_windows = false;
     at<std::uint8_t>(idler, g_layout.idler_exit_flag) = 0;
     BusyScope busy;
-    game(sym::in_game_exit, idler);
+    game(sym::in_game_exit, idler);  // NiceMultiplayerExit: a new single-player session
     leave_steam_session(app);
-    game(sym::campaign_exit_cleanup);
-    // The in-game reload clears this owner before it replaces the world; only
-    // its full destructor removes the GUI and the callbacks too.
+    game(sym::campaign_exit_cleanup);  // HandleIronmanSave: an ironman campaign is saved here
+    // The alert manager's diplomatic icons (ClearAllDiploIcons): a save's load and a
+    // tag switch destroy their windows before the world changes, and so does a return.
     if (void* notices = at<void*>(idler, g_layout.idler_notifications)) game(sym::notifications_destroy, notices);
     release_minimap(idler);
     construct_menu(app, reason);

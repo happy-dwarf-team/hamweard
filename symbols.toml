@@ -135,7 +135,7 @@ build."eu4-1.37.5-steam-win64" = { rva = 0x1658CB0 }
 bytes = "40 53 48 83 EC 30 48 8B D9"
 memory = "code"
 signature = "void (void* idler)"
-note = "CInGameIdler: the stock exit of the campaign view"
+note = "CInGameIdler::NiceMultiplayerExit (GOG eu4.pdb): the stock Exit to Menu's first call, which leaves the session for a new single-player one"
 build."eu4-1.37.5-steam-win64" = { rva = 0x80FEE0 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x80F240 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x80F240 }
@@ -144,7 +144,7 @@ build."eu4-1.37.5.0-gog-win64" = { rva = 0x80F240 }
 bytes = "48 89 5C 24 08 48 89 74 24 10 48 89 7C 24 18 55 48 8B EC"
 memory = "code"
 signature = "void ()"
-note = "called by EU4 Menu Patch after in_game_exit; not analysed further"
+note = "EU4SaveGameHelper::HandleIronmanSave (GOG eu4.pdb): saves an ironman campaign, local or cloud, before it returns; the stock Exit to Menu calls it after in_game_exit"
 build."eu4-1.37.5-steam-win64" = { rva = 0x5CC160 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x5CBC30 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x5CBC30 }
@@ -153,7 +153,7 @@ build."eu4-1.37.5.0-gog-win64" = { rva = 0x5CBC30 }
 bytes = "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 48 89 7C 24 20 41 56"
 memory = "code"
 signature = "void (void* notices)"
-note = "the diplomatic notifications' full destructor (GUI and callbacks), as the in-game reload uses it"
+note = "CAlertManager::ClearAllDiploIcons (GOG eu4.pdb): destroys the windows of the pending diplomatic icons and empties their lists, as a save's load and a tag switch do; the alert manager itself stays"
 build."eu4-1.37.5-steam-win64" = { rva = 0xDFFCF0 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0xDFE440 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0xDFE440 }
