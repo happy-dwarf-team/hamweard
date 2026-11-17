@@ -234,7 +234,7 @@ build."eu4-1.37.5.0-gog-win64" = { rva = 0x14BC390 }
 bytes = "48 89 5C 24 08 55 56 57 41 54 41 55 41 56 41 57"
 memory = "code"
 signature = "void (void* app, bool flag)"
-note = "ResetGame: replaces the world; keeps PotentialCorruption, turning any non-zero reason into 1"
+note = "ResetGame: replaces the world; keeps PotentialCorruption, turning any non-zero reason into 1; with flag true it does not reload the history, and it validates a reloaded one only for an idler whose slot +0x140 asks for it (the frontend's does not)"
 build."eu4-1.37.5-steam-win64" = { rva = 0x210000 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x20FFC0 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x20FFC0 }
