@@ -85,6 +85,7 @@ constexpr std::ptrdiff_t template_neighbours_begin = 0x168;  // CProvinceTemplat
 constexpr std::ptrdiff_t template_neighbours_end = 0x170;
 
 constexpr std::ptrdiff_t idler_session_slot = 0x80;  // GetSession
+constexpr std::ptrdiff_t idler_validates_history_slot = 0x140;  // asked by ResetGame before PostValidateEffects
 constexpr std::ptrdiff_t session_is_dummy = 0x55;    // CSession::_bIsDummy, single player's session
 
 constexpr std::ptrdiff_t achievements_loaded_begin = 0x88;  // CArray<short>
@@ -186,6 +187,7 @@ Bytes g_pregame_stock_path = nullptr;
 
 anvil::HookOf<sym::gui_create_window> g_create_window;
 anvil::HookOf<sym::history_execute> g_history_execute;
+anvil::HookOf<sym::reset_game> g_reset_game;
 anvil::HookOf<sym::multiplayer_click> g_multiplayer_click;
 anvil::HookOf<sym::multiplayer_availability> g_multiplayer_availability;
 anvil::HookOf<sym::if_effect_delete> g_if_effect_delete;
@@ -500,6 +502,29 @@ bool in_multiplayer_session() {
     using GetSessionFn = Bytes (*)(void* idler);
     Bytes session = at<GetSessionFn>(at<void*>(idler, 0), off::idler_session_slot)(idler);
     return session && !at<std::uint8_t>(session, off::session_is_dummy);
+}
+
+// The game's own resets on the frontend. A save picked in the Single Player list
+// and then a start date or a bookmark make the setup screen run ResetGame, which
+// reloads the history files but validates their effects (PostValidateEffects,
+// after the trigger database) only for an idler that asks for it, and the
+// frontend's does not. So the history's add_province_triggered_modifier and the
+// like stayed unbound, and the campaign started without any province triggered
+// modifier, as without Hamweard (lab: pol-k1; hwr-fix2 traced the reset). They get
+// the validation of Hamweard's return, which a fresh start matches. Not in a
+// multiplayer lobby, where every machine must run the reset the same way.
+void on_reset_game(void* app, bool keep_history) noexcept {
+    if (!keep_history && !g_history_reloading && !in_multiplayer_session()) {
+        void* idler = at<void*>(app, off::app_current_idler);
+        using ValidatesFn = bool (*)(void* idler);
+        if (idler && !at<ValidatesFn>(at<void*>(idler, 0), off::idler_validates_history_slot)(idler)) {
+            host().info("the game resets the world on the frontend: its history gets the validation of a fresh start");
+            if (!*g_trigger_db) game(sym::trigger_db_create);
+            g_history_reloading = true;  // validated at the reset's first walk of the history
+        }
+    }
+    g_reset_game.next(app, keep_history);
+    validate_reloaded_history();  // a reset that did not walk the history
 }
 
 void on_multiplayer_click(void* state) {
@@ -965,6 +990,7 @@ struct Hamweard : anvil::Plugin {
         g_registry_end = static_cast<std::ptrdiff_t>(h.value(sym::widget_registry, "end"));
         h.hook(g_create_window, sym::gui_create_window, on_create_window);
         h.hook(g_history_execute, sym::history_execute, on_history_execute);
+        h.hook(g_reset_game, sym::reset_game, on_reset_game);
         h.hook(g_multiplayer_click, sym::multiplayer_click, on_multiplayer_click);
         h.hook(g_multiplayer_availability, sym::multiplayer_availability, on_multiplayer_availability);
         h.hook(g_if_effect_delete, sym::if_effect_delete, on_if_effect_delete);

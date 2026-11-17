@@ -74,10 +74,13 @@ have not checked yet; a correction is welcome in an issue or a pull request.
   save, Exit to Menu and Back restart the game, as they do without the plugin. The game's own
   restore of the map misses part of it: in the lab the next campaign gave Tortuga other
   missions than a fresh start did.
-- **The Single Player list keeps a game bug.** Click a save in the list and start a new
-  campaign from the same screen, and all province triggered modifiers are gone. The game
-  does that too, with or without Hamweard. **Back** first clears it: the new campaign then
-  matches one from a fresh start.
+- **A save clicked in the Single Player list leaves its province names.** Click a save in
+  the list, then a bookmark or a date, and the game resets the world without validating
+  the history's effects, so a campaign started from there had no province triggered
+  modifiers, with or without the plugin. Hamweard now runs that validation, as a fresh start
+  does (not in a multiplayer lobby). Some province names (and the regiments named after
+  them) still follow the clicked save's cultures, such as Slesvig for Schleswig. **Back**
+  first gives a campaign equal to one from a fresh start.
 - **Multiplayer: no return, and one test with a second player.** In any multiplayer session,
   Exit to Menu and Back restart the game, as without the plugin. The plugin checks that itself:
   it stays loaded, in a lobby and in a game with other players, and Anvil does not take its
@@ -132,7 +135,7 @@ log says when the plugin chose a restart, and why.
 | Anvil refuses to load Hamweard | The game is another build, or the original EU4 Menu Patch changed the same code | Use EU4 1.37.5 on Steam or GOG 1.37.5.2 or 1.37.5.0, and remove the Menu Patch DLL. |
 | The Multiplayer button does nothing after a return | The process has played, and only a fresh one goes on to multiplayer | Restart the game once: **Shift**+**Back** on the country selection screen, or **Restart game** in the Anvil panel (Anvil 1.23+). |
 | Continue game does not show your ironman campaign | The game does not record ironman saves there | Load it from the Single Player list. |
-| Province triggered modifiers are gone in a new campaign | A game bug: a save was clicked in the list before the new campaign | Press **Back** after clicking a save, then start the campaign. |
+| Province names differ from a fresh start in a new campaign | A save was clicked in the list before the new campaign | Press **Back** after clicking a save, then start the campaign. |
 
 A crash or anything odd after a return: open an
 [issue](https://github.com/happy-dwarf-team/hamweard/issues) with `anvil.log`, and
