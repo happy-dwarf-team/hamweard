@@ -14,6 +14,8 @@
 #include "symbols.gen.hpp"
 
 #include <windows.h>
+// After windows.h: PSAPI_VERSION 2 maps GetProcessMemoryInfo to kernel32's K32 export.
+#include <psapi.h>
 
 #include <algorithm>
 #include <atomic>
@@ -568,6 +570,22 @@ bool shift_held() {
     return ((GetAsyncKeyState(VK_SHIFT) | GetKeyState(VK_SHIFT)) & 0x8000) != 0;
 }
 
+// The process's private memory and the system's commit left, for the log of a
+// return: what a report needs to show a return's growth or a low-memory restart.
+std::string memory_figures() {
+    constexpr std::uint64_t mb = 1024 * 1024;
+    PROCESS_MEMORY_COUNTERS_EX process{};
+    process.cb = sizeof process;
+    MEMORYSTATUSEX system{};
+    system.dwLength = sizeof system;
+    const bool own = GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&process),
+                                          sizeof process);
+    const bool left = GlobalMemoryStatusEx(&system);
+    return std::format("private {}, commit left {}",
+                       own ? std::format("{} MB", process.PrivateUsage / mb) : std::string("unknown"),
+                       left ? std::format("{} MB", system.ullAvailPageFile / mb) : std::string("unknown"));
+}
+
 // Why a return has to be the game's own restart, or null when it does not.
 const char* restart_reason() {
     MEMORYSTATUSEX memory{};
@@ -925,8 +943,9 @@ void on_frontend_tick(void* idler, bool update) {
                                      at<std::uint16_t>(app, off::app_exit) = 0x0101;
                                  }
                              }
-                             host().info("world reset (world {}): windows {} ms, reset {} ms",
-                                         static_cast<void*>(world()), ms(start, windows), ms(windows, Clock::now()));
+                             host().info("world reset (world {}): windows {} ms, reset {} ms; {}",
+                                         static_cast<void*>(world()), ms(start, windows), ms(windows, Clock::now()),
+                                         memory_figures());
                          });
     }
     g_tick.previous()(idler, update);
