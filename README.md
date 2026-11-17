@@ -122,7 +122,9 @@ have not checked yet; a correction is welcome in an issue or a pull request.
 ## Troubleshooting
 
 Every return writes to `<EU4>/anvil/anvil.log`, in lines that start with `[hamweard]`. The
-log says when the plugin chose a restart, and why.
+log says when the plugin chose a restart, and why. Each return's `world reset` line also gives
+the game's private memory and the system's commit left after the reset, so a series of returns
+shows how much each one kept.
 
 | What you see | Why | What to do |
 | --- | --- | --- |
