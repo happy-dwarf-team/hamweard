@@ -70,6 +70,8 @@ constexpr std::ptrdiff_t lobby_search_call = 0x310;
 
 constexpr std::ptrdiff_t world_provinces_begin = 0x1C90;
 constexpr std::ptrdiff_t world_provinces_end = 0x1C98;
+constexpr std::ptrdiff_t world_province_objects = 0x1CA8;  // CProvince[], as ResetGame and CGameSetup walk them
+constexpr std::ptrdiff_t province_size = 0x2E10;
 constexpr std::ptrdiff_t world_graphics_owner = 0x1E00;  // the current idler, as CGameSetup::Back reads it
 constexpr std::ptrdiff_t world_potential_corruption = 0x23B4;
 
@@ -509,19 +511,40 @@ bool in_multiplayer_session() {
 // modifier, as without Hamweard (lab: pol-k1; hwr-fix2 traced the reset). They get
 // the validation of Hamweard's return, which a fresh start matches. Not in a
 // multiplayer lobby, where every machine must run the reset the same way.
+// ResetGame gives every province its plain name back (ResetName); the dynamic
+// names after the owner's culture come from CGameSetup's constructor, which runs
+// UpdateDynamicProvinceName on every province when the setup screen opens. After a
+// save is clicked in the list, the setup screen is already open, so a campaign
+// started from a bookmark or date kept the plain names (Jämtland for Jemtland,
+// 259 of 4941 provinces in the lab, hwr-names; stock game too). The frontend
+// reset gets them back, as the setup screen of a fresh start gives them.
+void name_provinces_as_setup() {
+    Bytes w = world();
+    if (!w) return;
+    const std::ptrdiff_t count =
+        (at<Bytes>(w, off::world_provinces_end) - at<Bytes>(w, off::world_provinces_begin)) / 8;
+    Bytes provinces = at<Bytes>(w, off::world_province_objects);
+    if (!provinces) return;
+    for (std::ptrdiff_t i = 0; i < count; ++i) game(sym::province_update_dynamic_name, provinces + i * off::province_size);
+    host().info("dynamic province names set again after the frontend reset ({} provinces)", count);
+}
+
 void on_reset_game(void* app, bool keep_history) noexcept {
     const auto idler_validates = [app] {
         void* idler = at<void*>(app, off::app_current_idler);
         using ValidatesFn = bool (*)(void* idler);
         return !idler || at<ValidatesFn>(at<void*>(idler, 0), off::idler_validates_history_slot)(idler);
     };
-    if (hamweard::reset_needs_validation(keep_history, g_history_reloading, in_multiplayer_session, idler_validates)) {
+    const bool frontend_reset =
+        hamweard::reset_needs_validation(keep_history, g_history_reloading, in_multiplayer_session, idler_validates);
+    if (frontend_reset) {
         host().info("the game resets the world on the frontend: its history gets the validation of a fresh start");
         if (!*g_trigger_db) game(sym::trigger_db_create);
         g_history_reloading = true;  // validated at the reset's first walk of the history
     }
     g_reset_game.next(app, keep_history);
     validate_reloaded_history();  // a reset that did not walk the history
+    if (frontend_reset) name_provinces_as_setup();
 }
 
 void on_multiplayer_click(void* state) {
