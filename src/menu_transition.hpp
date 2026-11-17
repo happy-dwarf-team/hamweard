@@ -54,6 +54,17 @@ constexpr const char* restart_reason(bool shift, bool multiplayer, bool map_rand
     return nullptr;
 }
 
+// Whether a ResetGame needs the validation of Hamweard's return (hamweard#88): it
+// reloads the history (keep_history false), Hamweard is not reloading it itself,
+// the game is not in a multiplayer session, and the current idler does not ask
+// for the validation (the frontend's does not). Both questions are callables,
+// asked in that order and only when needed, as the hook asks the game.
+template <class Multiplayer, class IdlerValidates>
+constexpr bool reset_needs_validation(bool keep_history, bool already_reloading, Multiplayer&& multiplayer,
+                                      IdlerValidates&& idler_validates) {
+    return !keep_history && !already_reloading && !multiplayer() && !idler_validates();
+}
+
 // SetNextIdler hands the new idler over on a later frame. The world is reset
 // only after that hand-over has destroyed the outgoing idler: once the menu is
 // both the updating and the current idler and nothing is queued after it.

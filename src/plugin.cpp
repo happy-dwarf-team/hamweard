@@ -8,6 +8,7 @@
 // replace_block and swap_pointer. Everything runs on the game's main thread.
 #include <anvil/anvil.hpp>
 
+#include "build_layout.hpp"
 #include "map_snapshot.hpp"
 #include "menu_transition.hpp"
 #include "symbols.gen.hpp"
@@ -20,6 +21,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <format>
 #include <mutex>
 #include <string_view>
 #include <string>
@@ -140,12 +142,6 @@ constexpr Layout kSteam{0x330, 0x10E0, 0x12E9, 0x1400, 0x900, 0xB48};
 constexpr Layout kGog{0x328, 0x10D0, 0x12D9, 0x13F0, 0x8F0, 0xB38};
 Layout g_layout = kSteam;
 
-// A build symbols.toml declares for GOG. Anvil loads the plugin only on a build the file lists.
-bool is_gog_build(const char* build) {
-    if (!build) return false;
-    const std::string_view id(build);
-    return id == "eu4-1.37.5.2-gog-win64" || id == "eu4-1.37.5.0-gog-win64";
-}
 
 using TickFn = void(void* idler, bool update);
 using RestoreFn = void(void* idler);
@@ -514,14 +510,15 @@ bool in_multiplayer_session() {
 // the validation of Hamweard's return, which a fresh start matches. Not in a
 // multiplayer lobby, where every machine must run the reset the same way.
 void on_reset_game(void* app, bool keep_history) noexcept {
-    if (!keep_history && !g_history_reloading && !in_multiplayer_session()) {
+    const auto idler_validates = [app] {
         void* idler = at<void*>(app, off::app_current_idler);
         using ValidatesFn = bool (*)(void* idler);
-        if (idler && !at<ValidatesFn>(at<void*>(idler, 0), off::idler_validates_history_slot)(idler)) {
-            host().info("the game resets the world on the frontend: its history gets the validation of a fresh start");
-            if (!*g_trigger_db) game(sym::trigger_db_create);
-            g_history_reloading = true;  // validated at the reset's first walk of the history
-        }
+        return !idler || at<ValidatesFn>(at<void*>(idler, 0), off::idler_validates_history_slot)(idler);
+    };
+    if (hamweard::reset_needs_validation(keep_history, g_history_reloading, in_multiplayer_session, idler_validates)) {
+        host().info("the game resets the world on the frontend: its history gets the validation of a fresh start");
+        if (!*g_trigger_db) game(sym::trigger_db_create);
+        g_history_reloading = true;  // validated at the reset's first walk of the history
     }
     g_reset_game.next(app, keep_history);
     validate_reloaded_history();  // a reset that did not walk the history
@@ -934,7 +931,13 @@ struct Hamweard : anvil::Plugin {
         g_null_characters[1].global = h.data(sym::null_heir);
         g_null_characters[2].global = h.data(sym::null_queen);
         const char* build = h.game().build_id;
-        g_layout = is_gog_build(build) ? kGog : kSteam;
+        const auto layout = build ? hamweard::build_layout(build) : hamweard::BuildLayout::unknown;
+        if (layout == hamweard::BuildLayout::unknown)
+            throw anvil::Error(ANVIL_ERROR_UNSUPPORTED,
+                               std::format("game build {}: Hamweard has no structure layout for it (only -steam-win64 "
+                                           "and -gog-win64 builds); not loaded",
+                                           build ? build : "unknown"));
+        g_layout = layout == hamweard::BuildLayout::gog ? kGog : kSteam;
         g_minimap_vtable = h.address(sym::minimap_vtable);
         g_delayed_event_vtable = h.address(sym::delayed_event_vtable);
         // The GOG build has no Steam lobby: its four symbols are absent there.
@@ -946,7 +949,8 @@ struct Hamweard : anvil::Plugin {
                     reinterpret_cast<void*>(GetProcAddress(steam, "SteamAPI_UnregisterCallResult")));
             if (!g_unregister_call_result) h.warn("SteamAPI_UnregisterCallResult not found: a lobby search is not cancelled");
         }
-        h.info("game build {}: {}", build ? build : "unknown", g_lobby_vtable ? "with the Steam lobby clean-up" : "no Steam lobby");
+        h.info("game build {}: {} layout, {}", build, hamweard::layout_name(layout),
+               g_lobby_vtable ? "with the Steam lobby clean-up" : "no Steam lobby");
 
         // The three changes are enabled together after load(), or none.
         g_in_game_stock_path = static_cast<Bytes>(h.address(sym::in_game_menu_block)) + 7;
