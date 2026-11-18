@@ -114,7 +114,9 @@ have not checked yet; a correction is welcome in an issue or a pull request.
   (see [Memory a return used to lose](#memory-a-return-used-to-lose)): with Anbennar that was
   about 60 MB per **Back** and per campaign. What stays is mostly the last campaign's world and
   GUI: in the lab a **Back** left about 5 MB with Anbennar and 8 MB without mods, and in a row
-  of returns the game grew by about 45 MB per return with Anbennar and 20 MB without mods. The time of a return
+  of returns the game grew by about 45 MB per return with Anbennar and 20 MB without mods. A late
+  save costs more: with a save from 1719, without mods, each return after the first kept about
+  45–90 MB, among them part of the save's history and the campaign's windows. The time of a return
   stayed the same over 40 returns in a row. About eight windows per campaign stay in the GUI root too (see
   [Windows a campaign leaves behind](#windows-a-campaign-leaves-behind)), but they are not the
   cause. When less than 1 GB of the system's commit limit is left, a return restarts the game
