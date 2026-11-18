@@ -64,7 +64,10 @@ have not checked yet; a correction is welcome in an issue or a pull request.
   days of play, the random log and the save included. Before, it drifted after a week: the
   game's one "no heir" character, shared by every country without an heir, kept the culture a
   mod event gave it in the last campaign, and Hamweard now puts it back with the "no ruler" and
-  "no consort" ones. That is a comparison of the campaigns and mods tested, not a proof for
+  "no consort" ones. The same goes for the switches only the console or a tutorial turns on
+  (`infinite_combat`, a fixed combat dice, `disable_dlc`, `run_year`, a tutorial's instant
+  buildings and colonies): the game never turns them off again, so each return puts back what
+  the first main menu had. That is a comparison of the campaigns and mods tested, not a proof for
   every mod or for a long game.
 - **Canals.** A canal changes the map itself, and the map outlives the campaign. The game's
   reset takes the canal's links out, but leaves other movement costs and naval distances
@@ -402,7 +405,7 @@ ctest --test-dir build -C Release --output-on-failure
 cmake --build build --config Release --target hamweard-check
 ```
 
-The check target runs `anvil check --exe` on all 62 symbols and rewrites `symbols.lock`;
+The check target runs `anvil check --exe` on all 68 symbols and rewrites `symbols.lock`;
 commit it with `symbols.toml`. `hamweard-deploy` (with `EU4_DIR`) copies the plugin into
 the game folder.
 
