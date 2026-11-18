@@ -1,6 +1,7 @@
 // The world-reset gate, after EU4 Menu Patch's tests/menu_transition_tests.cpp
 // (MIT License, Copyright (c) 2026 VulonLok).
 #include "build_layout.hpp"
+#include "game_switches.hpp"
 #include "map_snapshot.hpp"
 #include "menu_transition.hpp"
 
@@ -152,5 +153,14 @@ int main() {
     check(hamweard::build_layout("eu4-1.37.5.0-gog-win64") == BuildLayout::gog, "GOG 1.37.5.0");
     check(hamweard::build_layout("eu4-1.37.5-msstore-win64") == BuildLayout::unknown, "another store has no layout");
     check(hamweard::build_layout("") == BuildLayout::unknown, "no build has no layout");
+    {
+        hamweard::KeptSwitch dice;
+        check(!dice.differs(3), "nothing kept, nothing to put back");
+        dice.take(-1);
+        dice.take(3);  // a later frontend tick: the first menu's value stays
+        check(dice.taken() && dice.value() == -1, "the first main menu's value is kept");
+        check(!dice.differs(-1), "an unchanged switch is left alone");
+        check(dice.differs(3), "the console's fixed dice is put back");
+    }
     std::puts("menu transition tests passed");
 }

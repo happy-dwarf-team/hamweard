@@ -9,6 +9,7 @@
 #include <anvil/anvil.hpp>
 
 #include "build_layout.hpp"
+#include "game_switches.hpp"
 #include "map_snapshot.hpp"
 #include "menu_transition.hpp"
 #include "symbols.gen.hpp"
@@ -797,6 +798,40 @@ void restore_null_characters() {
     }
 }
 
+// Switches only the console (infinite_combat, the fixed dice, disable_dlc, run_year) or a
+// tutorial (instant buildings and colonies) sets. The simulation reads them on every battle,
+// siege, DLC check or building, and nothing resets them: a fresh process starts from the
+// image's value, and a return kept what the last campaign left (lab, 18 November 2026: the
+// console's infinite_combat was still on in the next campaign). Kept from the first main menu
+// and put back before the reset, as CCurrentGameState::Clear reads disable_dlc.
+struct GameSwitch {
+    const char* name;
+    std::int32_t* int_value = nullptr;
+    std::uint8_t* byte_value = nullptr;
+    hamweard::KeptSwitch kept;
+
+    std::int32_t read() const noexcept { return int_value ? *int_value : *byte_value; }
+    void write(std::int32_t v) noexcept {
+        if (int_value) *int_value = v;
+        else *byte_value = static_cast<std::uint8_t>(v);
+    }
+};
+GameSwitch g_switches[] = {{"fixed dice"}, {"infinite_combat"}, {"disable_dlc"}, {"instant build"},
+                           {"instant colony build"}, {"run_year"}};
+
+void keep_switches() {
+    for (auto& s : g_switches) s.kept.take(s.read());
+}
+
+void restore_switches() {
+    for (auto& s : g_switches) {
+        const std::int32_t now = s.read();
+        if (!s.kept.differs(now)) continue;
+        s.write(s.kept.value());
+        host().info("{} put back: {} -> {}", s.name, now, s.kept.value());
+    }
+}
+
 // A country's delayed event (an event with days = N) is a CDelayedEvent in _DelayedEvents.
 // When its days run out, CCountry::DailyUpdateSerial fires it and takes it out of the vector,
 // but never deletes it: only ~CCountry deletes the ones still waiting. TriggerEvent copies the
@@ -903,7 +938,10 @@ void on_frontend_restore(void* idler) {
 
 // The frontend idler's tick: the queued Back, then the deferred world reset.
 void on_frontend_tick(void* idler, bool update) {
-    if (!g_campaign_seen) keep_null_characters();
+    if (!g_campaign_seen) {
+        keep_null_characters();
+        keep_switches();
+    }
     if (auto* app = static_cast<Bytes>(g_pending_frontend_app.exchange(nullptr))) {
         host().info("Back: returning from the country selection");
         const std::uint32_t reason = potential_corruption();
@@ -930,6 +968,7 @@ void on_frontend_tick(void* idler, bool update) {
                              game(sym::custom_countries_clear);
                              *g_custom_nation_used = 0;
                              g_history_reloading = true;
+                             restore_switches();
                              reset_world(app);
                              validate_reloaded_history();  // a reset that did not walk the history
                              forget_loaded_achievements();
@@ -972,6 +1011,12 @@ struct Hamweard : anvil::Plugin {
         g_null_characters[0].global = h.data(sym::null_monarch);
         g_null_characters[1].global = h.data(sym::null_heir);
         g_null_characters[2].global = h.data(sym::null_queen);
+        g_switches[0].int_value = h.data(sym::fixed_dice);
+        g_switches[1].byte_value = h.data(sym::infinite_combat);
+        g_switches[2].byte_value = h.data(sym::disable_dlc);
+        g_switches[3].byte_value = h.data(sym::instant_build);
+        g_switches[4].byte_value = h.data(sym::instant_colony_build);
+        g_switches[5].int_value = h.data(sym::run_year);
         const char* build = h.game().build_id;
         const auto layout = build ? hamweard::build_layout(build) : hamweard::BuildLayout::unknown;
         if (layout == hamweard::BuildLayout::unknown)

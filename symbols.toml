@@ -565,6 +565,59 @@ build."eu4-1.37.5-steam-win64" = { rva = 0x233FFB0 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x2323E30 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x2323E30 }
 
+# --- switches only the console or a tutorial sets, read by the simulation ---
+# Steam RVAs from the instruction that reads or writes each one in the function the GOG
+# eu4.pdb names, mapped to Steam (CCombatant::RollDice, CCombat::DailyUpdate, CEU3AI::MonthlyUpdate,
+# CConstructBuildingCommand::Execute, CColonyConstruction::OnCreation, CGameState::HandleDailyTick).
+
+[symbol.fixed_dice]
+memory = "write"
+type = "int32_t"
+note = "nFixedDice: the console's fixed combat and siege roll, -1 when off; CCombatant::RollDice reads it"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1FC2320 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1FA6320 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1FA6320 }
+
+[symbol.infinite_combat]
+memory = "write"
+type = "uint8_t"
+note = "g_bInfiniteCombat: the console's infinite_combat; CCombat::DailyUpdate reads it"
+build."eu4-1.37.5-steam-win64" = { rva = 0x233D8A1 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x2321721 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x2321721 }
+
+[symbol.disable_dlc]
+memory = "write"
+type = "uint8_t"
+note = "s_bDisableDLC: the console's disable_dlc; every DLC check and CCurrentGameState::Clear read it"
+build."eu4-1.37.5-steam-win64" = { rva = 0x233FED6 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x2323D56 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x2323D56 }
+
+[symbol.instant_build]
+memory = "write"
+type = "uint8_t"
+note = "g_bInstantBuild: set by a tutorial's effect; CConstructBuildingCommand::Execute reads it"
+build."eu4-1.37.5-steam-win64" = { rva = 0x233FE9F }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x2323D53 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x2323D53 }
+
+[symbol.instant_colony_build]
+memory = "write"
+type = "uint8_t"
+note = "g_bInstantColonyBuild: set by a tutorial's effect; CColonyConstruction::OnCreation reads it"
+build."eu4-1.37.5-steam-win64" = { rva = 0x233D8A2 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x2321722 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x2321722 }
+
+[symbol.run_year]
+memory = "write"
+type = "int32_t"
+note = "g_nRunYear: the console's run_year; CGameState::HandleDailyTick reads it"
+build."eu4-1.37.5-steam-win64" = { rva = 0x233FE44 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x2323CC4 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x2323CC4 }
+
 [symbol.integer_flags_clear]
 bytes = "48 89 5C 24 08 48 89 74 24 10 57 48 83 EC 40 48 8D 59 10"
 memory = "code"
