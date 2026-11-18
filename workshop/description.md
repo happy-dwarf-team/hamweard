@@ -36,6 +36,9 @@ It is a port of it, with the original author's research and licence, that runs o
 ### I play on GOG. Can I use it?
 Yes, 1.37.5.2 and 1.37.5.0: GOG has no Workshop, so install it from the **Catalog** page of Anvil Manager. The road home is the same from either gate.
 
+### I play on Linux. Can I use it?
+Yes, through Proton: our team runs Hamweard on desktop Linux, the Steam Deck is not tested yet. Force Proton for EU4, install Anvil from its zip and add the launch option `WINEDLLOVERRIDES="version=n,b" %command%` ([the steps](https://anvil.happydwarf.dev/docs/install/#on-linux-with-proton)). Approving a Workshop plugin there has not been tried yet; if it fails, install the plugin's zip by hand. The road home runs through Proton too.
+
 ### Why "Hamweard"?
 Old English *hāmweard* means "homeward": the mod takes you from a campaign back to the main menu without a restart. Our other tools are named after the forge; this one is the walk home after a day at it.
 
