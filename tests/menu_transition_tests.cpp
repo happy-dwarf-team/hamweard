@@ -3,10 +3,12 @@
 #include "build_layout.hpp"
 #include "map_snapshot.hpp"
 #include "menu_transition.hpp"
+#include "strength_caches.hpp"
 
 #include <array>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <stdexcept>
 #include <string_view>
 
@@ -152,5 +154,21 @@ int main() {
     check(hamweard::build_layout("eu4-1.37.5.0-gog-win64") == BuildLayout::gog, "GOG 1.37.5.0");
     check(hamweard::build_layout("eu4-1.37.5-msstore-win64") == BuildLayout::unknown, "another store has no layout");
     check(hamweard::build_layout("") == BuildLayout::unknown, "no build has no layout");
+    {
+        std::array<std::uint8_t, 0xC8> first{}, second{};
+        auto put = [](std::uint8_t* at, auto value) { std::memcpy(at, &value, sizeof value); };
+        put(first.data() + 0x8 + 0x10, std::uint64_t{3});    // units
+        put(first.data() + 0x48 + 0x10, std::uint64_t{2});   // provinces
+        put(second.data() + 0x88 + 0x10, std::uint64_t{1});  // rebel factions
+        std::array<std::uint8_t*, 2> caches{first.data(), second.data()};
+        std::array<std::uint8_t, 0x18> list{};
+        check(hamweard::strength_caches(list.data()).empty(), "no thread asked, no cache");
+        put(list.data() + 0x8, caches.data());
+        put(list.data() + 0x14, std::int32_t{2});
+        const auto found = hamweard::strength_caches(list.data());
+        check(found.size() == 2 && found[1] == second.data(), "one cache per thread");
+        check(hamweard::strength_cache_entries(found[0]) == 5 && hamweard::strength_cache_entries(found[1]) == 1,
+              "the entries of the three maps");
+    }
     std::puts("menu transition tests passed");
 }

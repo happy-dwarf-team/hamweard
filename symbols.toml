@@ -609,3 +609,57 @@ bytes = "40 53 48 83 EC 20 48 8B D9 48 8D 05 C8 66 85 00"
 [symbol.text_box_destroy.build."eu4-1.37.5.0-gog-win64"]
 rva = 0x15219F0
 bytes = "40 53 48 83 EC 20 48 8B D9 48 8D 05 C8 66 85 00"
+
+# --- the AI's strength factor caches, which only DailyUpdateAI clears ---
+
+[symbol.strength_cache_list]
+memory = "write"
+type = "uintptr_t"
+note = "CacheList (strength_factor_cache.cpp, GOG eu4.pdb): CPdxArray<CStrengthFactorCache*,int>, data +8, size +0x14; one cache per thread that asked for one (CStrengthFactorCacheManager::AccessCache)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1FD13C8 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1FB53C8 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1FB53C8 }
+
+[symbol.strength_cache_mutex]
+memory = "write"
+type = "uintptr_t"
+note = "CacheListMutex: a CPdxMutex whose first field is the _Mtx_t that AccessCache and DailyUpdateAI lock around CacheList"
+build."eu4-1.37.5-steam-win64" = { rva = 0x2357BA8 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x233BA20 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x233BA20 }
+
+[symbol.unit_strength_cache_clear]
+bytes = "40 57 48 83 EC 20 48 8B F9 48 8B 49 10 48 85 C9"
+memory = "code"
+signature = "void (void* map)"
+note = "std::_Hash<CUnit const* -> pair<fixed_point,int>>::clear; CGameState::DailyUpdateAI runs it on +8 of every cache at the end of each AI day"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1789D0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x178A00 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x178A00 }
+
+[symbol.province_strength_cache_clear]
+bytes = "40 57 48 83 EC 20 48 8B F9 48 8B 49 10 48 85 C9"
+memory = "code"
+signature = "void (void* map)"
+note = "std::_Hash<CProvince const* -> fixed_point>::clear, folded with the CRebelFaction map's; DailyUpdateAI runs it on +0x48 and +0x88 of every cache"
+build."eu4-1.37.5-steam-win64" = { rva = 0x178910 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x178940 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x178940 }
+
+[symbol.mutex_lock]
+bytes = "33 D2 E9 F9 FD FF FF"
+memory = "code"
+signature = "int (void* mutex)"
+note = "the game's _Mtx_lock (MSVC runtime, linked in); 0 when locked"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1A139CC }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x19FD64C }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x19FD64C }
+
+[symbol.mutex_unlock]
+bytes = "48 83 EC 28 83 69 4C 01 75 15"
+memory = "code"
+signature = "int (void* mutex)"
+note = "the game's _Mtx_unlock"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1A139F0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x19FD670 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x19FD670 }
