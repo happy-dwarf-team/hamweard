@@ -3,9 +3,11 @@ name: release
 # release-please keeps a "chore: release x.y.z" pull request up to date from the
 # Conventional Commits on main (version.txt, the version in plugin.toml and
 # workshop/descriptor.mod, and CHANGELOG.md). Merging it tags vX.Y.Z and creates
-# a DRAFT GitHub release; the jobs below then build that commit and attach the
-# plugin zip and the Workshop zip to the draft. Publishing the draft on GitHub
-# makes the release public and starts workshop-publish.yml.
+# a DRAFT GitHub release; the jobs below then build that commit, attach the
+# plugin zip and the Workshop zip to the draft and publish it, so the release is
+# never public without its files. Publishing makes the release public and starts
+# website.yml and workshop-publish.yml (which waits for the steam-workshop
+# environment's approval).
 on:
   push:
     branches: [main]
@@ -90,3 +92,17 @@ jobs:
       - name: Upload release assets
         working-directory: dist
         run: gh release upload "$TAG" --clobber -- *.zip SHA256SUMS.txt
+
+      # With RELEASE_PLEASE_TOKEN, not github.token: a release published with
+      # GITHUB_TOKEN starts no workflow, and the `release: published` event is what
+      # starts website.yml and workshop-publish.yml. Without the secret the draft
+      # stays, with its files, for a maintainer to publish on GitHub.
+      - name: Publish the release
+        env:
+          PUBLISH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          if [ -z "$PUBLISH_TOKEN" ]; then
+            echo "::warning::RELEASE_PLEASE_TOKEN is not set; ${TAG} stays a draft: publish it on GitHub"
+            exit 0
+          fi
+          GH_TOKEN="$PUBLISH_TOKEN" gh release edit "$TAG" --draft=false --latest
