@@ -723,6 +723,20 @@ build."eu4-1.37.5-steam-win64" = { rva = 0x1C520C0, points_to = 0x296940 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x1C3AF10, points_to = 0x2968F0 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x1C3AF10, points_to = 0x2968F0 }
 
+[symbol.ai_king_delete_slot]
+memory = "read"
+note = "slot 0 of CAIKing's vtable: its deleting destructor (0xD58 bytes), which frees the nodes of _ArmyAgents (+0xC50) and _KillList (+0xAC8) but not the agents in them"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1C3E9E0, points_to = 0x148260 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1C27760, points_to = 0x148290 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1C27760, points_to = 0x148290 }
+
+[symbol.ai_army_vtable]
+memory = "read"
+note = "CAIArmy's vtable; slot 0 is its deleting destructor (0xBF8 bytes), which unlinks its units and the country's units that point to it and takes the agent out of the dynamic ID table"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1C3CDB8, points_to = 0xE9AC0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1C25B38, points_to = 0xE9AF0 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1C25B38, points_to = 0xE9AF0 }
+
 [symbol.monarch_store]
 memory = "write"
 type = "uintptr_t"

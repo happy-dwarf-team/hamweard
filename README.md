@@ -329,7 +329,7 @@ Loading a save from the menu is the game's own path, and Hamweard adds nothing t
 The game's reset destroys the history and the countries it read and reads them again, and it
 loses part of what it destroys. 1.37.5 restarts the process instead, so it never adds up
 there. The lab found two such leaks with a heap tracer (eu4-engine-lab, 9 November 2026), and
-two more later (18–19 November 2026):
+three more later (18–19 November 2026):
 
 - **`else_if`/`else` branches.** `CIfEffect`'s destructor frees the `if` but not `_pElse`
   (`+0xF0`), the chain of branches that follows it in a script, and nothing else points to
@@ -361,6 +361,14 @@ two more later (18–19 November 2026):
   the game replaces its tables of object IDs. It deletes only plain characters (no
   placeholder for a country without one) that the reset's own list does not hold and no one
   else deleted. The leaders those characters carry, about 0.2 MB, stay.
+- **The AI's army agents.** Each AI country's king keeps the agents that command its armies
+  in two lists, the active ones and those cancelled and waiting to be deleted. The king's
+  destructor frees both lists but not the agents in them, so every return lost them: about
+  340–420 agents and 1 MB per return after a save from 1719 without mods. While the world
+  resets, the plugin lets each king die as the game does and then deletes its army agents
+  through their own destructor, while the countries still live: by then the game has deleted
+  the units and taken each one off its agent first. It deletes only army agents whose owner
+  is that king and that are not one of its child agents, which the king deletes itself.
 
 ## Memory a long campaign lost
 
