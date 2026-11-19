@@ -978,6 +978,115 @@ void* on_battle_change_delete(void* change, std::uint32_t flags) noexcept {
     return g_battle_change_delete.previous()(change, flags);
 }
 
+// The rulers, heirs and consorts of a save's country history. The history's reader makes
+// one CMonarch, CHeir or CQueen for each monarch = { ... }, heir = { ... } or queen = { ... }
+// and gives it to the change (CMonarchChange +0x40..+0x58, CHeirChange and CQueenChange
+// +0x40/+0x48); when the change runs, the country points to the same object. Only the
+// characters made while the game reads history/ (and those made in play) go into
+// CMonarchStore::_HistoricalMonarchs, the list DestroyDatabase deletes; ~CCountry and the
+// changes' destructors delete none, so the save's characters were lost at every reset (lab,
+// 19 November 2026: about 3 MB per return after a 1719 save, with their ID table nodes).
+// ResetGame destroys the countries with the old game state, then calls DestroyDatabase,
+// then replaces the ID tables (DeleteReferenceObjects). So while Hamweard resets the world,
+// the changes' slots note their characters, and Hamweard deletes them as DestroyDatabase
+// starts: the tables are still the ones the characters are in (~CMonarch erases its ID),
+// and the world that could point to them is gone. A character is deleted only if it is a
+// CMonarch, CHeir or CQueen by its exact vtable, not in the store, not a null character,
+// and not deleted by anyone else since it was noted (the characters' own slots watch).
+anvil::PointerSwap<DeleteFn> g_monarch_change_delete;
+anvil::PointerSwap<DeleteFn> g_heir_change_delete;
+anvil::PointerSwap<DeleteFn> g_queen_change_delete;
+anvil::PointerSwap<DeleteFn> g_monarch_delete;
+anvil::PointerSwap<DeleteFn> g_heir_delete;
+anvil::PointerSwap<DeleteFn> g_queen_delete;
+void* g_character_vtables[3] = {};  // CMonarch, CHeir, CQueen
+std::uintptr_t* g_monarch_store = nullptr;
+std::atomic<bool> g_noting_characters{false};
+std::mutex g_noted_characters_mutex;
+std::unordered_set<void*> g_noted_characters;
+std::unordered_set<void*> g_deleted_characters;
+
+constexpr std::ptrdiff_t change_characters = 0x40;  // the first character pointer of each change
+
+void note_characters(void* change, int count) noexcept {
+    if (!g_noting_characters.load(std::memory_order_relaxed)) return;
+    const std::lock_guard lock(g_noted_characters_mutex);
+    for (int i = 0; i < count; ++i)
+        if (void* character = at<void*>(change, change_characters + 8 * i);
+            character && !g_deleted_characters.contains(character))  // a change can outlive its character
+            g_noted_characters.insert(character);
+}
+
+void forget_character(void* character) noexcept {
+    if (!g_noting_characters.load(std::memory_order_relaxed)) return;
+    const std::lock_guard lock(g_noted_characters_mutex);
+    g_noted_characters.erase(character);
+    g_deleted_characters.insert(character);
+}
+
+void* on_monarch_change_delete(void* change, std::uint32_t flags) noexcept {
+    note_characters(change, 4);  // _pNew, _pOld, _pOldHeir, _pOldQueen
+    return g_monarch_change_delete.previous()(change, flags);
+}
+void* on_heir_change_delete(void* change, std::uint32_t flags) noexcept {
+    note_characters(change, 2);  // _pNew, _pOld
+    return g_heir_change_delete.previous()(change, flags);
+}
+void* on_queen_change_delete(void* change, std::uint32_t flags) noexcept {
+    note_characters(change, 2);
+    return g_queen_change_delete.previous()(change, flags);
+}
+void* on_monarch_delete(void* character, std::uint32_t flags) noexcept {
+    forget_character(character);
+    return g_monarch_delete.previous()(character, flags);
+}
+void* on_heir_delete(void* character, std::uint32_t flags) noexcept {
+    forget_character(character);
+    return g_heir_delete.previous()(character, flags);
+}
+void* on_queen_delete(void* character, std::uint32_t flags) noexcept {
+    forget_character(character);
+    return g_queen_delete.previous()(character, flags);
+}
+
+struct CharactersFreed {
+    std::size_t freed = 0, in_store = 0, other = 0;
+};
+CharactersFreed g_characters_freed;  // by the last reset
+
+// Ends the noting; run as DestroyDatabase starts inside Hamweard's reset.
+CharactersFreed free_noted_characters() {
+    std::unordered_set<void*> noted;
+    {
+        const std::lock_guard lock(g_noted_characters_mutex);
+        g_noting_characters.store(false, std::memory_order_relaxed);
+        noted.swap(g_noted_characters);
+        g_deleted_characters.clear();
+    }
+    CharactersFreed n;
+    if (noted.empty()) return n;
+    auto* const* begin = reinterpret_cast<void* const*>(g_monarch_store[0]);
+    auto* const* end = reinterpret_cast<void* const*>(g_monarch_store[1]);
+    const std::unordered_set<void*> store(begin, end);
+    for (void* character : noted) {
+        if (store.contains(character)) {
+            ++n.in_store;
+            continue;
+        }
+        const bool null_character = std::any_of(std::begin(g_null_characters), std::end(g_null_characters),
+                                                [&](const auto& c) { return *c.global == reinterpret_cast<std::uintptr_t>(character); });
+        void* vtable = at<void*>(character, 0);
+        if (null_character || std::find(std::begin(g_character_vtables), std::end(g_character_vtables), vtable) ==
+                                  std::end(g_character_vtables)) {
+            ++n.other;
+            continue;
+        }
+        at<DeleteFn*>(vtable, 0)(character, 1);
+        ++n.freed;
+    }
+    return n;
+}
+
 // Windows whose owner dies without destroying them. They stayed hidden in the
 // GUI root, seven per return in the menu (lab, 19 November 2026, Tongs ui tree):
 // - the goto box (CGotoBox: of the main menu's game setup view and of the in-game
@@ -1044,15 +1153,26 @@ void note_idler_orphans(Bytes idler) {
 void reset_world(Bytes app) {
     const std::size_t idea_groups = free_idea_group_flags();
     g_else_branches_freed.store(0, std::memory_order_relaxed);
+    g_characters_freed = {};
     {
         FreeElseWindow window;
         TeardownWindow teardown;
+        g_noting_characters.store(true, std::memory_order_relaxed);
         game(sym::reset_game, app, false);
+    }
+    if (g_noting_characters.load(std::memory_order_relaxed)) {
+        // DestroyDatabase did not run: keep the characters rather than delete them late.
+        const std::lock_guard lock(g_noted_characters_mutex);
+        g_noting_characters.store(false, std::memory_order_relaxed);
+        host().warn("{} historical characters kept: the reset did not destroy the history", g_noted_characters.size());
+        g_noted_characters.clear();
+        g_deleted_characters.clear();
     }
     restore_null_characters();
     const std::size_t fired = free_fired_events();
-    host().info("memory the reset would lose: {} idea group tables, {} else branches freed, {} fired delayed events freed; {} subject modifiers, {} text box pan gestures and {} battle results freed since the last reset",
-                idea_groups, g_else_branches_freed.load(std::memory_order_relaxed), fired,
+    host().info("memory the reset would lose: {} idea group tables, {} else branches freed, {} fired delayed events freed, {} historical characters freed ({} in the store, {} others kept); {} subject modifiers, {} text box pan gestures and {} battle results freed since the last reset",
+                idea_groups, g_else_branches_freed.load(std::memory_order_relaxed), fired, g_characters_freed.freed,
+                g_characters_freed.in_store, g_characters_freed.other,
                 g_subject_modifiers_freed.exchange(0, std::memory_order_relaxed),
                 g_pan_gestures_freed.exchange(0, std::memory_order_relaxed),
                 g_battles_freed.exchange(0, std::memory_order_relaxed));
@@ -1076,6 +1196,8 @@ void on_history_destroy(void* history) noexcept {
         g_history_destroy.next(history);
         return;
     }
+    // In Hamweard's reset the old world is gone and the ID tables are still the old ones.
+    if (in_reset && g_noting_characters.load(std::memory_order_relaxed)) g_characters_freed = free_noted_characters();
     const std::uint32_t before = g_else_branches_freed.load(std::memory_order_relaxed);
     {
         FreeElseWindow window;
@@ -1197,6 +1319,10 @@ struct Hamweard : anvil::Plugin {
         g_minimap_vtable = h.address(sym::minimap_vtable);
         g_delayed_event_vtable = h.address(sym::delayed_event_vtable);
         g_battle_result_vtable = h.address(sym::battle_result_vtable);
+        g_character_vtables[0] = h.address(sym::monarch_vtable);
+        g_character_vtables[1] = h.address(sym::heir_vtable);
+        g_character_vtables[2] = h.address(sym::queen_vtable);
+        g_monarch_store = h.data(sym::monarch_store);
         g_start_dialog_vtable = h.address(sym::start_dialog_vtable);
         g_ironman_select_vtable = h.address(sym::ironman_select_vtable);
         g_goto_box_vtable = h.address(sym::goto_box_delete_slot);  // slot 0 is the vtable's start
@@ -1251,6 +1377,12 @@ struct Hamweard : anvil::Plugin {
         h.swap(g_tick, sym::frontend_tick_slot, &on_frontend_tick);
         h.swap(g_restore_device_objects, sym::frontend_restore_slot, &on_frontend_restore);
         h.swap(g_battle_change_delete, sym::battle_change_delete_slot, &on_battle_change_delete);
+        h.swap(g_monarch_change_delete, sym::monarch_change_delete_slot, &on_monarch_change_delete);
+        h.swap(g_heir_change_delete, sym::heir_change_delete_slot, &on_heir_change_delete);
+        h.swap(g_queen_change_delete, sym::queen_change_delete_slot, &on_queen_change_delete);
+        h.swap(g_monarch_delete, sym::monarch_vtable, &on_monarch_delete);
+        h.swap(g_heir_delete, sym::heir_vtable, &on_heir_delete);
+        h.swap(g_queen_delete, sym::queen_vtable, &on_queen_delete);
         h.swap(g_goto_box_delete, sym::goto_box_delete_slot, &on_goto_box_delete);
         h.swap(g_tutorial_delete, sym::tutorial_delete_slot, &on_tutorial_delete);
         h.swap(g_game_setup_delete, sym::game_setup_view_delete_slot, &on_game_setup_delete);
