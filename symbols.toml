@@ -678,3 +678,46 @@ note = "CBattleResult's vtable; slot 0 is its deleting destructor (0x138 bytes)"
 build."eu4-1.37.5-steam-win64" = { rva = 0x1C448D0, points_to = 0x1DD060 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x1C2D6C0, points_to = 0x1DD030 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x1C2D6C0, points_to = 0x1DD030 }
+
+# --- windows and dialogs whose owners die without destroying them ---
+[symbol.goto_box_delete_slot]
+memory = "read"
+note = "slot 0 of CGotoBox's vtable: its deleting destructor, which leaves its window (+0x30, goto_box)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1D5FF00, points_to = 0x1142E70 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1D48588, points_to = 0x113D1E0 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1D48588, points_to = 0x113D1E0 }
+
+[symbol.tutorial_delete_slot]
+memory = "read"
+note = "slot 0 of CTutorial's vtable: its deleting destructor, which leaves its minimized button's window (+0xE0, tutorial_minimized)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1D82E58, points_to = 0x140C210 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1D6B6D0, points_to = 0x14061B0 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1D6B6D0, points_to = 0x14061B0 }
+
+[symbol.game_setup_view_delete_slot]
+memory = "read"
+note = "slot 0 of the vtable of CGameSetup's CFrontEndView base (+0x28): the thunk to its deleting destructor, through which the main menu deletes its views; ~CGameSetup never frees _pStartDialog (+0x2CA8)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1D5E320, points_to = 0x114136C }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1D47C28, points_to = 0x113B6B8 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1D47C28, points_to = 0x113B6DC }
+
+[symbol.frontend_delete_slot]
+memory = "read"
+note = "slot 0 of the frontend idler vtable: CFrontEnd's deleting destructor, which leaves _pRightClickWindow"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1D5A8C8, points_to = 0x10D2C00 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1D43318, points_to = 0x10D1400 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1D43318, points_to = 0x10D1400 }
+
+[symbol.start_dialog_vtable]
+memory = "read"
+note = "CStartGameDialog's vtable; slot 0 is its deleting destructor (0x2A0 bytes), which destroys its window (+0x290) but not _pIronmanSaveSelect (+0x298)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1D7FF70, points_to = 0x13B68E0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1D68670, points_to = 0x13B0A40 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1D68670, points_to = 0x13B0A40 }
+
+[symbol.ironman_select_vtable]
+memory = "read"
+note = "CIronmanSaveSelect's vtable; slot 0 is its deleting destructor (0x2A0 bytes), which destroys its window (+0x38)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1D7FF88, points_to = 0x13B7910 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1D68658, points_to = 0x13B1A70 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1D68658, points_to = 0x13B1A70 }

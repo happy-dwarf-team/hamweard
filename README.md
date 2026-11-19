@@ -117,9 +117,9 @@ have not checked yet; a correction is welcome in an issue or a pull request.
   of returns the game grew by about 45 MB per return with Anbennar and 20 MB without mods. A late
   save costs more: with a save from 1719, without mods, each return after the first kept about
   45–90 MB, among them part of the save's history and the campaign's windows. The time of a return
-  stayed the same over 40 returns in a row. About eight windows per campaign stay in the GUI root too (see
-  [Windows a campaign leaves behind](#windows-a-campaign-leaves-behind)), but they are not the
-  cause. When less than 1 GB of the system's commit limit is left, a return restarts the game
+  stayed the same over 40 returns in a row. The windows a campaign and the main menu leave in
+  the GUI root are destroyed at the next return (see
+  [Windows a campaign leaves behind](#windows-a-campaign-leaves-behind)). When less than 1 GB of the system's commit limit is left, a return restarts the game
   instead.
 - EU4 1.37.5 on Steam and the GOG builds 1.37.5.2 and 1.37.5.0 (1.37.5.0 from Anvil 1.15). On any
   other build Anvil does not load the plugin. The GOG builds have no Steam lobby, so there is nothing to clean up there.
@@ -398,9 +398,20 @@ builds for itself (`0x10A0735`). Once the outgoing idler is gone it destroys the
 still alive (checked in the widget registry, by name), each hidden first, as the HUD
 reload does. Windows named like one of the fresh main menu's, `load_screen` and
 `console_wnd` are kept. That removes about 100 to 160 windows per campaign, all popups
-included, and the shown count no longer grows. About eight per campaign still stay:
-duplicates of frontend names (`goto_box` and `rightClickMenu` twice each,
-`start_game_dialog`, `tutorial_minimized`, `IronmanSaveSelectDialog`) and `dlc_entry`.
+included, and the shown count no longer grows.
+
+Seven more per return had names of the main menu's windows, so that filter kept them: the
+goto box and the right-click menu of the in-game idler, and of the main menu the campaign
+replaced its goto box, right-click menu, the tutorial's minimized button and the start game
+dialog with its ironman save selection (`goto_box` and `rightClickMenu` twice each,
+`tutorial_minimized`, `start_game_dialog`, `IronmanSaveSelectDialog`). Their owners die
+without destroying them: the destructors of `CGotoBox`, `CTutorial`, `CFrontEnd` and
+`CInGameIdler` never read the window's field, and `~CGameSetup` never frees its
+`CStartGameDialog`, which stays in the GUI reload list with its `CIronmanSaveSelect`. Nothing
+else holds them. The plugin notes them when their owner is destroyed (slot 0 of the four
+vtables, and at a return for the in-game idler) and, at the next return, destroys the
+windows still alive under that name and frees each dialog with its own destructor, which
+destroys its window and leaves the reload list.
 
 Earlier versions also had a mid hook on every sprite draw that loaded such a texture
 first. With the popups destroyed it had nothing left to do, and the runs under

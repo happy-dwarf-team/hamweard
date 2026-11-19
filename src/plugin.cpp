@@ -61,6 +61,11 @@ constexpr std::ptrdiff_t widget_name_slot = 0xA0;        // returns the .gui nam
 constexpr std::ptrdiff_t widget_visible = 0xC5;          // as Tongs reads it
 constexpr std::ptrdiff_t widget_hide_slot = 0x90;        // of the widget, as 0x82B470 hides the menu bar
 constexpr std::ptrdiff_t dialog_name = 0x118;            // eu3dialog: the .gui name of its window (std::string)
+constexpr std::ptrdiff_t goto_box_window = 0x30;         // CGotoBox::_pWindow, "goto_box"
+constexpr std::ptrdiff_t tutorial_minimized = 0xE0;      // CTutorial::_pMinimized, "tutorial_minimized"
+constexpr std::ptrdiff_t game_setup_view = 0x28;         // CGameSetup's CFrontEndView base, as CFrontEnd::_Views holds it
+constexpr std::ptrdiff_t game_setup_start_dialog = 0x2CA8;  // CGameSetup::_pStartDialog
+constexpr std::ptrdiff_t start_dialog_ironman = 0x298;   // CStartGameDialog::_pIronmanSaveSelect
 
 constexpr std::ptrdiff_t lobby_id = 0x1C0;
 constexpr std::ptrdiff_t lobby_hosting = 0x299;
@@ -142,9 +147,13 @@ struct Layout {
     std::ptrdiff_t idler_notifications;
     std::ptrdiff_t menu_pending;  // CFrontEnd's view state
     std::size_t main_menu_size;
+    std::ptrdiff_t frontend_right_click;  // CFrontEnd::_pRightClickWindow
+    std::ptrdiff_t idler_goto_box;        // CInGameIdler::_pGotoBox
+    std::ptrdiff_t idler_tutorial;        // CInGameIdler::_pTutorial
+    std::ptrdiff_t idler_right_click;     // CInGameIdler::_pRightClickWindow
 };
-constexpr Layout kSteam{0x330, 0x10E0, 0x12E9, 0x1400, 0x900, 0xB48};
-constexpr Layout kGog{0x328, 0x10D0, 0x12D9, 0x13F0, 0x8F0, 0xB38};
+constexpr Layout kSteam{0x330, 0x10E0, 0x12E9, 0x1400, 0x900, 0xB48, 0x7C8, 0x1428, 0x1440, 0x1448};
+constexpr Layout kGog{0x328, 0x10D0, 0x12D9, 0x13F0, 0x8F0, 0xB38, 0x7B8, 0x1418, 0x1430, 0x1438};
 Layout g_layout = kSteam;
 
 
@@ -212,6 +221,16 @@ std::unordered_map<void*, std::string> g_campaign_windows;  // full object -> .g
 // The game can create one of them again during a campaign and the main menu
 // then uses that one (country_selection_panel), so they are never destroyed.
 std::unordered_set<std::string> g_frontend_names;
+// Windows whose owner was destroyed without destroying them, and the start game
+// dialogs of destroyed game setup views; freed at the next return (see
+// on_goto_box_delete). Guarded: views also create windows while a save loads.
+std::mutex g_orphans_mutex;
+std::unordered_map<void*, std::string_view> g_orphan_windows;  // full object -> .gui name
+std::unordered_set<void*> g_orphan_dialogs;
+void* g_start_dialog_vtable = nullptr;
+void* g_ironman_select_vtable = nullptr;
+void* g_goto_box_vtable = nullptr;
+void* g_tutorial_vtable = nullptr;
 hamweard::WorldResetGate g_reset_gate;
 
 anvil::Host host() noexcept { return anvil::Host{}; }
@@ -421,42 +440,79 @@ void note_window(void* window, std::string_view name) {
 
 void* on_create_window(void* manager, const void* name) noexcept {
     void* window = g_create_window.next(manager, name);
-    if (window) note_window(window, game_string(name));
+    if (window) {
+        note_window(window, game_string(name));
+        std::lock_guard lock(g_orphans_mutex);
+        g_orphan_windows.erase(window);
+    }
     return window;
+}
+
+// Destroys a window that is still live and still the one named `name`; false
+// when the game destroyed it already.
+bool destroy_window(Bytes manager, void* window, std::string_view name) {
+    Bytes widget = static_cast<Bytes>(window) + off::window_widget;
+    // Live and not marked dead: the game may have destroyed it already
+    // (a closed popup, a HUD reload), or with a window destroyed before.
+    void** begin = at<void**>(manager, g_registry_begin);
+    void** end = at<void**>(manager, g_registry_end);
+    if (std::find(begin, end, widget) == end || at<std::uint8_t>(widget, off::widget_dead) != 0) return false;
+    // The same window, not another one made at its freed address: the
+    // widget's name (vtable slot 0xA0, as Tongs reads it) is the one it
+    // was created with.
+    using NameFn = const void* (*)(void* widget);
+    const void* own = at<NameFn>(at<void*>(widget, 0), off::widget_name_slot)(widget);
+    if (!own || game_string(own) != name) return false;
+    // Hidden first, as the HUD reload hides the menu bar before it destroys it.
+    if (at<std::uint8_t>(widget, off::widget_visible) != 0) {
+        using HideFn = void (*)(void* widget);
+        at<HideFn>(at<void*>(widget, 0), off::widget_hide_slot)(widget);
+    }
+    using DestroyFn = void(void* window);
+    at<DestroyFn*>(at<void*>(window, 0), off::window_destroy_slot)(window);
+    return true;
+}
+
+// The windows their owners left and the start game dialogs of the destroyed
+// game setup views. A dialog is freed by its own deleting destructor, which
+// destroys its window and leaves the GUI reload list; its ironman save
+// selection, which it never frees, first, the same way.
+void free_orphans(Bytes manager) {
+    std::unique_lock lock(g_orphans_mutex);
+    const auto windows = std::exchange(g_orphan_windows, {});
+    const auto dialogs = std::exchange(g_orphan_dialogs, {});
+    lock.unlock();
+    if (windows.empty() && dialogs.empty()) return;
+    using DeleteFn = void*(void* object, std::uint32_t flags);
+    std::size_t destroyed = 0, freed = 0;
+    for (const auto& [window, name] : windows) destroyed += destroy_window(manager, window, name) ? 1 : 0;
+    for (void* dialog : dialogs) {
+        if (at<void*>(dialog, 0) != g_start_dialog_vtable) continue;
+        auto& select = at<void*>(dialog, off::start_dialog_ironman);
+        if (void* ironman = select; ironman && at<void*>(ironman, 0) == g_ironman_select_vtable) {
+            select = nullptr;
+            at<DeleteFn*>(g_ironman_select_vtable, 0)(ironman, 1);
+        }
+        at<DeleteFn*>(g_start_dialog_vtable, 0)(dialog, 1);
+        ++freed;
+    }
+    host().info("windows their owners left: {} of {} destroyed; {} start game dialogs freed", destroyed, windows.size(),
+                freed);
 }
 
 void destroy_campaign_windows() {
     std::unordered_map<void*, std::string> windows = std::exchange(g_campaign_windows, {});
     Bytes manager = reinterpret_cast<Bytes>(*g_manager_global);
-    if (windows.empty() || !manager) return;
+    if (!manager) return;
+    free_orphans(manager);
+    if (windows.empty()) return;
     std::size_t destroyed = 0, gone = 0;
     for (const auto& [window, name] : windows) {
-        Bytes widget = static_cast<Bytes>(window) + off::window_widget;
-        // Live and not marked dead: the game may have destroyed it already
-        // (a closed popup, a HUD reload), or with a window destroyed before.
-        void** begin = at<void**>(manager, g_registry_begin);
-        void** end = at<void**>(manager, g_registry_end);
-        if (std::find(begin, end, widget) == end || at<std::uint8_t>(widget, off::widget_dead) != 0) {
+        if (destroy_window(manager, window, name)) {
+            ++destroyed;
+        } else {
             ++gone;
-            continue;
         }
-        // The same window, not another one made at its freed address: the
-        // widget's name (vtable slot 0xA0, as Tongs reads it) is the one it
-        // was created with.
-        using NameFn = const void* (*)(void* widget);
-        const void* own = at<NameFn>(at<void*>(widget, 0), off::widget_name_slot)(widget);
-        if (!own || game_string(own) != name) {
-            ++gone;
-            continue;
-        }
-        // Hidden first, as the HUD reload hides the menu bar before it destroys it.
-        if (at<std::uint8_t>(widget, off::widget_visible) != 0) {
-            using HideFn = void (*)(void* widget);
-            at<HideFn>(at<void*>(widget, 0), off::widget_hide_slot)(widget);
-        }
-        using DestroyFn = void(void* window);
-        at<DestroyFn*>(at<void*>(window, 0), off::window_destroy_slot)(window);
-        ++destroyed;
     }
     host().info("windows of the last campaign: {} destroyed, {} already gone", destroyed, gone);
 }
@@ -595,6 +651,8 @@ const char* restart_reason() {
     return hamweard::restart_reason(shift_held(), in_multiplayer_session(), g_map_randomized, commit);
 }
 
+void note_idler_orphans(Bytes idler);
+
 // In CInGameIdler::Idle, instead of setting exit + restart.
 void return_to_menu(Bytes idler) {
     Bytes app = at<Bytes>(idler, g_layout.idler_app);
@@ -611,6 +669,7 @@ void return_to_menu(Bytes idler) {
     // tag switch destroy their windows before the world changes, and so does a return.
     if (void* notices = at<void*>(idler, g_layout.idler_notifications)) game(sym::notifications_destroy, notices);
     release_minimap(idler);
+    note_idler_orphans(idler);
     construct_menu(app, reason);
 }
 
@@ -919,6 +978,69 @@ void* on_battle_change_delete(void* change, std::uint32_t flags) noexcept {
     return g_battle_change_delete.previous()(change, flags);
 }
 
+// Windows whose owner dies without destroying them. They stayed hidden in the
+// GUI root, seven per return in the menu (lab, 19 November 2026, Tongs ui tree):
+// - the goto box (CGotoBox: of the main menu's game setup view and of the in-game
+//   idler) and the tutorial's minimized button (CTutorial: of the main menu's
+//   tutorial screen): their deleting destructors leave their window;
+// - the right-click menus of the main menu (CFrontEnd) and of the in-game idler,
+//   whose destructors do not read the field;
+// - the start game dialog of the main menu's game setup view (CGameSetup), which
+//   ~CGameSetup never frees, with its window and its ironman save selection
+//   (start_game_dialog and IronmanSaveSelectDialog); both stay in the GUI reload list.
+// Nothing else holds them: each window is created into that one field and the
+// dialog only by CGameSetup's constructor. The swapped slots below only note
+// them, since an owner can also die at exit; the next return, where Hamweard
+// destroys the campaign's windows, frees them.
+anvil::PointerSwap<DeleteFn> g_goto_box_delete;
+anvil::PointerSwap<DeleteFn> g_tutorial_delete;
+anvil::PointerSwap<DeleteFn> g_game_setup_delete;
+anvil::PointerSwap<DeleteFn> g_frontend_delete;
+
+void note_orphan(void* owner, std::ptrdiff_t field, std::string_view name) {
+    if (void* window = at<void*>(owner, field)) {
+        std::lock_guard lock(g_orphans_mutex);
+        g_orphan_windows.insert_or_assign(window, name);
+    }
+}
+
+void* on_goto_box_delete(void* box, std::uint32_t flags) noexcept {
+    note_orphan(box, off::goto_box_window, "goto_box");
+    return g_goto_box_delete.previous()(box, flags);
+}
+
+void* on_tutorial_delete(void* tutorial, std::uint32_t flags) noexcept {
+    note_orphan(tutorial, off::tutorial_minimized, "tutorial_minimized");
+    return g_tutorial_delete.previous()(tutorial, flags);
+}
+
+// The slot of CGameSetup's CFrontEndView vtable: `view` is that base, which
+// the main menu's view list holds and deletes.
+void* on_game_setup_delete(void* view, std::uint32_t flags) noexcept {
+    Bytes setup = static_cast<Bytes>(view) - off::game_setup_view;
+    if (void* dialog = at<void*>(setup, off::game_setup_start_dialog);
+        dialog && at<void*>(dialog, 0) == g_start_dialog_vtable) {
+        std::lock_guard lock(g_orphans_mutex);
+        g_orphan_dialogs.insert(dialog);
+    }
+    return g_game_setup_delete.previous()(view, flags);
+}
+
+void* on_frontend_delete(void* frontend, std::uint32_t flags) noexcept {
+    note_orphan(frontend, g_layout.frontend_right_click, "rightClickMenu");
+    return g_frontend_delete.previous()(frontend, flags);
+}
+
+// At a return, while the in-game idler lives: its right-click menu, and the
+// windows of its goto box and tutorial, should their objects outlive it.
+void note_idler_orphans(Bytes idler) {
+    note_orphan(idler, g_layout.idler_right_click, "rightClickMenu");
+    if (void* box = at<void*>(idler, g_layout.idler_goto_box); box && at<void*>(box, 0) == g_goto_box_vtable)
+        note_orphan(box, off::goto_box_window, "goto_box");
+    if (void* tutorial = at<void*>(idler, g_layout.idler_tutorial); tutorial && at<void*>(tutorial, 0) == g_tutorial_vtable)
+        note_orphan(tutorial, off::tutorial_minimized, "tutorial_minimized");
+}
+
 void reset_world(Bytes app) {
     const std::size_t idea_groups = free_idea_group_flags();
     g_else_branches_freed.store(0, std::memory_order_relaxed);
@@ -1075,6 +1197,10 @@ struct Hamweard : anvil::Plugin {
         g_minimap_vtable = h.address(sym::minimap_vtable);
         g_delayed_event_vtable = h.address(sym::delayed_event_vtable);
         g_battle_result_vtable = h.address(sym::battle_result_vtable);
+        g_start_dialog_vtable = h.address(sym::start_dialog_vtable);
+        g_ironman_select_vtable = h.address(sym::ironman_select_vtable);
+        g_goto_box_vtable = h.address(sym::goto_box_delete_slot);  // slot 0 is the vtable's start
+        g_tutorial_vtable = h.address(sym::tutorial_delete_slot);
         // The GOG build has no Steam lobby: its four symbols are absent there.
         if (h.present(sym::steam_lobby_vtable)) {
             g_lobby_vtable = h.address(sym::steam_lobby_vtable);
@@ -1125,6 +1251,10 @@ struct Hamweard : anvil::Plugin {
         h.swap(g_tick, sym::frontend_tick_slot, &on_frontend_tick);
         h.swap(g_restore_device_objects, sym::frontend_restore_slot, &on_frontend_restore);
         h.swap(g_battle_change_delete, sym::battle_change_delete_slot, &on_battle_change_delete);
+        h.swap(g_goto_box_delete, sym::goto_box_delete_slot, &on_goto_box_delete);
+        h.swap(g_tutorial_delete, sym::tutorial_delete_slot, &on_tutorial_delete);
+        h.swap(g_game_setup_delete, sym::game_setup_view_delete_slot, &on_game_setup_delete);
+        h.swap(g_frontend_delete, sym::frontend_delete_slot, &on_frontend_delete);
         g_manager_global = reinterpret_cast<std::uintptr_t*>(h.game().image_base + h.value(sym::gui_manager_store, "manager"));
         g_registry_begin = static_cast<std::ptrdiff_t>(h.value(sym::widget_registry, "begin"));
         g_registry_end = static_cast<std::ptrdiff_t>(h.value(sym::widget_registry, "end"));
