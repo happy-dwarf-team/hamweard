@@ -879,19 +879,61 @@ std::size_t free_fired_events() {
     return freed;
 }
 
+// A battle of a war is a CBattleResult that two things point to: the war's _BattleResults
+// (CWar::AddBattleResult, or RecalculateCachedBattleResults after a load) and the
+// CBattleResultChange of the war's history (+0x40), which the history's reader makes for
+// each battle = { ... } of a save or of history/wars. ~CWar frees only the list, and the
+// change's deleting destructor (shared with the other 0x48-byte changes) only the change,
+// so every battle of every war was lost whenever the world went: at each reset and at each
+// load of a save (lab, 19 November 2026: 1.6 MB in 5333 battles per return after a 1719
+// save). The change is the one owner left, as the war it belongs to goes in the same
+// teardown (its history is destroyed before its list, which ~CWar frees without reading).
+// So while the game resets the world or loads a save, the change's slot deletes the battle
+// first, as the game deletes a CBattleResult (slot 0 with 1); in the rest of the game it
+// stays as it was.
+using DeleteFn = void*(void* object, std::uint32_t flags);
+anvil::PointerSwap<DeleteFn> g_battle_change_delete;
+void* g_battle_result_vtable = nullptr;
+std::atomic<int> g_world_teardown{0};  // inside ResetGame or the load of a save
+std::atomic<std::uint64_t> g_battles_freed{0};
+
+constexpr std::ptrdiff_t battle_change_result = 0x40;  // CBattleResultChange's CBattleResult*
+
+class TeardownWindow {
+public:
+    TeardownWindow() { g_world_teardown.fetch_add(1, std::memory_order_relaxed); }
+    ~TeardownWindow() { g_world_teardown.fetch_sub(1, std::memory_order_relaxed); }
+    TeardownWindow(const TeardownWindow&) = delete;
+    TeardownWindow& operator=(const TeardownWindow&) = delete;
+};
+
+void* on_battle_change_delete(void* change, std::uint32_t flags) noexcept {
+    if (g_world_teardown.load(std::memory_order_relaxed) > 0) {
+        auto& slot = at<void*>(change, battle_change_result);
+        if (void* result = slot; result && at<void*>(result, 0) == g_battle_result_vtable) {
+            slot = nullptr;
+            at<DeleteFn*>(g_battle_result_vtable, 0)(result, 1);
+            g_battles_freed.fetch_add(1, std::memory_order_relaxed);
+        }
+    }
+    return g_battle_change_delete.previous()(change, flags);
+}
+
 void reset_world(Bytes app) {
     const std::size_t idea_groups = free_idea_group_flags();
     g_else_branches_freed.store(0, std::memory_order_relaxed);
     {
         FreeElseWindow window;
+        TeardownWindow teardown;
         game(sym::reset_game, app, false);
     }
     restore_null_characters();
     const std::size_t fired = free_fired_events();
-    host().info("memory the reset would lose: {} idea group tables, {} else branches freed, {} fired delayed events freed; {} subject modifiers and {} text box pan gestures freed since the last reset",
+    host().info("memory the reset would lose: {} idea group tables, {} else branches freed, {} fired delayed events freed; {} subject modifiers, {} text box pan gestures and {} battle results freed since the last reset",
                 idea_groups, g_else_branches_freed.load(std::memory_order_relaxed), fired,
                 g_subject_modifiers_freed.exchange(0, std::memory_order_relaxed),
-                g_pan_gestures_freed.exchange(0, std::memory_order_relaxed));
+                g_pan_gestures_freed.exchange(0, std::memory_order_relaxed),
+                g_battles_freed.exchange(0, std::memory_order_relaxed));
 }
 
 void on_history_move(void* history, const void* date) noexcept {
@@ -924,10 +966,15 @@ void on_history_destroy(void* history) noexcept {
 
 void on_save_load_task(void* task) noexcept {
     g_loading_save.fetch_add(1, std::memory_order_relaxed);
-    g_save_load_task.next(task);
+    {
+        TeardownWindow teardown;
+        g_save_load_task.next(task);
+    }
     g_loading_save.fetch_sub(1, std::memory_order_relaxed);
     // The load replaced the world the noted events came from.
     if (const std::size_t fired = free_fired_events()) host().info("a save loaded: {} fired delayed events freed", fired);
+    if (const auto battles = g_battles_freed.exchange(0, std::memory_order_relaxed))
+        host().info("a save loaded: {} battle results of the old world freed", battles);
 }
 
 // The frontend idler's first act after the hand-over: the outgoing idler is gone.
@@ -1027,6 +1074,7 @@ struct Hamweard : anvil::Plugin {
         g_layout = layout == hamweard::BuildLayout::gog ? kGog : kSteam;
         g_minimap_vtable = h.address(sym::minimap_vtable);
         g_delayed_event_vtable = h.address(sym::delayed_event_vtable);
+        g_battle_result_vtable = h.address(sym::battle_result_vtable);
         // The GOG build has no Steam lobby: its four symbols are absent there.
         if (h.present(sym::steam_lobby_vtable)) {
             g_lobby_vtable = h.address(sym::steam_lobby_vtable);
@@ -1076,6 +1124,7 @@ struct Hamweard : anvil::Plugin {
         delayed_events_fired = h.mid_hook(sym::delayed_events_fired, [](anvil::Cpu& cpu) { note_fired_events(cpu); });
         h.swap(g_tick, sym::frontend_tick_slot, &on_frontend_tick);
         h.swap(g_restore_device_objects, sym::frontend_restore_slot, &on_frontend_restore);
+        h.swap(g_battle_change_delete, sym::battle_change_delete_slot, &on_battle_change_delete);
         g_manager_global = reinterpret_cast<std::uintptr_t*>(h.game().image_base + h.value(sym::gui_manager_store, "manager"));
         g_registry_begin = static_cast<std::ptrdiff_t>(h.value(sym::widget_registry, "begin"));
         g_registry_end = static_cast<std::ptrdiff_t>(h.value(sym::widget_registry, "end"));
