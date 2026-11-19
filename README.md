@@ -116,7 +116,10 @@ have not checked yet; a correction is welcome in an issue or a pull request.
   GUI: in the lab a **Back** left about 5 MB with Anbennar and 8 MB without mods, and in a row
   of returns the game grew by about 45 MB per return with Anbennar and 20 MB without mods. A late
   save costs more: with a save from 1719, without mods, each return after the first kept about
-  45–90 MB, among them part of the save's history and the campaign's windows. The time of a return
+  45–90 MB, among them part of the save's history and the campaign's windows. With the fixes of
+  19 November 2026 the game's heap keeps about 4 MB more live data per return with that save;
+  over the first ten returns it also keeps about 0.5 GB of freed heap space committed, and after
+  that the game's memory grows by about 8 MB per return (lab, 20 returns in a row). The time of a return
   stayed the same over 40 returns in a row. The windows a campaign and the main menu leave in
   the GUI root are destroyed at the next return (see
   [Windows a campaign leaves behind](#windows-a-campaign-leaves-behind)). When less than 1 GB of the system's commit limit is left, a return restarts the game
@@ -326,7 +329,7 @@ Loading a save from the menu is the game's own path, and Hamweard adds nothing t
 The game's reset destroys the history and the countries it read and reads them again, and it
 loses part of what it destroys. 1.37.5 restarts the process instead, so it never adds up
 there. The lab found two such leaks with a heap tracer (eu4-engine-lab, 9 November 2026), and
-a third later (18–19 November 2026):
+two more later (18–19 November 2026):
 
 - **`else_if`/`else` branches.** `CIfEffect`'s destructor frees the `if` but not `_pElse`
   (`+0xF0`), the chain of branches that follows it in a script, and nothing else points to
@@ -346,7 +349,18 @@ a third later (18–19 November 2026):
   only the entry, so every battle of every war was lost at each reset and at each save
   loaded: 1.6 MB in about 5300 battles per return after a save from 1719, without mods. The
   plugin frees each battle with its entry, only while the world resets or a save loads; the
-  rest of the game keeps the stock destructor.
+  rest of the game keeps the stock destructor. At a save loaded from inside a campaign the
+  lab saw none freed: the load does not take the old wars apart inside that window.
+- **Rulers, heirs and consorts of a save's history.** A save's country history has its own
+  characters (`monarch = { … }`, `heir = { … }`, `queen = { … }`). Only the characters read
+  from `history/` or made in play go into the list the reset deletes; the countries and the
+  history entries delete none of theirs, so every return lost the save's characters: about
+  9000 and 3 MB per return after a save from 1719 without mods, about 1500 with Anbennar at
+  1444. While the world resets, the plugin notes the characters of each ruler, heir and
+  consort entry as the entry goes, and deletes them after the countries are gone and before
+  the game replaces its tables of object IDs. It deletes only plain characters (no
+  placeholder for a country without one) that the reset's own list does not hold and no one
+  else deleted. The leaders those characters carry, about 0.2 MB, stay.
 
 ## Memory a long campaign lost
 
