@@ -885,7 +885,7 @@ std::size_t free_fired_events() {
 // each battle = { ... } of a save or of history/wars. ~CWar frees only the list, and the
 // change's deleting destructor (shared with the other 0x48-byte changes) only the change,
 // so every battle of every war was lost whenever the world went: at each reset and at each
-// load of a save (lab, 19 November 2026: 1.7 MB in 5300 battles per return after a 1719
+// load of a save (lab, 19 November 2026: 1.6 MB in 5333 battles per return after a 1719
 // save). The change is the one owner left, as the war it belongs to goes in the same
 // teardown (its history is destroyed before its list, which ~CWar frees without reading).
 // So while the game resets the world or loads a save, the change's slot deletes the battle
