@@ -1087,6 +1087,57 @@ CharactersFreed free_noted_characters() {
     return n;
 }
 
+// The AI's army agents (CAIArmy, 0xBF8 bytes with their lists and maps) are held only by
+// their king's _ArmyAgents, or its _KillList once cancelled; ~CAIKing frees both lists'
+// nodes and never the agents (lab, 19 November 2026: about 1.1 MB per return after a 1719
+// save). Kings die in CCurrentGameState::ClearAIStuff, which the old game state's teardown
+// runs while the countries still live and after their units are deleted: CGameState::
+// DeleteUnit detaches a unit from its agent (DetachArmy) first, so an agent's unit list
+// holds live units only. So while Hamweard resets the world, the king's slot copies its
+// army agents, lets the king die (its requests' destructors only free themselves), and then
+// deletes each agent through its own destructor, which unlinks its units and the country's
+// units that point to it and leaves the ID table, still the old one. An agent is deleted
+// only if its vtable is exactly CAIArmy's, its owner is that king, and it is not one of the
+// king's child agents (which ~CAIAgent deletes itself).
+anvil::PointerSwap<DeleteFn> g_ai_king_delete;
+void* g_ai_army_vtable = nullptr;
+std::atomic<bool> g_freeing_agents{false};
+std::atomic<std::uint32_t> g_agents_freed{0}, g_agents_kept{0};
+
+constexpr std::ptrdiff_t agent_owner = 0x38;      // CAIAgent::_pOwner
+constexpr std::ptrdiff_t agent_children = 0x40;   // CAIAgent::_AgentList
+constexpr std::ptrdiff_t king_kill_list = 0xAC8;  // CAIKing::_KillList
+constexpr std::ptrdiff_t king_army_agents = 0xC50;  // CAIKing::_ArmyAgents
+
+// A CList's nodes: the element at +0, the next node at +0x10; the list's head at +0.
+template <class F> void for_each_in_list(void* list, F&& f) {
+    for (void* node = at<void*>(list, 0); node; node = at<void*>(node, 0x10)) f(at<void*>(node, 0));
+}
+
+void* on_ai_king_delete(void* king, std::uint32_t flags) noexcept {
+    if (!g_freeing_agents.load(std::memory_order_relaxed)) return g_ai_king_delete.previous()(king, flags);
+    std::unordered_set<void*> children;
+    for_each_in_list(static_cast<Bytes>(king) + agent_children, [&](void* a) { children.insert(a); });
+    std::vector<void*> agents;
+    std::unordered_set<void*> seen;
+    std::uint32_t kept = 0;
+    auto take = [&](void* agent) {
+        if (!agent || !seen.insert(agent).second) return;
+        if (children.contains(agent) || at<void*>(agent, 0) != g_ai_army_vtable || at<void*>(agent, agent_owner) != king) {
+            ++kept;
+            return;
+        }
+        agents.push_back(agent);
+    };
+    for_each_in_list(static_cast<Bytes>(king) + king_army_agents, take);
+    for_each_in_list(static_cast<Bytes>(king) + king_kill_list, take);
+    void* result = g_ai_king_delete.previous()(king, flags);
+    for (void* agent : agents) at<DeleteFn*>(g_ai_army_vtable, 0)(agent, 1);
+    g_agents_freed.fetch_add(static_cast<std::uint32_t>(agents.size()), std::memory_order_relaxed);
+    g_agents_kept.fetch_add(kept, std::memory_order_relaxed);
+    return result;
+}
+
 // Windows whose owner dies without destroying them. They stayed hidden in the
 // GUI root, seven per return in the menu (lab, 19 November 2026, Tongs ui tree):
 // - the goto box (CGotoBox: of the main menu's game setup view and of the in-game
@@ -1158,7 +1209,11 @@ void reset_world(Bytes app) {
         FreeElseWindow window;
         TeardownWindow teardown;
         g_noting_characters.store(true, std::memory_order_relaxed);
+        g_agents_freed.store(0, std::memory_order_relaxed);
+        g_agents_kept.store(0, std::memory_order_relaxed);
+        g_freeing_agents.store(true, std::memory_order_relaxed);
         game(sym::reset_game, app, false);
+        g_freeing_agents.store(false, std::memory_order_relaxed);
     }
     if (g_noting_characters.load(std::memory_order_relaxed)) {
         // DestroyDatabase did not run: keep the characters rather than delete them late.
@@ -1170,9 +1225,10 @@ void reset_world(Bytes app) {
     }
     restore_null_characters();
     const std::size_t fired = free_fired_events();
-    host().info("memory the reset would lose: {} idea group tables, {} else branches freed, {} fired delayed events freed, {} historical characters freed ({} in the store, {} others kept); {} subject modifiers, {} text box pan gestures and {} battle results freed since the last reset",
+    host().info("memory the reset would lose: {} idea group tables, {} else branches freed, {} fired delayed events freed, {} historical characters freed ({} in the store, {} others kept), {} AI army agents freed ({} others kept); {} subject modifiers, {} text box pan gestures and {} battle results freed since the last reset",
                 idea_groups, g_else_branches_freed.load(std::memory_order_relaxed), fired, g_characters_freed.freed,
                 g_characters_freed.in_store, g_characters_freed.other,
+                g_agents_freed.load(std::memory_order_relaxed), g_agents_kept.load(std::memory_order_relaxed),
                 g_subject_modifiers_freed.exchange(0, std::memory_order_relaxed),
                 g_pan_gestures_freed.exchange(0, std::memory_order_relaxed),
                 g_battles_freed.exchange(0, std::memory_order_relaxed));
@@ -1323,6 +1379,7 @@ struct Hamweard : anvil::Plugin {
         g_character_vtables[1] = h.address(sym::heir_vtable);
         g_character_vtables[2] = h.address(sym::queen_vtable);
         g_monarch_store = h.data(sym::monarch_store);
+        g_ai_army_vtable = h.address(sym::ai_army_vtable);
         g_start_dialog_vtable = h.address(sym::start_dialog_vtable);
         g_ironman_select_vtable = h.address(sym::ironman_select_vtable);
         g_goto_box_vtable = h.address(sym::goto_box_delete_slot);  // slot 0 is the vtable's start
@@ -1383,6 +1440,7 @@ struct Hamweard : anvil::Plugin {
         h.swap(g_monarch_delete, sym::monarch_vtable, &on_monarch_delete);
         h.swap(g_heir_delete, sym::heir_vtable, &on_heir_delete);
         h.swap(g_queen_delete, sym::queen_vtable, &on_queen_delete);
+        h.swap(g_ai_king_delete, sym::ai_king_delete_slot, &on_ai_king_delete);
         h.swap(g_goto_box_delete, sym::goto_box_delete_slot, &on_goto_box_delete);
         h.swap(g_tutorial_delete, sym::tutorial_delete_slot, &on_tutorial_delete);
         h.swap(g_game_setup_delete, sym::game_setup_view_delete_slot, &on_game_setup_delete);
