@@ -679,6 +679,58 @@ build."eu4-1.37.5-steam-win64" = { rva = 0x1C448D0, points_to = 0x1DD060 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x1C2D6C0, points_to = 0x1DD030 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x1C2D6C0, points_to = 0x1DD030 }
 
+# --- the characters of a save's country history, which no one deletes ---
+
+[symbol.monarch_change_delete_slot]
+memory = "read"
+note = "slot 0 of CMonarchChange's vtable: its deleting destructor (0x60 bytes), which frees the change but not _pNew (+0x40), _pOld (+0x48), _pOldHeir (+0x50) or _pOldQueen (+0x58)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1C51630, points_to = 0x29BDC0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1C3A480, points_to = 0x29BD70 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1C3A480, points_to = 0x29BD70 }
+
+[symbol.heir_change_delete_slot]
+memory = "read"
+note = "slot 0 of CHeirChange's vtable: the deleting destructor it shares with CQueenChange and other 0x50-byte country history changes; it frees the change but not _pNew (+0x40) or _pOld (+0x48)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1C51220, points_to = 0x29A7D0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1C3A070, points_to = 0x29A780 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1C3A070, points_to = 0x29A780 }
+
+[symbol.queen_change_delete_slot]
+memory = "read"
+note = "slot 0 of CQueenChange's vtable (the same destructor as CHeirChange's): _pNew (+0x40) and _pOld (+0x48) stay"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1C512F0, points_to = 0x29A7D0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1C3A140, points_to = 0x29A780 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1C3A140, points_to = 0x29A780 }
+
+[symbol.monarch_vtable]
+memory = "read"
+note = "CMonarch's vtable (not CNullMonarch's); slot 0 is its deleting destructor, which takes the character out of the store and its ID table"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1CDCDD8, points_to = 0xA48A30 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1CC58B0, points_to = 0xA479F0 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1CC58B0, points_to = 0xA479F0 }
+
+[symbol.heir_vtable]
+memory = "read"
+note = "CHeir's vtable; slot 0 is the deleting destructor it shares with CQueen"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1C52240, points_to = 0x296940 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1C3AFC0, points_to = 0x2968F0 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1C3AFC0, points_to = 0x2968F0 }
+
+[symbol.queen_vtable]
+memory = "read"
+note = "CQueen's vtable; slot 0 is the deleting destructor it shares with CHeir"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1C520C0, points_to = 0x296940 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1C3AF10, points_to = 0x2968F0 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1C3AF10, points_to = 0x2968F0 }
+
+[symbol.monarch_store]
+memory = "write"
+type = "uintptr_t"
+note = "CMonarchStore::_HistoricalMonarchs, a std::vector<CMonarch*> (begin, then end at +8): the characters CHistoryDataBase::DestroyDatabase deletes. A character read from a save's history is not in it (CMonarch's constructor appends only while _bIsLoadingHistory is set); one made in play always is"
+build."eu4-1.37.5-steam-win64" = { rva = 0x23581A0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x233C018 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x233C018 }
+
 # --- windows and dialogs whose owners die without destroying them ---
 [symbol.goto_box_delete_slot]
 memory = "read"
