@@ -325,7 +325,8 @@ Loading a save from the menu is the game's own path, and Hamweard adds nothing t
 
 The game's reset destroys the history and the countries it read and reads them again, and it
 loses part of what it destroys. 1.37.5 restarts the process instead, so it never adds up
-there. The lab found two such leaks with a heap tracer (eu4-engine-lab, 9 November 2026):
+there. The lab found two such leaks with a heap tracer (eu4-engine-lab, 9 November 2026), and
+a third later (18–19 November 2026):
 
 - **`else_if`/`else` branches.** `CIfEffect`'s destructor frees the `if` but not `_pElse`
   (`+0xF0`), the chain of branches that follows it in a script, and nothing else points to
@@ -339,6 +340,13 @@ there. The lab found two such leaks with a heap tracer (eu4-engine-lab, 9 Novemb
   files are read, and the country's destructor never frees it: 2.6 MB per return with
   Anbennar, 0.8 MB without mods. The plugin frees them with the game's own `delete[]` just
   before the reset.
+- **Battles of a war's history.** Each battle in a war's history (`battle = { … }` in a save
+  or in `history/wars`) has a result object that only its history entry and the war's list
+  of battles point to. The war's destructor frees only the list, and the entry's destructor
+  only the entry, so every battle of every war was lost at each reset and at each save
+  loaded: 1.6 MB in about 5300 battles per return after a save from 1719, without mods. The
+  plugin frees each battle with its entry, only while the world resets or a save loads; the
+  rest of the game keeps the stock destructor.
 
 ## Memory a long campaign lost
 
