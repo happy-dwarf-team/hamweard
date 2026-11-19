@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.6.0](https://github.com/happy-dwarf-team/hamweard/compare/v1.5.0...v1.6.0) (2026-11-19)
+
+
+### Features
+
+* log the game's memory after each return ([#91](https://github.com/happy-dwarf-team/hamweard/issues/91)) ([b2efcea](https://github.com/happy-dwarf-team/hamweard/commit/b2efcea0adff292918255eb9dd36663b3b7decf9))
+
+
+### Bug Fixes
+
+* free the AI's army agents at a return ([#105](https://github.com/happy-dwarf-team/hamweard/issues/105)) ([3e0ea4b](https://github.com/happy-dwarf-team/hamweard/commit/3e0ea4b2c54ae7a0e003e88a4a357ca9fe81e792))
+* free the battles of a war's history when the world is reset or a save loads ([#101](https://github.com/happy-dwarf-team/hamweard/issues/101)) ([2e4ca45](https://github.com/happy-dwarf-team/hamweard/commit/2e4ca45be5e83819b9283593dd0383df3e65a64c))
+* free the historical characters of a save's country history at a return ([#103](https://github.com/happy-dwarf-team/hamweard/issues/103)) ([cd38c7f](https://github.com/happy-dwarf-team/hamweard/commit/cd38c7f9a33ea48b21ee51f24dc0a8e8d389d0c0))
+* free the windows and start dialogs that their owners leave at a return ([#102](https://github.com/happy-dwarf-team/hamweard/issues/102)) ([b648b9a](https://github.com/happy-dwarf-team/hamweard/commit/b648b9a6d9920d0f66301a60cacee50d998feb3e))
+* let the Paradox launcher see the Workshop item as made for 1.37 ([#99](https://github.com/happy-dwarf-team/hamweard/issues/99)) ([8c865ce](https://github.com/happy-dwarf-team/hamweard/commit/8c865ce38e5c7a6ab2a40e30b7d211a03a2e8f13))
+* name provinces after their owners again after a save is clicked ([#92](https://github.com/happy-dwarf-team/hamweard/issues/92)) ([fe1f233](https://github.com/happy-dwarf-team/hamweard/commit/fe1f2338f8881ac89ba6a5b216e122b285831712))
+* put back the console's and the tutorials' switches on each return ([#96](https://github.com/happy-dwarf-team/hamweard/issues/96)) ([fbfe1a6](https://github.com/happy-dwarf-team/hamweard/commit/fbfe1a6b42ed3db55f30c8e92c9a7d9a09f64d3e))
+* validate the history the setup screen reloads after a save is clicked ([#88](https://github.com/happy-dwarf-team/hamweard/issues/88)) ([e80c6ad](https://github.com/happy-dwarf-team/hamweard/commit/e80c6ade0fd7e931178397fc5240d2467a0a2351))
+
 ## [1.5.0](https://github.com/happy-dwarf-team/hamweard/compare/v1.4.0...v1.5.0) (2026-11-15)
 
 
