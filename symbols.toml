@@ -730,14 +730,13 @@ build."eu4-1.37.5-steam-win64" = { rva = 0x1CBC1B8, points_to = 0x860F60 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x1CA4D88, points_to = 0x8602C0 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x1CA4D88, points_to = 0x8602C0 }
 
-[symbol.object_from_id]
-bytes = "44 8B 09 41 81 F9 68 12 00 00 76 5C"
-memory = "code"
-signature = "void* (const void* id)"
-note = "CReferenceObject::GetObjectFromID: the object of a CID (type, id) in the current ID tables, or null; a lookup only. CMonarch::GetLeader finds a character's leader with it (_LeaderID +0x98, type 0x31)"
-build."eu4-1.37.5-steam-win64" = { rva = 0x14CF730 }
-build."eu4-1.37.5.2-gog-win64" = { rva = 0x14C92A0 }
-build."eu4-1.37.5.0-gog-win64" = { rva = 0x14C92A0 }
+[symbol.static_id_tables]
+memory = "write"
+type = "uintptr_t"
+note = "CReferenceObject::_StaticIdHashTables: std::array of 4711 pointers to std::unordered_map<unsigned, CReferenceObject*>, one per object type (leaders 0x31), read by CReferenceObject::GetObjectFromID (Steam 0x14CF730, GOG 0x14C92A0: lea r9 at +0x6B); TotalInit replaces the maps"
+build."eu4-1.37.5-steam-win64" = { rva = 0x2340160 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x2323FD0 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x2323FD0 }
 
 [symbol.ai_king_delete_slot]
 memory = "read"
