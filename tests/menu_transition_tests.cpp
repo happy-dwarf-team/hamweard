@@ -1,6 +1,7 @@
 // The world-reset gate, after EU4 Menu Patch's tests/menu_transition_tests.cpp
 // (MIT License, Copyright (c) 2026 VulonLok).
 #include "build_layout.hpp"
+#include "estates.hpp"
 #include "game_switches.hpp"
 #include "leader_table.hpp"
 #include "map_snapshot.hpp"
@@ -207,6 +208,27 @@ int main() {
         check(leaders.size() == 2 && leaders[0] == &a && leaders[1] == &b, "every object of the type's map");
         sentinel.next = &sentinel;
         check(hamweard::id_table_objects(tables.data(), hamweard::leader_id_type).empty(), "an empty map");
+    }
+    {
+        // two estates; the first holds two influence modifiers, the second one loyalty modifier
+        std::array<std::uint8_t, 2 * 0xA8> estates{};
+        std::array<std::uint8_t*, 2> influence{};
+        std::array<std::uint8_t*, 1> loyalty{};
+        std::uint8_t x = 0, y = 0, z = 0;
+        influence = {&x, &y};
+        loyalty = {&z};
+        auto put = [](std::uint8_t* at, auto value) { std::memcpy(at, &value, sizeof value); };
+        put(estates.data() + 0x58, influence.data());
+        put(estates.data() + 0x58 + 8, influence.data() + 2);
+        put(estates.data() + 0xA8 + 0x70, loyalty.data());
+        put(estates.data() + 0xA8 + 0x70 + 8, loyalty.data() + 1);
+        std::vector<std::uint8_t> country(0x21B0 + 0x18);
+        check(hamweard::take_estate_values(country.data()).empty(), "a country without estates");
+        put(country.data() + 0x21B0, estates.data());
+        put(country.data() + 0x21B0 + 8, estates.data() + estates.size());
+        const auto values = hamweard::take_estate_values(country.data());
+        check(values.size() == 3 && values[0] == &x && values[1] == &y && values[2] == &z, "every estate's modifiers");
+        check(hamweard::take_estate_values(country.data()).empty(), "the arrays are left empty");
     }
     std::puts("menu transition tests passed");
 }
