@@ -1270,6 +1270,7 @@ void reset_world(Bytes app) {
     const std::size_t idea_groups = free_idea_group_flags();
     g_else_branches_freed.store(0, std::memory_order_relaxed);
     g_characters_freed = {};
+    g_leaders_freed = {};
     {
         FreeElseWindow window;
         TeardownWindow teardown;
