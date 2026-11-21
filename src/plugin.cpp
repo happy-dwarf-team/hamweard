@@ -9,6 +9,7 @@
 #include <anvil/anvil.hpp>
 
 #include "build_layout.hpp"
+#include "estates.hpp"
 #include "game_switches.hpp"
 #include "leader_table.hpp"
 #include "map_snapshot.hpp"
@@ -717,6 +718,33 @@ void* on_if_effect_delete(void* effect, std::uint32_t flags) noexcept {
 // (lab: 2.6 MB with Anbennar, 0.8 MB without). Freed with the game's own delete
 // just before the reset destroys the countries; the countries that the reset reads
 // get a new one, and the game checks for a missing one before it clears it.
+// A country's estates own their temporary influence and loyalty modifiers (CEstateValue,
+// 0xB8 bytes with a trigger and a name): an estate deletes one when it expires, but ~CEstate
+// frees only the arrays that hold them, so each reset lost every one still running (lab, 19
+// November 2026: about 0.2 MB per return after a 1719 save). Hamweard deletes them, through
+// their own destructor, just before the reset destroys the countries, and empties the arrays.
+// A value is deleted only if it is a CEstateValue by its exact vtable.
+void* g_estate_value_vtable = nullptr;
+
+std::size_t free_estate_values() {
+    Bytes db = reinterpret_cast<Bytes>(*g_country_db);
+    if (!db || !g_estate_value_vtable) return 0;
+    const std::int32_t count = at<std::int32_t>(db, off::country_db_count);
+    Bytes* countries = at<Bytes*>(db, off::country_db_countries);
+    if (!countries) return 0;
+    std::size_t freed = 0;
+    for (std::int32_t i = 0; i < count; ++i) {
+        if (!countries[i]) continue;
+        for (Bytes value : hamweard::take_estate_values(countries[i])) {
+            if (at<void*>(value, 0) != g_estate_value_vtable) continue;  // left to the heap, as before
+            using ValueDeleteFn = void* (*)(void* value, std::uint32_t flags);
+            at<ValueDeleteFn>(g_estate_value_vtable, 0)(value, 1);
+            ++freed;
+        }
+    }
+    return freed;
+}
+
 std::size_t free_idea_group_flags() {
     Bytes db = reinterpret_cast<Bytes>(*g_country_db);
     if (!db) return 0;
@@ -1268,6 +1296,7 @@ std::uint64_t clear_strength_caches() {
 
 void reset_world(Bytes app) {
     const std::size_t idea_groups = free_idea_group_flags();
+    const std::size_t estate_values = free_estate_values();
     g_else_branches_freed.store(0, std::memory_order_relaxed);
     g_characters_freed = {};
     g_leaders_freed = {};
@@ -1292,8 +1321,8 @@ void reset_world(Bytes app) {
     restore_null_characters();
     host().info("strength factor caches: {} entries of the last campaign cleared", clear_strength_caches());
     const std::size_t fired = free_fired_events();
-    host().info("memory the reset would lose: {} idea group tables, {} else branches freed, {} fired delayed events freed, {} historical characters freed ({} in the store, {} others kept), {} leaders freed ({} of them mercenaries, {} others kept), {} AI army agents freed ({} others kept); {} subject modifiers, {} text box pan gestures and {} battle results freed since the last reset",
-                idea_groups, g_else_branches_freed.load(std::memory_order_relaxed), fired, g_characters_freed.freed,
+    host().info("memory the reset would lose: {} idea group tables, {} estate modifiers, {} else branches freed, {} fired delayed events freed, {} historical characters freed ({} in the store, {} others kept), {} leaders freed ({} of them mercenaries, {} others kept), {} AI army agents freed ({} others kept); {} subject modifiers, {} text box pan gestures and {} battle results freed since the last reset",
+                idea_groups, estate_values, g_else_branches_freed.load(std::memory_order_relaxed), fired, g_characters_freed.freed,
                 g_characters_freed.in_store, g_characters_freed.other,
                 g_leaders_freed.freed, g_leaders_freed.mercenaries, g_leaders_freed.other,
                 g_agents_freed.load(std::memory_order_relaxed), g_agents_kept.load(std::memory_order_relaxed),
@@ -1451,6 +1480,7 @@ struct Hamweard : anvil::Plugin {
         g_character_vtables[2] = h.address(sym::queen_vtable);
         g_monarch_store = h.data(sym::monarch_store);
         g_leader_vtable = h.address(sym::leader_vtable);
+        g_estate_value_vtable = h.address(sym::estate_value_vtable);
         g_static_id_tables = h.data(sym::static_id_tables);
         g_ai_army_vtable = h.address(sym::ai_army_vtable);
         g_start_dialog_vtable = h.address(sym::start_dialog_vtable);
