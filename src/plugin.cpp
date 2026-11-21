@@ -1053,9 +1053,33 @@ void* on_queen_delete(void* character, std::uint32_t flags) noexcept {
 }
 
 struct CharactersFreed {
-    std::size_t freed = 0, in_store = 0, other = 0;
+    std::size_t freed = 0, in_store = 0, other = 0, leaders = 0;
 };
 CharactersFreed g_characters_freed;  // by the last reset
+
+// A character of a save keeps its leader (leader = { ... } in the character, read by
+// CLeader::CreateFromReader) only by ID (CMonarch::_LeaderID, +0x98), and ~CMonarch frees no
+// leader, so those leaders were lost with every reset (lab, 19 November 2026: about 0.17 MB
+// per return after a 1719 save). As DestroyDatabase starts, the leader is still in the ID
+// tables, but its country and its unit are gone; ~CLeader would take it from both (by
+// _CountryTag and _pUnit) and log the removal. So Hamweard clears those two first: the world
+// they point into no longer exists, and the destructor then only frees the leader's strings
+// and erases its ID.
+void* g_leader_vtable = nullptr;
+constexpr std::ptrdiff_t character_leader_id = 0x98;  // CID: type, then id
+constexpr std::uint32_t leader_id_type = 0x31;        // CMonarch::GetLeader looks up only this type
+constexpr std::ptrdiff_t leader_unit = 0x58;          // CUnit* _pUnit
+constexpr std::ptrdiff_t leader_tag_valid = 0x77;     // the valid flag of CCountryTag _CountryTag (+0x70)
+
+bool free_character_leader(void* character) {
+    if (at<std::uint32_t>(character, character_leader_id) != leader_id_type) return false;
+    void* leader = game(sym::object_from_id, static_cast<Bytes>(character) + character_leader_id);
+    if (!leader || at<void*>(leader, 0) != g_leader_vtable) return false;
+    at<void*>(leader, leader_unit) = nullptr;
+    at<std::uint8_t>(leader, leader_tag_valid) = 0;
+    at<DeleteFn*>(g_leader_vtable, 0)(leader, 1);
+    return true;
+}
 
 // Ends the noting; run as DestroyDatabase starts inside Hamweard's reset.
 CharactersFreed free_noted_characters() {
@@ -1084,6 +1108,7 @@ CharactersFreed free_noted_characters() {
             ++n.other;
             continue;
         }
+        if (free_character_leader(character)) ++n.leaders;  // before the character: the ID is in it
         at<DeleteFn*>(vtable, 0)(character, 1);
         ++n.freed;
     }
@@ -1249,9 +1274,9 @@ void reset_world(Bytes app) {
     restore_null_characters();
     host().info("strength factor caches: {} entries of the last campaign cleared", clear_strength_caches());
     const std::size_t fired = free_fired_events();
-    host().info("memory the reset would lose: {} idea group tables, {} else branches freed, {} fired delayed events freed, {} historical characters freed ({} in the store, {} others kept), {} AI army agents freed ({} others kept); {} subject modifiers, {} text box pan gestures and {} battle results freed since the last reset",
+    host().info("memory the reset would lose: {} idea group tables, {} else branches freed, {} fired delayed events freed, {} historical characters freed ({} in the store, {} others kept) with {} of their leaders, {} AI army agents freed ({} others kept); {} subject modifiers, {} text box pan gestures and {} battle results freed since the last reset",
                 idea_groups, g_else_branches_freed.load(std::memory_order_relaxed), fired, g_characters_freed.freed,
-                g_characters_freed.in_store, g_characters_freed.other,
+                g_characters_freed.in_store, g_characters_freed.other, g_characters_freed.leaders,
                 g_agents_freed.load(std::memory_order_relaxed), g_agents_kept.load(std::memory_order_relaxed),
                 g_subject_modifiers_freed.exchange(0, std::memory_order_relaxed),
                 g_pan_gestures_freed.exchange(0, std::memory_order_relaxed),
@@ -1405,6 +1430,7 @@ struct Hamweard : anvil::Plugin {
         g_character_vtables[1] = h.address(sym::heir_vtable);
         g_character_vtables[2] = h.address(sym::queen_vtable);
         g_monarch_store = h.data(sym::monarch_store);
+        g_leader_vtable = h.address(sym::leader_vtable);
         g_ai_army_vtable = h.address(sym::ai_army_vtable);
         g_start_dialog_vtable = h.address(sym::start_dialog_vtable);
         g_ironman_select_vtable = h.address(sym::ironman_select_vtable);
