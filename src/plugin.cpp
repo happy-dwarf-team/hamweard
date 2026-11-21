@@ -1110,6 +1110,11 @@ struct LeadersFreed {
     std::size_t freed = 0, mercenaries = 0, other = 0;
 };
 LeadersFreed g_leaders_freed;  // by the last reset
+// Set by reset_world around ResetGame and taken by the first history destroy inside it, the one
+// DestroyDatabase starts with: only then is the leader ID table the old world's. A later destroy
+// in the same reset, after TotalInit replaced the tables, or one in another FreeElseWindow (a new
+// campaign moving its history in) must not delete leaders a live world owns.
+std::atomic<bool> g_leaders_to_free{false};
 
 LeadersFreed free_old_leaders() {
     LeadersFreed n;
@@ -1315,7 +1320,9 @@ void reset_world(Bytes app) {
         g_agents_freed.store(0, std::memory_order_relaxed);
         g_agents_kept.store(0, std::memory_order_relaxed);
         g_freeing_agents.store(true, std::memory_order_relaxed);
+        g_leaders_to_free.store(true, std::memory_order_relaxed);
         game(sym::reset_game, app, false);
+        g_leaders_to_free.store(false, std::memory_order_relaxed);
         g_freeing_agents.store(false, std::memory_order_relaxed);
     }
     if (g_noting_characters.load(std::memory_order_relaxed)) {
@@ -1359,7 +1366,8 @@ void on_history_destroy(void* history) noexcept {
     }
     // In Hamweard's reset the old world is gone and the ID tables are still the old ones.
     if (in_reset && g_noting_characters.load(std::memory_order_relaxed)) g_characters_freed = free_noted_characters();
-    if (in_reset) g_leaders_freed = free_old_leaders();  // after the characters: none of them deletes a leader
+    // After the characters (none of them deletes a leader), and once per reset.
+    if (in_reset && g_leaders_to_free.exchange(false, std::memory_order_relaxed)) g_leaders_freed = free_old_leaders();
     const std::uint32_t before = g_else_branches_freed.load(std::memory_order_relaxed);
     {
         FreeElseWindow window;
