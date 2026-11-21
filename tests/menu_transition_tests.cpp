@@ -2,6 +2,7 @@
 // (MIT License, Copyright (c) 2026 VulonLok).
 #include "build_layout.hpp"
 #include "game_switches.hpp"
+#include "leader_table.hpp"
 #include "map_snapshot.hpp"
 #include "menu_transition.hpp"
 #include "strength_caches.hpp"
@@ -12,6 +13,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <string_view>
+#include <vector>
 
 namespace {
 void check(bool condition, const char* what) {
@@ -179,6 +181,32 @@ int main() {
         check(found.size() == 2 && found[1] == second.data(), "one cache per thread");
         check(hamweard::strength_cache_entries(found[0]) == 5 && hamweard::strength_cache_entries(found[1]) == 1,
               "the entries of the three maps");
+    }
+    {
+        // a type's map: the sentinel node and two nodes in a ring, the objects at +0x18
+        struct Node {
+            Node* next;
+            Node* prev;
+            std::uint64_t key;
+            std::uint8_t* object;
+        };
+        std::uint8_t a = 0, b = 0;
+        Node sentinel{}, first{}, second{};
+        sentinel.next = &first;
+        first.next = &second;
+        second.next = &sentinel;
+        first.object = &a;
+        second.object = &b;
+        std::array<std::uint8_t, 0x40> map{};
+        Node* head = &sentinel;
+        std::memcpy(map.data() + 0x8, &head, sizeof head);
+        std::vector<std::uintptr_t> tables(0x40);
+        check(hamweard::id_table_objects(tables.data(), hamweard::leader_id_type).empty(), "no map, no leaders");
+        tables[hamweard::leader_id_type] = reinterpret_cast<std::uintptr_t>(map.data());
+        const auto leaders = hamweard::id_table_objects(tables.data(), hamweard::leader_id_type);
+        check(leaders.size() == 2 && leaders[0] == &a && leaders[1] == &b, "every object of the type's map");
+        sentinel.next = &sentinel;
+        check(hamweard::id_table_objects(tables.data(), hamweard::leader_id_type).empty(), "an empty map");
     }
     std::puts("menu transition tests passed");
 }

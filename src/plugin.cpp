@@ -10,6 +10,7 @@
 
 #include "build_layout.hpp"
 #include "game_switches.hpp"
+#include "leader_table.hpp"
 #include "map_snapshot.hpp"
 #include "menu_transition.hpp"
 #include "strength_caches.hpp"
@@ -1053,32 +1054,49 @@ void* on_queen_delete(void* character, std::uint32_t flags) noexcept {
 }
 
 struct CharactersFreed {
-    std::size_t freed = 0, in_store = 0, other = 0, leaders = 0;
+    std::size_t freed = 0, in_store = 0, other = 0;
 };
 CharactersFreed g_characters_freed;  // by the last reset
 
-// A character of a save keeps its leader (leader = { ... } in the character, read by
-// CLeader::CreateFromReader) only by ID (CMonarch::_LeaderID, +0x98), and ~CMonarch frees no
-// leader, so those leaders were lost with every reset (lab, 19 November 2026: about 0.17 MB
-// per return after a 1719 save). As DestroyDatabase starts, the leader is still in the ID
-// tables, but its country and its unit are gone; ~CLeader would take it from both (by
-// _CountryTag and _pUnit) and log the removal. So Hamweard clears those two first: the world
-// they point into no longer exists, and the destructor then only frees the leader's strings
-// and erases its ID.
+// No one deletes a leader at a reset: ~CCountry frees its leader list's nodes only, ~CUnit
+// detaches its leader, ~CMercenaryCompany keeps its own (+0x48), a save's characters hold
+// theirs only by ID (CMonarch::_LeaderID) and ~CMonarch frees none, and CCountry::KillLeader
+// deletes a dead leader only for one or two tags (the player's, it seems). After DestroyDatabase,
+// DeleteReferenceObjects takes every leader still in the table out of it
+// (CReferenceObject::Destroy) without deleting it, so every leader of the old campaign was lost
+// at each return (lab, 21 November 2026: about 3,400 per return after a 1719 save or a new
+// campaign, mostly mercenaries, and 900 more of the save's characters). As DestroyDatabase
+// starts, the world is gone and the leader ID table is still the old one: what it holds
+// belongs to nothing left. The one destructor that deletes a leader after that point, the
+// country history's ~CLeaderChange, finds it by ID first. So Hamweard deletes every plain
+// CLeader still in the table, through its own destructor, after clearing the two links
+// ~CLeader would follow into the gone world (its country by _CountryTag, its unit), so that
+// the destructor only frees the leader's strings and erases its ID.
 void* g_leader_vtable = nullptr;
-constexpr std::ptrdiff_t character_leader_id = 0x98;  // CID: type, then id
-constexpr std::uint32_t leader_id_type = 0x31;        // CMonarch::GetLeader looks up only this type
-constexpr std::ptrdiff_t leader_unit = 0x58;          // CUnit* _pUnit
-constexpr std::ptrdiff_t leader_tag_valid = 0x77;     // the valid flag of CCountryTag _CountryTag (+0x70)
+const std::uintptr_t* g_static_id_tables = nullptr;  // CReferenceObject::_StaticIdHashTables
+constexpr std::ptrdiff_t leader_unit = 0x58;       // CUnit* _pUnit
+constexpr std::ptrdiff_t leader_mercenary = 0x55;  // bool _IsMercenary
+constexpr std::ptrdiff_t leader_tag_valid = 0x77;  // the valid flag of CCountryTag _CountryTag (+0x70)
 
-bool free_character_leader(void* character) {
-    if (at<std::uint32_t>(character, character_leader_id) != leader_id_type) return false;
-    void* leader = game(sym::object_from_id, static_cast<Bytes>(character) + character_leader_id);
-    if (!leader || at<void*>(leader, 0) != g_leader_vtable) return false;
-    at<void*>(leader, leader_unit) = nullptr;
-    at<std::uint8_t>(leader, leader_tag_valid) = 0;
-    at<DeleteFn*>(g_leader_vtable, 0)(leader, 1);
-    return true;
+struct LeadersFreed {
+    std::size_t freed = 0, mercenaries = 0, other = 0;
+};
+LeadersFreed g_leaders_freed;  // by the last reset
+
+LeadersFreed free_old_leaders() {
+    LeadersFreed n;
+    for (Bytes leader : hamweard::id_table_objects(g_static_id_tables, hamweard::leader_id_type)) {
+        if (at<void*>(leader, 0) != g_leader_vtable) {  // the null leader or another kind
+            ++n.other;
+            continue;
+        }
+        if (at<std::uint8_t>(leader, leader_mercenary)) ++n.mercenaries;
+        at<void*>(leader, leader_unit) = nullptr;
+        at<std::uint8_t>(leader, leader_tag_valid) = 0;
+        at<DeleteFn*>(g_leader_vtable, 0)(leader, 1);
+        ++n.freed;
+    }
+    return n;
 }
 
 // Ends the noting; run as DestroyDatabase starts inside Hamweard's reset.
@@ -1108,7 +1126,6 @@ CharactersFreed free_noted_characters() {
             ++n.other;
             continue;
         }
-        if (free_character_leader(character)) ++n.leaders;  // before the character: the ID is in it
         at<DeleteFn*>(vtable, 0)(character, 1);
         ++n.freed;
     }
@@ -1274,9 +1291,10 @@ void reset_world(Bytes app) {
     restore_null_characters();
     host().info("strength factor caches: {} entries of the last campaign cleared", clear_strength_caches());
     const std::size_t fired = free_fired_events();
-    host().info("memory the reset would lose: {} idea group tables, {} else branches freed, {} fired delayed events freed, {} historical characters freed ({} in the store, {} others kept) with {} of their leaders, {} AI army agents freed ({} others kept); {} subject modifiers, {} text box pan gestures and {} battle results freed since the last reset",
+    host().info("memory the reset would lose: {} idea group tables, {} else branches freed, {} fired delayed events freed, {} historical characters freed ({} in the store, {} others kept), {} leaders freed ({} of them mercenaries, {} others kept), {} AI army agents freed ({} others kept); {} subject modifiers, {} text box pan gestures and {} battle results freed since the last reset",
                 idea_groups, g_else_branches_freed.load(std::memory_order_relaxed), fired, g_characters_freed.freed,
-                g_characters_freed.in_store, g_characters_freed.other, g_characters_freed.leaders,
+                g_characters_freed.in_store, g_characters_freed.other,
+                g_leaders_freed.freed, g_leaders_freed.mercenaries, g_leaders_freed.other,
                 g_agents_freed.load(std::memory_order_relaxed), g_agents_kept.load(std::memory_order_relaxed),
                 g_subject_modifiers_freed.exchange(0, std::memory_order_relaxed),
                 g_pan_gestures_freed.exchange(0, std::memory_order_relaxed),
@@ -1303,6 +1321,7 @@ void on_history_destroy(void* history) noexcept {
     }
     // In Hamweard's reset the old world is gone and the ID tables are still the old ones.
     if (in_reset && g_noting_characters.load(std::memory_order_relaxed)) g_characters_freed = free_noted_characters();
+    if (in_reset) g_leaders_freed = free_old_leaders();  // after the characters: none of them deletes a leader
     const std::uint32_t before = g_else_branches_freed.load(std::memory_order_relaxed);
     {
         FreeElseWindow window;
@@ -1431,6 +1450,7 @@ struct Hamweard : anvil::Plugin {
         g_character_vtables[2] = h.address(sym::queen_vtable);
         g_monarch_store = h.data(sym::monarch_store);
         g_leader_vtable = h.address(sym::leader_vtable);
+        g_static_id_tables = h.data(sym::static_id_tables);
         g_ai_army_vtable = h.address(sym::ai_army_vtable);
         g_start_dialog_vtable = h.address(sym::start_dialog_vtable);
         g_ironman_select_vtable = h.address(sym::ironman_select_vtable);

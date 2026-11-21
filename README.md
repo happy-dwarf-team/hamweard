@@ -362,9 +362,17 @@ three more later (18–19 November 2026):
   consort entry as the entry goes, and deletes them after the countries are gone and before
   the game replaces its tables of object IDs. It deletes only plain characters (no
   placeholder for a country without one) that the reset's own list does not hold and no one
-  else deleted. With each goes the leader it carries (`leader = { … }`), which the character
-  holds only by its ID: the plugin finds it in the ID tables and, because its country and
-  its unit are gone by then, deletes it without the steps that would take it from them.
+  else deleted.
+- **Leaders.** No one deletes a leader when the world goes: a country frees only its list of
+  leaders, a unit lets go of its leader, a mercenary company keeps its own, and a save's
+  character holds its leader only by ID. The
+  game then takes every leader out of its table of object IDs without deleting it, so every
+  return lost them: about 3,400 per return after a save from 1719 or a new campaign without
+  mods, most of them mercenary captains, and 900 more that the 1719 save's characters carry.
+  Right before the game deletes its history, the plugin deletes every leader still in that
+  table: by then the countries, units and companies are gone, so it first clears the
+  leader's links to its country and unit, and the leader's destructor then only frees the
+  leader.
 - **The AI's army agents.** Each AI country's king keeps the agents that command its armies
   in two lists, the active ones and those cancelled and waiting to be deleted. The king's
   destructor frees both lists but not the agents in them, so every return lost them: about
