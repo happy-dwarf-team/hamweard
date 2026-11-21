@@ -1251,9 +1251,17 @@ void note_idler_orphans(Bytes idler) {
 // its province tooltip fill them on the main thread from the selected army's agent, and those
 // entries stay until the next AI day: keyed by units and provinces the reset frees, whose
 // addresses the next campaign's world can get again.
-std::uint64_t clear_strength_caches() {
+// The log tells a clear that ran (with its count, often 0) from one that did not.
+void clear_strength_caches() {
     void* mutex = reinterpret_cast<void*>(*g_strength_cache_mutex);
-    if (!mutex || game(sym::mutex_lock, mutex) != 0) return 0;
+    if (!mutex) {
+        host().info("strength factor caches: their mutex is not made yet (no cache asked for), nothing to clear");
+        return;
+    }
+    if (const int locked = game(sym::mutex_lock, mutex); locked != 0) {
+        host().warn("strength factor caches not cleared: their mutex could not be locked (_Mtx_lock {})", locked);
+        return;
+    }
     std::uint64_t entries = 0;
     for (Bytes cache : hamweard::strength_caches(reinterpret_cast<const std::uint8_t*>(g_strength_cache_list))) {
         if (!cache) continue;
@@ -1263,7 +1271,7 @@ std::uint64_t clear_strength_caches() {
         game(sym::province_strength_cache_clear, cache + hamweard::strength_cache_maps[2]);
     }
     game(sym::mutex_unlock, mutex);
-    return entries;
+    host().info("strength factor caches: {} entries of the last campaign cleared", entries);
 }
 
 void reset_world(Bytes app) {
@@ -1290,7 +1298,7 @@ void reset_world(Bytes app) {
         g_deleted_characters.clear();
     }
     restore_null_characters();
-    host().info("strength factor caches: {} entries of the last campaign cleared", clear_strength_caches());
+    clear_strength_caches();
     const std::size_t fired = free_fired_events();
     host().info("memory the reset would lose: {} idea group tables, {} else branches freed, {} fired delayed events freed, {} historical characters freed ({} in the store, {} others kept), {} leaders freed ({} of them mercenaries, {} others kept), {} AI army agents freed ({} others kept); {} subject modifiers, {} text box pan gestures and {} battle results freed since the last reset",
                 idea_groups, g_else_branches_freed.load(std::memory_order_relaxed), fired, g_characters_freed.freed,
