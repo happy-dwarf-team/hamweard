@@ -289,6 +289,24 @@ The fix for the text box pan gestures was tested on 12 November 2026 (lab eu4-en
   on GOG 1.37.5.2 without mods. The plugin deleted about 890 pan gestures after each **Back** and
   3,500 to 4,200 after each campaign.
 
+The leaders and the AI's strength caches were tested on 21 November 2026 with the reset
+oracle ([CONTRIBUTING.md](CONTRIBUTING.md#the-reset-oracle)). It has five arms: vanilla 1444,
+the Russia 1719 save, a late 1821 save, Anbennar, and GOG 1.37.5.2. Each arm compares a fresh
+process with one after three returns:
+
+- **Leaders** ([#112](https://github.com/happy-dwarf-team/hamweard/pull/112)):
+  - The plugin freed about 3,400 leaders at the return from a new campaign without mods and
+    4,313 after the 1719 save; with Anbennar it freed about 7,100. Most of them were mercenary
+    captains.
+  - No leader was kept for another type. Every arm had equal saves and equal draw counts, and
+    every random log day was the same apart from two capture days of the 1719 save. No run
+    crashed.
+- **Strength caches** ([#108](https://github.com/happy-dwarf-team/hamweard/pull/108)):
+  - The clear ran at all 15 returns of the same arms without a crash. Each time it found the
+    caches already empty: `0 entries of the last campaign cleared`.
+  - A return with entries left (the AI army map mode after the last AI day) was not
+    reproduced.
+
 Not tested: the Steam lobby clean-up with a lobby open, and the windows and modes
 listed under [Limitations](#limitations). The multiplayer check was read from the game's
 code first, then tested with a second player on 6 November 2026.
