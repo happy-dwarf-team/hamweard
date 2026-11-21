@@ -12,6 +12,7 @@
 #include "game_switches.hpp"
 #include "map_snapshot.hpp"
 #include "menu_transition.hpp"
+#include "strength_caches.hpp"
 #include "symbols.gen.hpp"
 
 #include <windows.h>
@@ -168,6 +169,8 @@ std::uintptr_t* g_history = nullptr;  // the global holding the history
 std::uintptr_t* g_trigger_db = nullptr;  // CTriggerDataBase's instance: alive only while the game loads
 std::uint8_t* g_custom_nation_used = nullptr;  // only a restart clears it, and the lobby reads it
 std::uintptr_t* g_country_db = nullptr;
+const std::uintptr_t* g_strength_cache_list = nullptr;   // CacheList (strength_caches.hpp)
+const std::uintptr_t* g_strength_cache_mutex = nullptr;  // CacheListMutex
 void* g_lobby_vtable = nullptr;  // null on a build without the Steam lobby (GOG)
 void* g_minimap_vtable = nullptr;
 UnregisterCallResultFn* g_unregister_call_result = nullptr;
@@ -1201,6 +1204,26 @@ void note_idler_orphans(Bytes idler) {
         note_orphan(tutorial, off::tutorial_minimized, "tutorial_minimized");
 }
 
+// Clears the AI's strength factor caches as DailyUpdateAI does at the end of each AI day. The
+// AI fills them only inside its day, but the AI army map mode (console `mapmode armyeval`) and
+// its province tooltip fill them on the main thread from the selected army's agent, and those
+// entries stay until the next AI day: keyed by units and provinces the reset frees, whose
+// addresses the next campaign's world can get again.
+std::uint64_t clear_strength_caches() {
+    void* mutex = reinterpret_cast<void*>(*g_strength_cache_mutex);
+    if (!mutex || game(sym::mutex_lock, mutex) != 0) return 0;
+    std::uint64_t entries = 0;
+    for (Bytes cache : hamweard::strength_caches(reinterpret_cast<const std::uint8_t*>(g_strength_cache_list))) {
+        if (!cache) continue;
+        entries += hamweard::strength_cache_entries(cache);
+        game(sym::unit_strength_cache_clear, cache + hamweard::strength_cache_maps[0]);
+        game(sym::province_strength_cache_clear, cache + hamweard::strength_cache_maps[1]);
+        game(sym::province_strength_cache_clear, cache + hamweard::strength_cache_maps[2]);
+    }
+    game(sym::mutex_unlock, mutex);
+    return entries;
+}
+
 void reset_world(Bytes app) {
     const std::size_t idea_groups = free_idea_group_flags();
     g_else_branches_freed.store(0, std::memory_order_relaxed);
@@ -1224,6 +1247,7 @@ void reset_world(Bytes app) {
         g_deleted_characters.clear();
     }
     restore_null_characters();
+    host().info("strength factor caches: {} entries of the last campaign cleared", clear_strength_caches());
     const std::size_t fired = free_fired_events();
     host().info("memory the reset would lose: {} idea group tables, {} else branches freed, {} fired delayed events freed, {} historical characters freed ({} in the store, {} others kept), {} AI army agents freed ({} others kept); {} subject modifiers, {} text box pan gestures and {} battle results freed since the last reset",
                 idea_groups, g_else_branches_freed.load(std::memory_order_relaxed), fired, g_characters_freed.freed,
@@ -1355,6 +1379,8 @@ struct Hamweard : anvil::Plugin {
         g_custom_nation_used = h.data(sym::custom_nation_used);
         g_map = h.data(sym::map);
         g_country_db = h.data(sym::country_db);
+        g_strength_cache_list = h.data(sym::strength_cache_list);
+        g_strength_cache_mutex = h.data(sym::strength_cache_mutex);
         g_null_characters[0].global = h.data(sym::null_monarch);
         g_null_characters[1].global = h.data(sym::null_heir);
         g_null_characters[2].global = h.data(sym::null_queen);
