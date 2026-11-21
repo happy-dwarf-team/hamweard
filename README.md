@@ -362,7 +362,9 @@ three more later (18–19 November 2026):
   consort entry as the entry goes, and deletes them after the countries are gone and before
   the game replaces its tables of object IDs. It deletes only plain characters (no
   placeholder for a country without one) that the reset's own list does not hold and no one
-  else deleted. The leaders those characters carry, about 0.2 MB, stay.
+  else deleted. With each goes the leader it carries (`leader = { … }`), which the character
+  holds only by its ID: the plugin finds it in the ID tables and, because its country and
+  its unit are gone by then, deletes it without the steps that would take it from them.
 - **The AI's army agents.** Each AI country's king keeps the agents that command its armies
   in two lists, the active ones and those cancelled and waiting to be deleted. The king's
   destructor frees both lists but not the agents in them, so every return lost them: about
@@ -450,7 +452,7 @@ ctest --test-dir build -C Release --output-on-failure
 cmake --build build --config Release --target hamweard-check
 ```
 
-The check target runs `anvil check --exe` on all 91 symbols and rewrites `symbols.lock`;
+The check target runs `anvil check --exe` on all 93 symbols and rewrites `symbols.lock`;
 commit it with `symbols.toml`. `hamweard-deploy` (with `EU4_DIR`) copies the plugin into
 the game folder.
 
