@@ -53,10 +53,19 @@ The measured stretch:
 
 The AI breaks a few ties by an object's address, which differs between processes. Both runs of an
 arm also load a plugin that breaks those ties by the object's id instead (the lab's tie-break
-plugin), so that two fresh starts give the same campaign.
+plugin), so that the heap layout does not decide them.
 
-An arm passes when, for every day of the stretch, the random log's draws (source line and
-value) and its executed commands (without frame numbers and command ids) are the same in
-both runs, and the two saves differ in no line but `campaign_id`. Report each arm with the
-game's build, the Hamweard build, the draw count at the end and the result; for an arm that
-fails, the first differing day and draw.
+An arm passes when, for every day of the stretch, every line of the random log (without
+frame numbers and command ids, and without `client_ping` commands, which follow the wall
+clock) is the same in both runs, and the two saves differ in no line but `campaign_id` and
+`campaign_length` (the time played, which follows the wall clock, not the game).
+
+One difference does not come from the game state. The AI posts its commands from its own
+thread, and the game executes a command in the frame it arrives, so on a busy day one run
+can execute an AI command a day later than the other. Two fresh starts differ that way now
+and then. When an arm's first difference is the same command executed a day later, and
+every day before it is the same, run the fresh side again: the arm passes when the run
+after the returns equals one of the fresh runs.
+
+Report each arm with the game's build, the Hamweard build, the draw count at the end and
+the result; for an arm that fails, the first differing day and line.
