@@ -67,5 +67,12 @@ and then. When an arm's first difference is the same command executed a day late
 every day before it is the same, run the fresh side again: the arm passes when the run
 after the returns equals one of the fresh runs.
 
+The other comes from reading the log. The random log is a ring in the game's memory, and a
+reader outside the game can fall behind on a frame that writes hundreds of thousands of lines
+(a country recruiting a whole army at once): it then misses or repeats a stretch. Such a day
+shows command ids that one log repeats or lacks. It does not fail the arm when the executed
+command ids are the same set apart from those, the draw count at the end is equal and the saves
+pass; report the day as lost to the capture.
+
 Report each arm with the game's build, the Hamweard build, the draw count at the end and
 the result; for an arm that fails, the first differing day and line.
