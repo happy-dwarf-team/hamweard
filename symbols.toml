@@ -730,6 +730,13 @@ build."eu4-1.37.5-steam-win64" = { rva = 0x1CBC1B8, points_to = 0x860F60 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x1CA4D88, points_to = 0x8602C0 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x1CA4D88, points_to = 0x8602C0 }
 
+[symbol.estate_value_vtable]
+memory = "read"
+note = "CEstateValue's vtable; slot 0 is its deleting destructor (0xB8 bytes: its name, its owned object at +0x80, its trigger), which CEstate::UpdateInfluenceAndLoyaltyLevels runs on an expired modifier"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1CACF28, points_to = 0x7158B0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1C95B28, points_to = 0x714B80 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1C95B28, points_to = 0x714B80 }
+
 [symbol.static_id_tables]
 memory = "write"
 type = "uintptr_t"

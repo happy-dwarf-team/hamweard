@@ -399,6 +399,12 @@ three more later (18–19 November 2026):
   through their own destructor, while the countries still live: by then the game has deleted
   the units and taken each one off its agent first. It deletes only army agents whose owner
   is that king and that are not one of its child agents, which the king deletes itself.
+- **Estates' temporary modifiers.** An estate keeps each running change of its influence or
+  loyalty (from an event or an interaction, for some years) as an object of its own, and
+  deletes it when it runs out, but the estate's destructor frees only the list that holds
+  them, so every return lost the ones still running. Just before the reset destroys the
+  countries, the plugin deletes them the way an estate deletes one that ran out, and
+  empties the lists.
 
 ## Memory a long campaign lost
 
@@ -478,7 +484,7 @@ ctest --test-dir build -C Release --output-on-failure
 cmake --build build --config Release --target hamweard-check
 ```
 
-The check target runs `anvil check --exe` on all 93 symbols and rewrites `symbols.lock`;
+The check target runs `anvil check --exe` on all 94 symbols and rewrites `symbols.lock`;
 commit it with `symbols.toml`. `hamweard-deploy` (with `EU4_DIR`) copies the plugin into
 the game folder.
 
