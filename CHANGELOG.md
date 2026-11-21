@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.6.1](https://github.com/happy-dwarf-team/hamweard/compare/v1.6.0...v1.6.1) (2026-11-21)
+
+
+### Bug Fixes
+
+* clear the AI's strength factor caches at a return ([#108](https://github.com/happy-dwarf-team/hamweard/issues/108)) ([6a64b7d](https://github.com/happy-dwarf-team/hamweard/commit/6a64b7de4f675e3f82d6824a31fb6727812307eb))
+* free every leader the old campaign left at a return ([#112](https://github.com/happy-dwarf-team/hamweard/issues/112)) ([80c3340](https://github.com/happy-dwarf-team/hamweard/commit/80c33400e66a8f1a4b94355ac812beeabe6ba8eb))
+* free the leaders of a save's characters at a return ([#111](https://github.com/happy-dwarf-team/hamweard/issues/111)) ([918ebb2](https://github.com/happy-dwarf-team/hamweard/commit/918ebb27e8919dc92fb52eaf568221d58aa1818d))
+
 ## [1.6.0](https://github.com/happy-dwarf-team/hamweard/compare/v1.5.0...v1.6.0) (2026-11-19)
 
 
