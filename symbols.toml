@@ -697,6 +697,30 @@ build."eu4-1.37.5-steam-win64" = { rva = 0x1D210B8, points_to = 0x4E2020 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x1D09860, points_to = 0x4E1EF0 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x1D09860, points_to = 0x4E1EF0 }
 
+[symbol.static_modifier_vtable]
+memory = "read"
+note = "CStaticModifier's vtable (not a derived class's); slot 0 is its deleting destructor (0x178 bytes)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1C42AE0, points_to = 0x1B2290 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1C2B890, points_to = 0x1B2260 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1C2B890, points_to = 0x1B2260 }
+
+[symbol.center_of_trade_modifier_new]
+bytes = "48 89 84 24 C8 00 00 00 48 8D 97 08 03 00 00"   # mov [rsp+0xC8], rax; lea rdx, [rdi+0x308]
+memory = "code"
+note = "UpdateCenterOfTradeGlobalModifier, right after operator new gave the 0x178 bytes of a province's CStaticModifier (rax), which CCountry::AddTemporaryModifier then puts on the country's list"
+build."eu4-1.37.5-steam-win64" = { rva = 0x4748FC }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x4747CC }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x4747CC }
+
+[symbol.reset_gamestate]
+bytes = "48 89 5C 24 08 48 89 74 24 10 48 89 7C 24 20"
+memory = "code"
+signature = "void (void* idler, bool keep_history)"
+note = "CInGameIdler::ResetGamestate: resets the world through ResetGame; EU4LoadGameHelper::Load, its only caller, runs it for the load of a save inside a campaign, before the load reads the save"
+build."eu4-1.37.5-steam-win64" = { rva = 0x826C20 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x825F80 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x825F80 }
+
 [symbol.battle_result_vtable]
 memory = "read"
 note = "CBattleResult's vtable; slot 0 is its deleting destructor (0x138 bytes)"

@@ -334,6 +334,7 @@ code first, then tested with a second player on 6 November 2026.
 | `0x233D8D0`, `CCountryDataBase` | each country keeps a table of its idea groups, which the country's destructor never frees | frees the tables with the game's own `delete[]` just before the world reset |
 | `0x93AE10`, `CCountryModifiers`' destructor | rebuilds a country's modifiers in place and frees the list of its subjects' modifiers, but not the modifiers in it | deletes those modifiers first, in the whole game (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
 | `0x2EF4B8`, `CCountry::DailyUpdateSerial` after its delayed events | fires the delayed events whose days ran out and takes them out of the country's list without deleting them | notes those events, and deletes them after the reset of a return and after a save's load (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
+| `0x4748FC`, `UpdateCenterOfTradeGlobalModifier` after its `new`; slot 0 of `CStaticModifier`'s vtable | gives a country a new modifier per center of trade and loses the old ones; deletes a modifier | notes each new one and forgets one the game deletes; after the reset of a return and after a save's load, deletes those of the old world (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
 | `0x152AAF0`, `CInstantTextBox`'s destructor | destroys a text box but not the pan gesture it made, unless the box has a scrollbar | first deletes that gesture, in the whole game, when the box's scrollbar never took it over (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
 
 The world's `PotentialCorruption` flag stays as the game keeps it through its reset. Only
@@ -409,9 +410,18 @@ three more later (18–19 November 2026):
   countries, the plugin deletes them the way an estate deletes one that ran out, and
   empties the lists.
 
+A save loaded inside a campaign, from the in-game menu, goes through the same reset: the game runs
+`ResetGame` itself before it reads the save (`CInGameIdler::ResetGamestate`), and lost the same
+things there, about 4 to 5 MB per load of a save from 1719 without mods (heap tracer, 22 November
+2026). The plugin frees around that reset what it frees around its own: the idea group tables,
+the estates' modifiers, the historical characters, the leaders, the rebel factions, the AI's army
+agents and the center-of-trade modifiers below (lab, the second load of the 1719 save in a
+campaign: 1,380 idea group tables, 1,096 estate modifiers, 9,044 characters, 4,313 leaders, 1,312
+rebel factions). The battle results a save's wars read are still lost at each load.
+
 ## Memory a long campaign lost
 
-Three leaks grow while you play, with or without a return. Each time the game recalculates the
+Four leaks grow while you play, with or without a return. Each time the game recalculates the
 modifiers of a country with subjects (every day for some countries, and after many actions), it
 gives the overlord one new modifier per subject (`CalcModifiersFromSubjects`) and keeps it in a
 list (`ModifiersFromSubjectToOverlord`). The next recalculation throws the list away but not the
@@ -428,6 +438,16 @@ fired one. Without mods few fire this way, but Anbennar's start-up events wait a
 goes on. The game keeps running as before: the plugin only notes the events it fired and took
 out of the list, and deletes them, as the country's destructor does, once their world is gone,
 after the reset of a return and after a save's load.
+
+The fourth is the modifiers of centers of trade. Whenever the game recalculates a country's
+centers of trade (each load of a save, and each time a province changes owner or controller), it
+gives the country one new modifier per such province (`UpdateCenterOfTradeGlobalModifier`) and
+throws away the list entries of the ones before, but not the modifiers: about 0.1 MB per return
+after a save from 1719 without mods, as much per load of a save inside a campaign, and more in a
+campaign where such provinces change hands (heap tracer, 22 November 2026). The game keeps running
+as before: the plugin only notes each one the game makes, and once a reset or a save's load has
+replaced the world, deletes those of the worlds before through their own destructor. If one of
+them is still on a country's list, that world is still there, and it keeps them all.
 
 The third is in the GUI. Every text box makes a pan gesture (`CPanGestureRecognizer`, for
 dragging its text), and only the list of gestures a widget owns gets deleted with it. A box

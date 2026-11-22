@@ -9,6 +9,7 @@
 #include <anvil/anvil.hpp>
 
 #include "build_layout.hpp"
+#include "center_of_trade.hpp"
 #include "estates.hpp"
 #include "game_switches.hpp"
 #include "leader_table.hpp"
@@ -655,6 +656,18 @@ void name_provinces_as_setup() {
     host().info("dynamic province names set again after the frontend reset ({} provinces)", count);
 }
 
+// Up while CInGameIdler::ResetGamestate runs, until its ResetGame takes it; only
+// EU4LoadGameHelper::Load, the load of a save inside a campaign, calls ResetGamestate.
+std::atomic<bool> g_load_reset_next{false};
+anvil::HookOf<sym::reset_gamestate> g_reset_gamestate;
+
+void on_reset_gamestate(void* idler, bool keep_history) noexcept {
+    g_load_reset_next.store(true);
+    g_reset_gamestate.next(idler, keep_history);
+    g_load_reset_next.store(false);
+}
+bool reset_of_a_load(void* app, bool keep_history);
+
 void on_reset_game(void* app, bool keep_history) noexcept {
     const auto idler_validates = [app] {
         void* idler = at<void*>(app, off::app_current_idler);
@@ -668,7 +681,7 @@ void on_reset_game(void* app, bool keep_history) noexcept {
         if (!*g_trigger_db) game(sym::trigger_db_create);
         g_history_reloading = true;  // validated at the reset's first walk of the history
     }
-    g_reset_game.next(app, keep_history);
+    if (!reset_of_a_load(app, keep_history)) g_reset_game.next(app, keep_history);
     validate_reloaded_history();  // a reset that did not walk the history
     if (frontend_reset) name_provinces_as_setup();
 }
@@ -1412,9 +1425,91 @@ void clear_strength_caches() {
     host().info("strength factor caches: {} entries of the last campaign cleared", entries);
 }
 
-void reset_world(Bytes app) {
-    const std::size_t idea_groups = free_idea_group_flags();
-    const std::size_t estate_values = free_estate_values();
+// The center-of-trade modifiers (center_of_trade.hpp): the game makes one per province with a
+// center of trade whenever it recalculates them (a load, a change of owner or controller), and loses
+// each one once its country's list entry goes (lab, 22 November 2026: about 0.1 MB per return after a
+// 1719 save, as much per load of a save, more where provinces change hands). Hamweard notes each one
+// as the game makes it and forgets one the game deletes after all. Once a reset or the load of a save
+// has replaced the world, it deletes those of the worlds before through their own destructor, unless
+// one of them is still on a country's temporary list: then that world is still there, and all are kept.
+std::mutex g_cot_mutex;
+hamweard::ModifierLedger g_cot_modifiers;
+std::atomic<bool> g_cot_noted{false};  // the ledger holds some
+void* g_static_modifier_vtable = nullptr;
+anvil::PointerSwap<DeleteFn> g_static_modifier_delete;
+
+struct CotFreed {
+    std::size_t freed = 0, kept = 0;
+};
+
+void note_cot_modifier(void* modifier) {
+    const std::lock_guard lock(g_cot_mutex);
+    g_cot_modifiers.note(modifier);
+    g_cot_noted.store(!g_cot_modifiers.empty());
+}
+
+void* on_static_modifier_delete(void* modifier, std::uint32_t flags) noexcept {
+    if (g_cot_noted.load()) {
+        const std::lock_guard lock(g_cot_mutex);
+        g_cot_modifiers.forget(modifier);
+        g_cot_noted.store(!g_cot_modifiers.empty());
+    }
+    return g_static_modifier_delete.previous()(modifier, flags);
+}
+
+// Before a reset or a load: the modifiers made from now on belong to the new world.
+std::uint32_t begin_cot_world() {
+    const std::lock_guard lock(g_cot_mutex);
+    return g_cot_modifiers.next_world();
+}
+
+// After the reset or the load that `world` began.
+CotFreed free_old_cot_modifiers(std::uint32_t world) {
+    std::vector<void*> old;
+    {
+        const std::lock_guard lock(g_cot_mutex);
+        old = g_cot_modifiers.take_before(world);
+        g_cot_noted.store(!g_cot_modifiers.empty());
+    }
+    if (old.empty()) return {};
+    const std::unordered_set<void*> taken(old.begin(), old.end());
+    if (Bytes db = reinterpret_cast<Bytes>(*g_country_db)) {
+        const std::int32_t count = at<std::int32_t>(db, off::country_db_count);
+        Bytes* countries = at<Bytes*>(db, off::country_db_countries);
+        for (std::int32_t i = 0; countries && i < count; ++i) {
+            if (!countries[i]) continue;
+            for (void* modifier : hamweard::temporary_modifiers(countries[i]))
+                if (taken.contains(modifier)) {
+                    host().warn("{} center-of-trade modifiers kept: one is still on a country's list", old.size());
+                    return {0, old.size()};
+                }
+        }
+    }
+    CotFreed n;
+    for (void* modifier : old) {
+        if (at<void*>(modifier, 0) != g_static_modifier_vtable) {
+            ++n.kept;
+            continue;
+        }
+        g_static_modifier_delete.previous()(modifier, 1);
+        ++n.freed;
+    }
+    return n;
+}
+
+// What ResetGame loses, freed around it: in Hamweard's reset of a return, and in the reset the
+// game runs itself when a save loads inside a campaign (CInGameIdler::ResetGamestate, from
+// EU4LoadGameHelper::Load, before the load reads the save), which lost the same (lab, 22 November
+// 2026: 4-5 MB per load of a 1719 save, kept until the process ended).
+struct ResetFreed {
+    std::size_t idea_groups = 0, estate_values = 0;
+    CotFreed cot;
+};
+
+template <class Reset> ResetFreed free_around_reset(Reset&& reset) {
+    ResetFreed n;
+    n.idea_groups = free_idea_group_flags();
+    n.estate_values = free_estate_values();
     g_else_branches_freed.store(0, std::memory_order_relaxed);
     g_characters_freed = {};
     g_leaders_freed = {};
@@ -1428,7 +1523,9 @@ void reset_world(Bytes app) {
         g_agents_kept.store(0, std::memory_order_relaxed);
         g_freeing_agents.store(true, std::memory_order_relaxed);
         g_leaders_to_free.store(true, std::memory_order_relaxed);
-        game(sym::reset_game, app, false);
+        const std::uint32_t cot_world = begin_cot_world();
+        reset();
+        n.cot = free_old_cot_modifiers(cot_world);
         g_leaders_to_free.store(false, std::memory_order_relaxed);
         g_freeing_agents.store(false, std::memory_order_relaxed);
     }
@@ -1440,11 +1537,32 @@ void reset_world(Bytes app) {
         g_noted_characters.clear();
         g_deleted_characters.clear();
     }
+    return n;
+}
+
+// The reset of a save's load inside a campaign (ResetGamestate's): runs it and returns true.
+// Hamweard's own reset frees around its call already.
+bool reset_of_a_load(void* app, bool keep_history) {
+    if (!g_load_reset_next.exchange(false) || g_free_else.load(std::memory_order_relaxed) > 0) return false;
+    const ResetFreed n = free_around_reset([&] { g_reset_game.next(app, keep_history); });
+    host().info("a save loads: memory its reset would lose: {} idea group tables, {} estate modifiers, {} center-of-trade modifiers ({} others kept), {} historical characters freed ({} in the store, {} others kept), {} leaders freed ({} of them mercenaries, {} others kept), {} rebel factions freed ({} others kept), {} AI army agents freed ({} others kept)",
+                n.idea_groups, n.estate_values, n.cot.freed, n.cot.kept, g_characters_freed.freed,
+                g_characters_freed.in_store, g_characters_freed.other, g_leaders_freed.freed,
+                g_leaders_freed.mercenaries, g_leaders_freed.other, g_factions_freed.freed, g_factions_freed.other,
+                g_agents_freed.load(std::memory_order_relaxed), g_agents_kept.load(std::memory_order_relaxed));
+    return true;
+}
+
+void reset_world(Bytes app) {
+    const ResetFreed freed = free_around_reset([app] { game(sym::reset_game, app, false); });
+    const std::size_t idea_groups = freed.idea_groups;
+    const std::size_t estate_values = freed.estate_values;
+    const CotFreed cot_freed = freed.cot;
     restore_null_characters();
     clear_strength_caches();
     const std::size_t fired = free_fired_events();
-    host().info("memory the reset would lose: {} idea group tables, {} estate modifiers, {} else branches freed, {} fired delayed events freed, {} historical characters freed ({} in the store, {} others kept), {} leaders freed ({} of them mercenaries, {} others kept), {} rebel factions freed ({} others kept), {} AI army agents freed ({} others kept); {} subject modifiers, {} text box pan gestures and {} battle results freed since the last reset",
-                idea_groups, estate_values, g_else_branches_freed.load(std::memory_order_relaxed), fired, g_characters_freed.freed,
+    host().info("memory the reset would lose: {} idea group tables, {} estate modifiers, {} center-of-trade modifiers ({} others kept), {} else branches freed, {} fired delayed events freed, {} historical characters freed ({} in the store, {} others kept), {} leaders freed ({} of them mercenaries, {} others kept), {} rebel factions freed ({} others kept), {} AI army agents freed ({} others kept); {} subject modifiers, {} text box pan gestures and {} battle results freed since the last reset",
+                idea_groups, estate_values, cot_freed.freed, cot_freed.kept, g_else_branches_freed.load(std::memory_order_relaxed), fired, g_characters_freed.freed,
                 g_characters_freed.in_store, g_characters_freed.other,
                 g_leaders_freed.freed, g_leaders_freed.mercenaries, g_leaders_freed.other,
                 g_factions_freed.freed, g_factions_freed.other,
@@ -1492,10 +1610,13 @@ void on_history_destroy(void* history) noexcept {
 
 void on_save_load_task(void* task) noexcept {
     g_loading_save.fetch_add(1, std::memory_order_relaxed);
+    const std::uint32_t cot_world = begin_cot_world();
     {
         TeardownWindow teardown;
         g_save_load_task.next(task);
     }
+    if (const CotFreed cot = free_old_cot_modifiers(cot_world); cot.freed || cot.kept)
+        host().info("a save loaded: {} center-of-trade modifiers of the old world freed ({} others kept)", cot.freed, cot.kept);
     g_loading_save.fetch_sub(1, std::memory_order_relaxed);
     // The load replaced the world the noted events came from.
     if (const std::size_t fired = free_fired_events()) host().info("a save loaded: {} fired delayed events freed", fired);
@@ -1577,6 +1698,7 @@ struct Hamweard : anvil::Plugin {
     anvil::Change map_randomize;
     anvil::Change rebel_stuff_clear;
     anvil::Change delayed_events_fired;
+    anvil::Change center_of_trade_new;
 
     void load(anvil::Host& h) override {
         g_world = h.data(sym::world);
@@ -1615,6 +1737,7 @@ struct Hamweard : anvil::Plugin {
         g_leader_vtable = h.address(sym::leader_vtable);
         g_rebel_faction_vtable = h.address(sym::rebel_faction_vtable);
         g_estate_value_vtable = h.address(sym::estate_value_vtable);
+        g_static_modifier_vtable = h.address(sym::static_modifier_vtable);
         g_static_id_tables = h.data(sym::static_id_tables);
         g_ai_army_vtable = h.address(sym::ai_army_vtable);
         g_start_dialog_vtable = h.address(sym::start_dialog_vtable);
@@ -1664,6 +1787,10 @@ struct Hamweard : anvil::Plugin {
             host().info("Random New World: the next return puts the map back");
         });
         delayed_events_fired = h.mid_hook(sym::delayed_events_fired, [](anvil::Cpu& cpu) { note_fired_events(cpu); });
+        center_of_trade_new = h.mid_hook(sym::center_of_trade_modifier_new, [](anvil::Cpu& cpu) {
+            note_cot_modifier(reinterpret_cast<void*>(cpu.rax));
+        });
+        h.swap(g_static_modifier_delete, sym::static_modifier_vtable, &on_static_modifier_delete);
         h.swap(g_tick, sym::frontend_tick_slot, &on_frontend_tick);
         h.swap(g_restore_device_objects, sym::frontend_restore_slot, &on_frontend_restore);
         h.swap(g_battle_change_delete, sym::battle_change_delete_slot, &on_battle_change_delete);
@@ -1684,6 +1811,7 @@ struct Hamweard : anvil::Plugin {
         h.hook(g_create_window, sym::gui_create_window, on_create_window);
         h.hook(g_history_execute, sym::history_execute, on_history_execute);
         h.hook(g_reset_game, sym::reset_game, on_reset_game);
+        h.hook(g_reset_gamestate, sym::reset_gamestate, on_reset_gamestate);
         h.hook(g_multiplayer_click, sym::multiplayer_click, on_multiplayer_click);
         h.hook(g_multiplayer_availability, sym::multiplayer_availability, on_multiplayer_availability);
         h.hook(g_if_effect_delete, sym::if_effect_delete, on_if_effect_delete);
