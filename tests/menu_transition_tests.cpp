@@ -1,6 +1,7 @@
 // The world-reset gate, after EU4 Menu Patch's tests/menu_transition_tests.cpp
 // (MIT License, Copyright (c) 2026 VulonLok).
 #include "build_layout.hpp"
+#include "center_of_trade.hpp"
 #include "estates.hpp"
 #include "game_switches.hpp"
 #include "leader_table.hpp"
@@ -333,6 +334,42 @@ int main() {
         hamweard::MapExtrasView other;
         check(!kept.restore(other, alloc, free), "another map does not take the snapshot");
         check(kept.differences(other) == SIZE_MAX, "and counts as all different");
+    }
+    {
+        // a country's temporary modifiers: head at +0x1F0, nodes (entry, prev, next), entry+0x30
+        std::vector<std::uint8_t> country(0x208), entries(3 * 0x38), nodes(3 * 0x20);
+        int modifiers[3] = {};
+        auto put = [](std::uint8_t* at, const void* value) { std::memcpy(at, &value, sizeof value); };
+        for (int i = 0; i < 3; ++i) {
+            std::uint8_t* node = nodes.data() + 0x20 * i;
+            put(node, entries.data() + 0x38 * i);
+            put(node + 0x10, i < 2 ? node + 0x20 : nullptr);
+            put(entries.data() + 0x38 * i + 0x30, i == 1 ? nullptr : &modifiers[i]);
+        }
+        put(country.data() + hamweard::country_temporary_modifiers, nodes.data());
+        const auto listed = hamweard::temporary_modifiers(country.data());
+        check(listed.size() == 2 && listed[0] == &modifiers[0] && listed[1] == &modifiers[2],
+              "the modifiers on the list, in order, without an empty entry");
+        std::vector<std::uint8_t> none(0x208);
+        check(hamweard::temporary_modifiers(none.data()).empty(), "an empty list");
+
+        hamweard::ModifierLedger ledger;
+        int a = 0, b = 0, c = 0;
+        const std::uint32_t first = ledger.next_world();
+        ledger.note(&a);
+        ledger.note(&b);
+        ledger.note(nullptr);
+        check(ledger.size() == 2, "a failed allocation is not noted");
+        const std::uint32_t second = ledger.next_world();
+        ledger.note(&c);
+        check(ledger.take_before(first).empty(), "nothing before the first world");
+        ledger.forget(&b);
+        const auto old_world = ledger.take_before(second);
+        check(old_world.size() == 1 && old_world[0] == &a, "the old world's modifiers, without one the game deleted");
+        check(ledger.size() == 1 && !ledger.empty(), "the new world's stays");
+        check(ledger.take_before(second).empty(), "taken once");
+        ledger.forget(&c);
+        check(ledger.empty(), "and the game can still delete the new one");
     }
     std::puts("menu transition tests passed");
 }
