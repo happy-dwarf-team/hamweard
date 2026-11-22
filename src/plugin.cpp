@@ -656,9 +656,16 @@ void name_provinces_as_setup() {
     host().info("dynamic province names set again after the frontend reset ({} provinces)", count);
 }
 
-// Set just before CInGameIdler::ResetGamestate calls ResetGame; only EU4LoadGameHelper::Load,
-// the load of a save inside a campaign, calls ResetGamestate.
+// Up while CInGameIdler::ResetGamestate runs, until its ResetGame takes it; only
+// EU4LoadGameHelper::Load, the load of a save inside a campaign, calls ResetGamestate.
 std::atomic<bool> g_load_reset_next{false};
+anvil::HookOf<sym::reset_gamestate> g_reset_gamestate;
+
+void on_reset_gamestate(void* idler, bool keep_history) noexcept {
+    g_load_reset_next.store(true);
+    g_reset_gamestate.next(idler, keep_history);
+    g_load_reset_next.store(false);
+}
 bool reset_of_a_load(void* app, bool keep_history);
 
 void on_reset_game(void* app, bool keep_history) noexcept {
@@ -1693,7 +1700,6 @@ struct Hamweard : anvil::Plugin {
     anvil::Change rebel_stuff_clear;
     anvil::Change delayed_events_fired;
     anvil::Change center_of_trade_new;
-    anvil::Change load_reset_call;
 
     void load(anvil::Host& h) override {
         g_world = h.data(sym::world);
@@ -1786,7 +1792,6 @@ struct Hamweard : anvil::Plugin {
             note_cot_modifier(reinterpret_cast<void*>(cpu.rax));
         });
         h.swap(g_static_modifier_delete, sym::static_modifier_vtable, &on_static_modifier_delete);
-        load_reset_call = h.mid_hook(sym::load_reset_call, [] { g_load_reset_next.store(true); });
         h.swap(g_tick, sym::frontend_tick_slot, &on_frontend_tick);
         h.swap(g_restore_device_objects, sym::frontend_restore_slot, &on_frontend_restore);
         h.swap(g_battle_change_delete, sym::battle_change_delete_slot, &on_battle_change_delete);
@@ -1807,6 +1812,7 @@ struct Hamweard : anvil::Plugin {
         h.hook(g_create_window, sym::gui_create_window, on_create_window);
         h.hook(g_history_execute, sym::history_execute, on_history_execute);
         h.hook(g_reset_game, sym::reset_game, on_reset_game);
+        h.hook(g_reset_gamestate, sym::reset_gamestate, on_reset_gamestate);
         h.hook(g_multiplayer_click, sym::multiplayer_click, on_multiplayer_click);
         h.hook(g_multiplayer_availability, sym::multiplayer_availability, on_multiplayer_availability);
         h.hook(g_if_effect_delete, sym::if_effect_delete, on_if_effect_delete);

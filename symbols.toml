@@ -712,13 +712,14 @@ build."eu4-1.37.5-steam-win64" = { rva = 0x4748FC }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x4747CC }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x4747CC }
 
-[symbol.load_reset_call]
-bytes = "40 0F B6 D7"   # movzx edx, dil
+[symbol.reset_gamestate]
+bytes = "48 89 5C 24 08 48 89 74 24 10 48 89 7C 24 20"
 memory = "code"
-note = "CInGameIdler::ResetGamestate, just before its call of ResetGame (dl = its own flag, 1 from EU4LoadGameHelper::Load, its only caller: the load of a save inside a campaign)"
-build."eu4-1.37.5-steam-win64" = { rva = 0x826F89 }
-build."eu4-1.37.5.2-gog-win64" = { rva = 0x8262E9 }
-build."eu4-1.37.5.0-gog-win64" = { rva = 0x8262E9 }
+signature = "void (void* idler, bool keep_history)"
+note = "CInGameIdler::ResetGamestate: calls ResetGame with its flag (1 from EU4LoadGameHelper::Load, its only caller: the load of a save inside a campaign, before the load reads the save)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x826C20 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x825F80 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x825F80 }
 
 [symbol.battle_result_vtable]
 memory = "read"
