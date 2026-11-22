@@ -14,6 +14,7 @@
 #include "leader_table.hpp"
 #include "map_snapshot.hpp"
 #include "menu_transition.hpp"
+#include "rebel_factions.hpp"
 #include "strength_caches.hpp"
 #include "symbols.gen.hpp"
 
@@ -1132,6 +1133,49 @@ LeadersFreed free_old_leaders() {
     return n;
 }
 
+// The rebel factions of the old campaign (CRebelFaction, ID type 0x32): a save's, read into the
+// countries' _RebelFactions, and those made in play. ~CCountry does not delete them, and the old
+// game state's Clear takes them out of the ID table without deleting them (ClearRebelStuff), so
+// every return lost them (lab, 19 November 2026: about 0.6 MB after a 1719 save). Hamweard notes
+// them as ClearRebelStuff starts inside its reset, while the table still holds them. Their
+// destructor plays game logic on the world (rebel_factions.hpp), which is gone by the time
+// DestroyDatabase starts. So there Hamweard detaches each one from it, before the leaders (a
+// faction's leaders are in the leader table, freed next), and deletes it through its own
+// destructor, which then frees its strings and arrays. A faction is noted only if its vtable is
+// exactly CRebelFaction's, and deleted only once its ID is gone.
+void* g_rebel_faction_vtable = nullptr;
+std::vector<std::uint8_t*> g_old_factions;  // noted by ClearRebelStuff in the reset, freed in DestroyDatabase
+
+struct FactionsFreed {
+    std::size_t freed = 0, other = 0;
+};
+FactionsFreed g_factions_freed;  // by the last reset
+
+// Run as ClearRebelStuff starts; the reset's flag is up only before DestroyDatabase.
+void note_old_rebel_factions() {
+    if (!g_leaders_to_free.load(std::memory_order_relaxed)) return;
+    for (Bytes faction : hamweard::id_table_objects(g_static_id_tables, hamweard::rebel_faction_id_type)) {
+        if (at<void*>(faction, 0) == g_rebel_faction_vtable)
+            g_old_factions.push_back(faction);
+        else
+            ++g_factions_freed.other;
+    }
+}
+
+FactionsFreed free_old_rebel_factions() {
+    FactionsFreed n = g_factions_freed;
+    for (Bytes faction : std::exchange(g_old_factions, {})) {
+        if (!hamweard::id_destroyed(faction)) {
+            ++n.other;  // still in the ID table: not the game's own clear, so kept as it was
+            continue;
+        }
+        hamweard::detach_rebel_faction(faction, [](std::uint8_t* node) { game(sym::game_free, node); });
+        at<DeleteFn*>(g_rebel_faction_vtable, 0)(faction, 1);
+        ++n.freed;
+    }
+    return n;
+}
+
 // Ends the noting; run as DestroyDatabase starts inside Hamweard's reset.
 CharactersFreed free_noted_characters() {
     std::unordered_set<void*> noted;
@@ -1313,6 +1357,8 @@ void reset_world(Bytes app) {
     g_else_branches_freed.store(0, std::memory_order_relaxed);
     g_characters_freed = {};
     g_leaders_freed = {};
+    g_factions_freed = {};
+    g_old_factions.clear();
     {
         FreeElseWindow window;
         TeardownWindow teardown;
@@ -1336,10 +1382,11 @@ void reset_world(Bytes app) {
     restore_null_characters();
     clear_strength_caches();
     const std::size_t fired = free_fired_events();
-    host().info("memory the reset would lose: {} idea group tables, {} estate modifiers, {} else branches freed, {} fired delayed events freed, {} historical characters freed ({} in the store, {} others kept), {} leaders freed ({} of them mercenaries, {} others kept), {} AI army agents freed ({} others kept); {} subject modifiers, {} text box pan gestures and {} battle results freed since the last reset",
+    host().info("memory the reset would lose: {} idea group tables, {} estate modifiers, {} else branches freed, {} fired delayed events freed, {} historical characters freed ({} in the store, {} others kept), {} leaders freed ({} of them mercenaries, {} others kept), {} rebel factions freed ({} others kept), {} AI army agents freed ({} others kept); {} subject modifiers, {} text box pan gestures and {} battle results freed since the last reset",
                 idea_groups, estate_values, g_else_branches_freed.load(std::memory_order_relaxed), fired, g_characters_freed.freed,
                 g_characters_freed.in_store, g_characters_freed.other,
                 g_leaders_freed.freed, g_leaders_freed.mercenaries, g_leaders_freed.other,
+                g_factions_freed.freed, g_factions_freed.other,
                 g_agents_freed.load(std::memory_order_relaxed), g_agents_kept.load(std::memory_order_relaxed),
                 g_subject_modifiers_freed.exchange(0, std::memory_order_relaxed),
                 g_pan_gestures_freed.exchange(0, std::memory_order_relaxed),
@@ -1367,7 +1414,11 @@ void on_history_destroy(void* history) noexcept {
     // In Hamweard's reset the old world is gone and the ID tables are still the old ones.
     if (in_reset && g_noting_characters.load(std::memory_order_relaxed)) g_characters_freed = free_noted_characters();
     // After the characters (none of them deletes a leader), and once per reset.
-    if (in_reset && g_leaders_to_free.exchange(false, std::memory_order_relaxed)) g_leaders_freed = free_old_leaders();
+    // The rebel factions first: a faction's destructor would delete its leaders.
+    if (in_reset && g_leaders_to_free.exchange(false, std::memory_order_relaxed)) {
+        g_factions_freed = free_old_rebel_factions();
+        g_leaders_freed = free_old_leaders();
+    }
     const std::uint32_t before = g_else_branches_freed.load(std::memory_order_relaxed);
     {
         FreeElseWindow window;
@@ -1460,6 +1511,7 @@ struct Hamweard : anvil::Plugin {
     anvil::Change dialog_store;
     anvil::Change canal_logic;
     anvil::Change map_randomize;
+    anvil::Change rebel_stuff_clear;
     anvil::Change delayed_events_fired;
 
     void load(anvil::Host& h) override {
@@ -1496,6 +1548,7 @@ struct Hamweard : anvil::Plugin {
         g_character_vtables[2] = h.address(sym::queen_vtable);
         g_monarch_store = h.data(sym::monarch_store);
         g_leader_vtable = h.address(sym::leader_vtable);
+        g_rebel_faction_vtable = h.address(sym::rebel_faction_vtable);
         g_estate_value_vtable = h.address(sym::estate_value_vtable);
         g_static_id_tables = h.data(sym::static_id_tables);
         g_ai_army_vtable = h.address(sym::ai_army_vtable);
@@ -1545,6 +1598,7 @@ struct Hamweard : anvil::Plugin {
                 g_map_changed = true;
             }
         });
+        rebel_stuff_clear = h.mid_hook(sym::rebel_stuff_clear, [] { note_old_rebel_factions(); });
         map_randomize = h.mid_hook(sym::map_randomize, [] {
             g_map_randomized = true;
             host().info("Random New World: the next return restarts the game");

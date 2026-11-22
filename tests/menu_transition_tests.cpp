@@ -6,6 +6,7 @@
 #include "leader_table.hpp"
 #include "map_snapshot.hpp"
 #include "menu_transition.hpp"
+#include "rebel_factions.hpp"
 #include "strength_caches.hpp"
 
 #include <array>
@@ -229,6 +230,43 @@ int main() {
         const auto values = hamweard::take_estate_values(country.data());
         check(values.size() == 3 && values[0] == &x && values[1] == &y && values[2] == &z, "every estate's modifiers");
         check(hamweard::take_estate_values(country.data()).empty(), "the arrays are left empty");
+    }
+    {
+        // a rebel faction with two units, one leader and no possible revolt provinces
+        std::vector<std::uint8_t> faction(0x190);
+        std::array<std::uint8_t, 0x20> unit_a{}, unit_b{}, leader{};
+        std::array<int, 3> occupied{4, 5, 6};
+        auto put = [](std::uint8_t* at, auto value) { std::memcpy(at, &value, sizeof value); };
+        put(unit_a.data() + 0x10, unit_b.data());
+        put(faction.data() + hamweard::faction_units, unit_a.data());
+        put(faction.data() + hamweard::faction_units + 8, unit_b.data());
+        put(faction.data() + hamweard::faction_units + 0x10, 2);
+        put(faction.data() + hamweard::faction_leaders, leader.data());
+        put(faction.data() + hamweard::faction_occupied, occupied.data());
+        put(faction.data() + hamweard::faction_occupied + 8, occupied.data() + 3);
+        put(faction.data() + hamweard::reference_id_type, hamweard::rebel_faction_id_type);
+        faction[hamweard::reference_registered] = 1;
+        std::vector<std::uint8_t*> freed;
+        const auto free_node = [&](std::uint8_t* node) { freed.push_back(node); };
+
+        hamweard::detach_rebel_faction(faction.data(), free_node);
+        check(freed.size() == 3 && freed[0] == unit_a.data() && freed[1] == unit_b.data() && freed[2] == leader.data(),
+              "the lists' nodes are freed");
+        const std::vector<std::uint8_t> zeros(0x14);
+        check(std::memcmp(faction.data() + hamweard::faction_units, zeros.data(), 0x14) == 0, "the units list is empty");
+        check(std::memcmp(faction.data() + hamweard::faction_leaders, zeros.data(), 0x14) == 0, "so is the leaders list");
+        check(std::memcmp(faction.data() + hamweard::faction_occupied + 8, faction.data() + hamweard::faction_occupied, 8) == 0,
+              "the occupied provinces are empty, their buffer kept");
+        check(faction[hamweard::faction_in_delete] == 1, "the home country is not looked for");
+        check(faction[hamweard::reference_registered] == 1, "a registered ID stays for the destructor to erase");
+        check(!hamweard::id_destroyed(faction.data()), "the ID is still there");
+
+        put(faction.data() + hamweard::reference_id_type, hamweard::destroyed_id_type);
+        check(hamweard::id_destroyed(faction.data()), "Destroy has erased it");
+        freed.clear();
+        hamweard::detach_rebel_faction(faction.data(), free_node);
+        check(freed.empty(), "nothing is freed twice");
+        check(faction[hamweard::reference_registered] == 0, "the destructor's own Destroy does nothing");
     }
     std::puts("menu transition tests passed");
 }

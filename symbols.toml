@@ -459,6 +459,14 @@ build."eu4-1.37.5-steam-win64" = { rva = 0xB89690 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0xB87E40 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0xB87E40 }
 
+[symbol.rebel_stuff_clear]
+bytes = "48 89 5C 24 08 57 48 83 EC 40 0F 57 C0 F3 0F 7F 44 24 20"
+memory = "code"
+note = "CCurrentGameState::ClearRebelStuff: Destroy for every rebel faction in the ID table (type 0x32), from Clear (the game state's destructor, Initialise and a save's load)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x74A0E0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x7492E0 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x7492E0 }
+
 [symbol.map_randomize]
 bytes = "44 88 4C 24 20 4C 89 44 24 18 48 89 54 24 10 48 89 4C 24 08"
 memory = "code"
@@ -729,6 +737,13 @@ note = "CLeader's vtable (not CNullLeader's); slot 0 is its deleting destructor 
 build."eu4-1.37.5-steam-win64" = { rva = 0x1CBC1B8, points_to = 0x860F60 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x1CA4D88, points_to = 0x8602C0 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x1CA4D88, points_to = 0x8602C0 }
+
+[symbol.rebel_faction_vtable]
+memory = "read"
+note = "CRebelFaction's vtable; slot 0 is its deleting destructor (0x190 bytes), which deletes the faction's units and leaders, gives its occupied provinces back, recalculates its possible revolts and, unless _bInDelete (+0x188) is set, takes it from its home country, before it erases its ID (type 0x32)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1CDFC80, points_to = 0xA94480 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1CC8750, points_to = 0xA93010 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1CC8750, points_to = 0xA93010 }
 
 [symbol.estate_value_vtable]
 memory = "read"
