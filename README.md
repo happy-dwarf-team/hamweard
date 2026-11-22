@@ -410,6 +410,13 @@ three more later (18–19 November 2026):
   countries, the plugin deletes them the way an estate deletes one that ran out, and
   empties the lists.
 
+A save loaded inside a campaign, from the in-game menu, goes through the same reset: the game runs
+`ResetGame` itself before it reads the save (`CInGameIdler::ResetGamestate`), and lost the same
+things there, about 4 to 5 MB per load of a save from 1719 without mods (heap tracer, 22 November
+2026). The plugin frees them around that reset too, as around its own: the idea group tables, the
+estates' modifiers, the historical characters it can see go, the leaders, the rebel factions and
+the AI's army agents. The battle results a save's wars read are still lost at each load.
+
 ## Memory a long campaign lost
 
 Four leaks grow while you play, with or without a return. Each time the game recalculates the

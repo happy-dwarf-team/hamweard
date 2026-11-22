@@ -656,6 +656,8 @@ void name_provinces_as_setup() {
     host().info("dynamic province names set again after the frontend reset ({} provinces)", count);
 }
 
+bool reset_of_a_load(void* app, bool keep_history);
+
 void on_reset_game(void* app, bool keep_history) noexcept {
     const auto idler_validates = [app] {
         void* idler = at<void*>(app, off::app_current_idler);
@@ -669,7 +671,7 @@ void on_reset_game(void* app, bool keep_history) noexcept {
         if (!*g_trigger_db) game(sym::trigger_db_create);
         g_history_reloading = true;  // validated at the reset's first walk of the history
     }
-    g_reset_game.next(app, keep_history);
+    if (!reset_of_a_load(app, keep_history)) g_reset_game.next(app, keep_history);
     validate_reloaded_history();  // a reset that did not walk the history
     if (frontend_reset) name_provinces_as_setup();
 }
@@ -1485,15 +1487,24 @@ CotFreed free_old_cot_modifiers(std::uint32_t world) {
     return n;
 }
 
-void reset_world(Bytes app) {
-    const std::size_t idea_groups = free_idea_group_flags();
-    const std::size_t estate_values = free_estate_values();
+// What ResetGame loses, freed around it: in Hamweard's reset of a return, and in the reset the
+// game runs itself when a save loads inside a campaign (CInGameIdler::ResetGamestate, from
+// EU4LoadGameHelper::Load), which lost the same (lab, 22 November 2026: 4-5 MB per load of a
+// 1719 save, kept until the process ended).
+struct ResetFreed {
+    std::size_t idea_groups = 0, estate_values = 0;
+    CotFreed cot;
+};
+
+template <class Reset> ResetFreed free_around_reset(Reset&& reset) {
+    ResetFreed n;
+    n.idea_groups = free_idea_group_flags();
+    n.estate_values = free_estate_values();
     g_else_branches_freed.store(0, std::memory_order_relaxed);
     g_characters_freed = {};
     g_leaders_freed = {};
     g_factions_freed = {};
     g_old_factions.clear();
-    CotFreed cot_freed;
     {
         FreeElseWindow window;
         TeardownWindow teardown;
@@ -1503,8 +1514,8 @@ void reset_world(Bytes app) {
         g_freeing_agents.store(true, std::memory_order_relaxed);
         g_leaders_to_free.store(true, std::memory_order_relaxed);
         const std::uint32_t cot_world = begin_cot_world();
-        game(sym::reset_game, app, false);
-        cot_freed = free_old_cot_modifiers(cot_world);
+        reset();
+        n.cot = free_old_cot_modifiers(cot_world);
         g_leaders_to_free.store(false, std::memory_order_relaxed);
         g_freeing_agents.store(false, std::memory_order_relaxed);
     }
@@ -1516,6 +1527,28 @@ void reset_world(Bytes app) {
         g_noted_characters.clear();
         g_deleted_characters.clear();
     }
+    return n;
+}
+
+// The reset of a save's load (not Hamweard's own, which frees around its call): runs it and
+// returns true.
+bool reset_of_a_load(void* app, bool keep_history) {
+    if (g_loading_save.load(std::memory_order_relaxed) <= 0 || g_free_else.load(std::memory_order_relaxed) > 0)
+        return false;
+    const ResetFreed n = free_around_reset([&] { g_reset_game.next(app, keep_history); });
+    host().info("a save loads: memory its reset would lose: {} idea group tables, {} estate modifiers, {} center-of-trade modifiers ({} others kept), {} historical characters freed ({} in the store, {} others kept), {} leaders freed ({} of them mercenaries, {} others kept), {} rebel factions freed ({} others kept), {} AI army agents freed ({} others kept)",
+                n.idea_groups, n.estate_values, n.cot.freed, n.cot.kept, g_characters_freed.freed,
+                g_characters_freed.in_store, g_characters_freed.other, g_leaders_freed.freed,
+                g_leaders_freed.mercenaries, g_leaders_freed.other, g_factions_freed.freed, g_factions_freed.other,
+                g_agents_freed.load(std::memory_order_relaxed), g_agents_kept.load(std::memory_order_relaxed));
+    return true;
+}
+
+void reset_world(Bytes app) {
+    const ResetFreed freed = free_around_reset([app] { game(sym::reset_game, app, false); });
+    const std::size_t idea_groups = freed.idea_groups;
+    const std::size_t estate_values = freed.estate_values;
+    const CotFreed cot_freed = freed.cot;
     restore_null_characters();
     clear_strength_caches();
     const std::size_t fired = free_fired_events();
