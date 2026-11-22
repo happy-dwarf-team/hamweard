@@ -1500,8 +1500,7 @@ CotFreed free_old_cot_modifiers(std::uint32_t world) {
 // What ResetGame loses, freed around it: in Hamweard's reset of a return, and in the reset the
 // game runs itself when a save loads inside a campaign (CInGameIdler::ResetGamestate, from
 // EU4LoadGameHelper::Load, before the load reads the save), which lost the same (lab, 22 November
-// 2026: 4-5 MB per load of a 1719 save, kept until the process ended). That reset keeps the
-// history, so the characters and leaders DestroyDatabase would free stay as before there.
+// 2026: 4-5 MB per load of a 1719 save, kept until the process ended).
 struct ResetFreed {
     std::size_t idea_groups = 0, estate_values = 0;
     CotFreed cot;
@@ -1541,8 +1540,8 @@ template <class Reset> ResetFreed free_around_reset(Reset&& reset) {
     return n;
 }
 
-// The reset of a save's load inside a campaign (ResetGamestate's, with the history kept): runs
-// it and returns true. Hamweard's own reset frees around its call already.
+// The reset of a save's load inside a campaign (ResetGamestate's): runs it and returns true.
+// Hamweard's own reset frees around its call already.
 bool reset_of_a_load(void* app, bool keep_history) {
     if (!g_load_reset_next.exchange(false) || g_free_else.load(std::memory_order_relaxed) > 0) return false;
     const ResetFreed n = free_around_reset([&] { g_reset_game.next(app, keep_history); });

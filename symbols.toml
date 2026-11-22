@@ -716,7 +716,7 @@ build."eu4-1.37.5.0-gog-win64" = { rva = 0x4747CC }
 bytes = "48 89 5C 24 08 48 89 74 24 10 48 89 7C 24 20"
 memory = "code"
 signature = "void (void* idler, bool keep_history)"
-note = "CInGameIdler::ResetGamestate: calls ResetGame with its flag (1 from EU4LoadGameHelper::Load, its only caller: the load of a save inside a campaign, before the load reads the save)"
+note = "CInGameIdler::ResetGamestate: resets the world through ResetGame; EU4LoadGameHelper::Load, its only caller, runs it for the load of a save inside a campaign, before the load reads the save"
 build."eu4-1.37.5-steam-win64" = { rva = 0x826C20 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x825F80 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x825F80 }

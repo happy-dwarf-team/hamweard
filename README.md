@@ -414,9 +414,10 @@ A save loaded inside a campaign, from the in-game menu, goes through the same re
 `ResetGame` itself before it reads the save (`CInGameIdler::ResetGamestate`), and lost the same
 things there, about 4 to 5 MB per load of a save from 1719 without mods (heap tracer, 22 November
 2026). The plugin frees around that reset what it frees around its own: the idea group tables,
-the estates' modifiers and the AI's army agents, and the center-of-trade modifiers below. That
-reset keeps the history, so the save's characters, leaders and rebel factions, and the battle
-results its wars read, are still lost at each load.
+the estates' modifiers, the historical characters, the leaders, the rebel factions, the AI's army
+agents and the center-of-trade modifiers below (lab, the second load of the 1719 save in a
+campaign: 1,380 idea group tables, 1,096 estate modifiers, 9,044 characters, 4,313 leaders, 1,312
+rebel factions). The battle results a save's wars read are still lost at each load.
 
 ## Memory a long campaign lost
 
