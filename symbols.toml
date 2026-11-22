@@ -399,6 +399,14 @@ build."eu4-1.37.5-steam-win64" = { rva = 0x233FED8 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x2323D58 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x2323D58 }
 
+[symbol.colonial_region_db]
+memory = "write"
+type = "uintptr_t"
+note = "CColonialRegionDatabase's instance: the definitions' pointers from +0 to +8; a load-once database that Random New World rewrites"
+build."eu4-1.37.5-steam-win64" = { rva = 0x233D8F8 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x2321778 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x2321778 }
+
 [symbol.world]
 memory = "write"
 type = "uintptr_t"
@@ -466,6 +474,15 @@ note = "CCurrentGameState::ClearRebelStuff: Destroy for every rebel faction in t
 build."eu4-1.37.5-steam-win64" = { rva = 0x74A0E0 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x7492E0 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x7492E0 }
+
+[symbol.map_reinit_colonial_regions]
+bytes = "40 53 55 57 48 83 EC 20 48 8B E9"
+memory = "code"
+signature = "void (void* map)"
+note = "CMap::ReinitalizeColonialRegions: ClearColonialRegions (every map province to the null region), then a region for each valid definition, whose provinces get it (AddColonialRegion)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x88AFD0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x88A200 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x88A200 }
 
 [symbol.map_randomize]
 bytes = "44 88 4C 24 20 4C 89 44 24 18 48 89 54 24 10 48 89 4C 24 08"

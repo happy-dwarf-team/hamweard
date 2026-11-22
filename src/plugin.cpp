@@ -12,6 +12,7 @@
 #include "estates.hpp"
 #include "game_switches.hpp"
 #include "leader_table.hpp"
+#include "map_extras.hpp"
 #include "map_snapshot.hpp"
 #include "menu_transition.hpp"
 #include "rebel_factions.hpp"
@@ -99,6 +100,13 @@ constexpr std::ptrdiff_t map_naval_distance = 0x17C8;
 constexpr std::ptrdiff_t template_size = 0x230;
 constexpr std::ptrdiff_t template_neighbours_begin = 0x168;  // CProvinceTemplate::_Neighbours
 constexpr std::ptrdiff_t template_neighbours_end = 0x170;
+constexpr std::ptrdiff_t template_passable = 0x180;  // CProvinceTemplate::_PassableNeighbors (CArray<int>)
+constexpr std::ptrdiff_t template_trees = 0x1E0;     // _NumTreeTypes (CArray<pair<CTerrain*, int>>)
+constexpr std::ptrdiff_t template_flags = 0x229;     // _IsTropical.._bHasPixels, then _bIsIsland and its straits flag
+constexpr std::size_t template_flags_size = 2;
+constexpr std::ptrdiff_t colonial_def_scalars = 0x10;  // CColonialRegionDefinition: before its province list
+constexpr std::size_t colonial_def_scalars_size = 0x18;
+constexpr std::ptrdiff_t colonial_def_provinces = 0x50;  // CArray<int>
 
 constexpr std::ptrdiff_t idler_session_slot = 0x80;  // GetSession
 constexpr std::ptrdiff_t idler_validates_history_slot = 0x140;  // asked by ResetGame before PostValidateEffects
@@ -189,15 +197,19 @@ std::uint32_t g_returns = 0;
 // A canal adds neighbours to map provinces, and the map outlives the world. The
 // game's Clear takes the canal's links out again, but then recalculates the costs
 // of every link and the naval distances, and those differ from the ones the map
-// loaded with (lab: 2233 provinces). So the plugin keeps the map as it was before
-// the first canal and puts it back after the reset, or restarts when it cannot.
-hamweard::MapSnapshot g_map_before_canals;
-bool g_map_changed = false;  // since the last reset
-// Random New World rewrites the map. The game's own restore misses part of it (lab: the
-// next campaign gave Tortuga other missions than a fresh start), and only a restart
-// reads the map again, so this process has no clean return left.
-bool g_map_randomized = false;
+// loaded with (lab: 2233 provinces). Random New World rewrites the map and the
+// load-once databases built on it, and the game's own restore at Clear misses part
+// of them (hamweard#118: the colonial region placeholders keep their provinces, which
+// gave Tortuga other missions than a fresh start; the rivers of the provinces only RNW
+// uses; the provinces' tree counts). So the plugin keeps all of it as it was before the
+// first canal or Random New World map and puts it back after the reset, or restarts
+// when it cannot.
+hamweard::MapSnapshot g_map_before_change;
+hamweard::MapExtrasSnapshot g_map_extras_before_change;
+bool g_map_changed = false;     // since the last reset
+bool g_map_randomized = false;  // since the last reset, for the log
 std::uintptr_t* g_map = nullptr;
+std::uintptr_t* g_colonial_region_db = nullptr;
 Bytes g_in_game_stock_path = nullptr;
 Bytes g_pregame_stock_path = nullptr;
 
@@ -546,6 +558,55 @@ hamweard::MapView map_view() {
     return view;
 }
 
+// The rest of what Random New World or a canal leaves changed (map_extras.hpp), in a fixed
+// order: each template's flags, passable neighbours and tree counts, then each colonial
+// region definition's scalars and provinces.
+hamweard::MapExtrasView map_extras_view() {
+    hamweard::MapExtrasView view;
+    auto* map = reinterpret_cast<Bytes>(*g_map);
+    if (!map) return view;
+    for (Bytes t = at<Bytes>(map, off::map_templates_begin); t != at<Bytes>(map, off::map_templates_end);
+         t += off::template_size) {
+        view.fields.emplace_back(t + off::template_flags, off::template_flags_size);
+        view.arrays.push_back(t + off::template_passable);
+        view.arrays.push_back(t + off::template_trees);
+    }
+    if (auto* db = reinterpret_cast<Bytes>(*g_colonial_region_db)) {
+        for (auto** def = at<Bytes*>(db, 0); def && def != at<Bytes*>(db, 8); ++def) {
+            view.fields.emplace_back(*def + off::colonial_def_scalars, off::colonial_def_scalars_size);
+            view.arrays.push_back(*def + off::colonial_def_provinces);
+        }
+    }
+    return view;
+}
+
+// Kept once, before the first canal or Random New World map of the process.
+void keep_map_before_change() {
+    if (!g_map_before_change.taken()) {
+        g_map_before_change.take(map_view());
+        g_map_extras_before_change.take(map_extras_view());
+        host().info("map kept before its first change");
+    }
+    g_map_changed = true;
+}
+
+// After the reset: the map as it was kept, or false when it cannot be put back exactly.
+// The game's Clear rebuilt the map's colonial regions from the definitions Random New World
+// had filled, and CMap::AddColonialRegion gave each of their provinces (the map's, which
+// outlive the campaign) that region (hamweard#118: 752 provinces only RNW uses kept a
+// placeholder region). So after the definitions are back, the regions are rebuilt again,
+// which first resets every province to the null region.
+bool put_map_back(bool randomized) {
+    const auto extras = map_extras_view();
+    if (!g_map_before_change.restore(map_view())) return false;
+    const bool put = g_map_extras_before_change.restore(
+        extras, [](std::size_t size) { return game(sym::game_alloc, std::uint64_t{size}); },
+        [](void* memory) { game(sym::game_free, memory); });
+    if (!put || g_map_extras_before_change.differences(extras) != 0) return false;
+    if (randomized) game(sym::map_reinit_colonial_regions, reinterpret_cast<void*>(*g_map));
+    return true;
+}
+
 // CAchievementsManager is a singleton, so ResetGame leaves the list the last
 // loaded save carried in it, and a restart cleared that: every later save whose
 // achievements are off would write the list as its achievement={...} block.
@@ -654,7 +715,7 @@ const char* restart_reason() {
     MEMORYSTATUSEX memory{};
     memory.dwLength = sizeof memory;
     const std::uint64_t commit = GlobalMemoryStatusEx(&memory) ? memory.ullAvailPageFile : UINT64_MAX;
-    return hamweard::restart_reason(shift_held(), in_multiplayer_session(), g_map_randomized, commit);
+    return hamweard::restart_reason(shift_held(), in_multiplayer_session(), commit);
 }
 
 void note_idler_orphans(Bytes idler);
@@ -1486,11 +1547,14 @@ void on_frontend_tick(void* idler, bool update) {
                              forget_loaded_achievements();
                              if (g_map_changed) {
                                  g_map_changed = false;
-                                 if (g_map_before_canals.restore(map_view())) {
-                                     host().info("map put back as it was before the canals");
+                                 const bool randomized = g_map_randomized;
+                                 const char* change = randomized ? "a Random New World map" : "a canal";
+                                 g_map_randomized = false;
+                                 if (put_map_back(randomized)) {
+                                     host().info("map put back as it was before {}", change);
                                  } else {
-                                     // A campaign must not start on a map with a canal's costs.
-                                     host().warn("the map could not be put back after a canal: the game restarts");
+                                     // A campaign must not start on a changed map.
+                                     host().warn("the map could not be put back after {}: the game restarts", change);
                                      at<std::uint16_t>(app, off::app_exit) = 0x0101;
                                  }
                              }
@@ -1520,6 +1584,7 @@ struct Hamweard : anvil::Plugin {
         g_trigger_db = h.data(sym::trigger_db);
         g_custom_nation_used = h.data(sym::custom_nation_used);
         g_map = h.data(sym::map);
+        g_colonial_region_db = h.data(sym::colonial_region_db);
         g_country_db = h.data(sym::country_db);
         g_strength_cache_list = h.data(sym::strength_cache_list);
         g_strength_cache_mutex = h.data(sym::strength_cache_mutex);
@@ -1590,18 +1655,13 @@ struct Hamweard : anvil::Plugin {
             g_pending_frontend_app.store(reinterpret_cast<void*>(cpu.rbx));
         });
         canal_logic = h.mid_hook(sym::canal_logic_apply, [](anvil::Cpu& cpu) {
-            if (at<std::int32_t>(reinterpret_cast<void*>(cpu.rcx), off::canal_list_count) > 0) {
-                if (!g_map_before_canals.taken()) {
-                    g_map_before_canals.take(map_view());
-                    host().info("map kept before the first canal");
-                }
-                g_map_changed = true;
-            }
+            if (at<std::int32_t>(reinterpret_cast<void*>(cpu.rcx), off::canal_list_count) > 0) keep_map_before_change();
         });
         rebel_stuff_clear = h.mid_hook(sym::rebel_stuff_clear, [] { note_old_rebel_factions(); });
         map_randomize = h.mid_hook(sym::map_randomize, [] {
+            keep_map_before_change();
             g_map_randomized = true;
-            host().info("Random New World: the next return restarts the game");
+            host().info("Random New World: the next return puts the map back");
         });
         delayed_events_fired = h.mid_hook(sym::delayed_events_fired, [](anvil::Cpu& cpu) { note_fired_events(cpu); });
         h.swap(g_tick, sym::frontend_tick_slot, &on_frontend_tick);
