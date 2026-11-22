@@ -45,11 +45,9 @@ constexpr bool enough_memory_for_return(std::uint64_t commit_available) noexcept
 // Why a return has to be the game's own restart, or null when it does not.
 // `shift`: the player held Shift on the click that left, and asked for the
 // stock restart (a fresh process before multiplayer, a mod's files read again).
-constexpr const char* restart_reason(bool shift, bool multiplayer, bool map_randomized,
-                                     std::uint64_t commit_available) noexcept {
+constexpr const char* restart_reason(bool shift, bool multiplayer, std::uint64_t commit_available) noexcept {
     if (shift) return "with Shift held";
     if (multiplayer) return "in a multiplayer session";
-    if (map_randomized) return "after a Random New World map";
     if (!enough_memory_for_return(commit_available)) return "with too little memory left";
     return nullptr;
 }

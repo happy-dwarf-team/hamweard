@@ -4,6 +4,7 @@
 #include "estates.hpp"
 #include "game_switches.hpp"
 #include "leader_table.hpp"
+#include "map_extras.hpp"
 #include "map_snapshot.hpp"
 #include "menu_transition.hpp"
 #include "rebel_factions.hpp"
@@ -125,14 +126,13 @@ int main() {
     check(hamweard::enough_memory_for_return(hamweard::min_commit_for_return), "the limit is enough");
     check(!hamweard::enough_memory_for_return(hamweard::min_commit_for_return - 1), "below the limit the game restarts");
     const std::uint64_t plenty = hamweard::min_commit_for_return * 8;
-    check(hamweard::restart_reason(false, false, false, plenty) == nullptr, "a plain return does not restart");
-    check(hamweard::restart_reason(true, false, false, plenty) != nullptr, "Shift held restarts");
-    check(std::string_view(hamweard::restart_reason(true, true, true, 0)) == "with Shift held", "and says so first");
-    check(hamweard::restart_reason(false, true, false, plenty) != nullptr, "multiplayer restarts");
-    check(hamweard::restart_reason(false, false, true, plenty) != nullptr, "a Random New World map restarts, whatever the memory");
-    check(hamweard::restart_reason(false, false, false, 0) != nullptr, "too little memory restarts");
-    check(std::string_view(hamweard::restart_reason(false, true, true, 0)) == "in a multiplayer session",
-          "multiplayer is named before the map and the memory");
+    check(hamweard::restart_reason(false, false, plenty) == nullptr, "a plain return does not restart");
+    check(hamweard::restart_reason(true, false, plenty) != nullptr, "Shift held restarts");
+    check(std::string_view(hamweard::restart_reason(true, true, 0)) == "with Shift held", "and says so first");
+    check(hamweard::restart_reason(false, true, plenty) != nullptr, "multiplayer restarts");
+    check(hamweard::restart_reason(false, false, 0) != nullptr, "too little memory restarts");
+    check(std::string_view(hamweard::restart_reason(false, true, 0)) == "in a multiplayer session",
+          "multiplayer is named before the memory");
 
     // hamweard#88: a reset on the frontend gets the validation of a fresh start.
     {
@@ -267,6 +267,72 @@ int main() {
         hamweard::detach_rebel_faction(faction.data(), free_node);
         check(freed.empty(), "nothing is freed twice");
         check(faction[hamweard::reference_registered] == 0, "the destructor's own Destroy does nothing");
+    }
+    {
+        // the map's extras: one field and two arrays, as Random New World leaves them
+        auto put = [](std::uint8_t* at, auto value) { std::memcpy(at, &value, sizeof value); };
+        auto set_array = [&](std::uint8_t* array, std::uint8_t* begin, std::size_t size, std::size_t capacity) {
+            put(array + hamweard::array_begin, begin);
+            put(array + hamweard::array_end, begin + size);
+            put(array + hamweard::array_capacity, begin + capacity);
+        };
+        std::array<std::uint8_t, 2> flags{0x40, 0x00};
+        std::array<std::uint8_t, 0x18> short_array{}, long_array{};
+        std::array<std::uint8_t, 8> short_buffer{1, 2, 3, 4, 5, 6, 7, 8};
+        std::array<std::uint8_t, 4> long_buffer{9, 9, 9, 9};
+        set_array(short_array.data(), short_buffer.data(), 8, 8);
+        set_array(long_array.data(), long_buffer.data(), 4, 4);
+        hamweard::MapExtrasView view;
+        view.fields.emplace_back(flags.data(), flags.size());
+        view.arrays = {short_array.data(), long_array.data()};
+        hamweard::MapExtrasSnapshot kept;
+        kept.take(view);
+        check(kept.taken() && kept.differences(view) == 0, "the snapshot is the map");
+
+        // the change: a river flag set, the first array emptied, the second given other values
+        flags[0] = 0x50;
+        set_array(short_array.data(), short_buffer.data(), 0, 8);
+        long_buffer = {7, 7, 7, 7};
+        check(kept.differences(view) == 3, "three parts differ");
+        std::vector<std::vector<std::uint8_t>> blocks;
+        std::vector<void*> freed;
+        auto alloc = [&](std::size_t size) -> void* { return blocks.emplace_back(size).data(); };
+        auto free = [&](void* memory) { freed.push_back(memory); };
+        check(kept.restore(view, alloc, free), "it goes back");
+        check(kept.differences(view) == 0 && flags[0] == 0x40, "every part as kept");
+        check(blocks.empty() && freed.empty(), "in place, without a new block");
+
+        // an array kept longer than its room now gets a new block, the old one freed
+        hamweard::MapExtrasView one;
+        one.arrays = {long_array.data()};
+        std::array<std::uint8_t, 0x18> grown{};
+        std::array<std::uint8_t, 12> grown_buffer{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+        set_array(grown.data(), grown_buffer.data(), 12, 12);
+        hamweard::MapExtrasView grown_view;
+        grown_view.arrays = {grown.data()};
+        hamweard::MapExtrasSnapshot kept_long;
+        kept_long.take(grown_view);
+        check(kept_long.restore(one, alloc, free), "a longer array goes back");
+        check(blocks.size() == 1 && freed.size() == 1 && freed[0] == long_buffer.data(), "in a new block");
+        check(kept_long.differences(one) == 0, "with every byte");
+
+        // a block the game's allocator gives a header to is not reallocated
+        std::vector<std::uint8_t> big(hamweard::big_block), big_saved(hamweard::big_block + 4, 1);
+        std::array<std::uint8_t, 0x18> big_array{}, big_kept_array{};
+        set_array(big_array.data(), big.data(), big.size(), big.size());
+        set_array(big_kept_array.data(), big_saved.data(), big_saved.size(), big_saved.size());
+        hamweard::MapExtrasView big_view, big_kept_view;
+        big_view.arrays = {big_array.data()};
+        big_kept_view.arrays = {big_kept_array.data()};
+        hamweard::MapExtrasSnapshot kept_big;
+        kept_big.take(big_kept_view);
+        const std::size_t before = blocks.size();
+        check(!kept_big.restore(big_view, alloc, free), "a big array cannot grow: the game restarts");
+        check(blocks.size() == before && big[0] == 0, "and nothing was written");
+
+        hamweard::MapExtrasView other;
+        check(!kept.restore(other, alloc, free), "another map does not take the snapshot");
+        check(kept.differences(other) == SIZE_MAX, "and counts as all different");
     }
     std::puts("menu transition tests passed");
 }

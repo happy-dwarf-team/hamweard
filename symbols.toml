@@ -399,6 +399,14 @@ build."eu4-1.37.5-steam-win64" = { rva = 0x233FED8 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x2323D58 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x2323D58 }
 
+[symbol.colonial_region_db]
+memory = "write"
+type = "uintptr_t"
+note = "CColonialRegionDatabase's instance: the definitions' pointers from +0 to +8; a load-once database that Random New World rewrites"
+build."eu4-1.37.5-steam-win64" = { rva = 0x233D8F8 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x2321778 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x2321778 }
+
 [symbol.world]
 memory = "write"
 type = "uintptr_t"
