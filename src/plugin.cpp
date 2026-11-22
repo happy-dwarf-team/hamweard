@@ -656,6 +656,9 @@ void name_provinces_as_setup() {
     host().info("dynamic province names set again after the frontend reset ({} provinces)", count);
 }
 
+// Set just before CInGameIdler::ResetGamestate calls ResetGame; only EU4LoadGameHelper::Load,
+// the load of a save inside a campaign, calls ResetGamestate.
+std::atomic<bool> g_load_reset_next{false};
 bool reset_of_a_load(void* app, bool keep_history);
 
 void on_reset_game(void* app, bool keep_history) noexcept {
@@ -1489,8 +1492,9 @@ CotFreed free_old_cot_modifiers(std::uint32_t world) {
 
 // What ResetGame loses, freed around it: in Hamweard's reset of a return, and in the reset the
 // game runs itself when a save loads inside a campaign (CInGameIdler::ResetGamestate, from
-// EU4LoadGameHelper::Load), which lost the same (lab, 22 November 2026: 4-5 MB per load of a
-// 1719 save, kept until the process ended).
+// EU4LoadGameHelper::Load, before the load reads the save), which lost the same (lab, 22 November
+// 2026: 4-5 MB per load of a 1719 save, kept until the process ended). That reset keeps the
+// history, so the characters and leaders DestroyDatabase would free stay as before there.
 struct ResetFreed {
     std::size_t idea_groups = 0, estate_values = 0;
     CotFreed cot;
@@ -1530,11 +1534,10 @@ template <class Reset> ResetFreed free_around_reset(Reset&& reset) {
     return n;
 }
 
-// The reset of a save's load (not Hamweard's own, which frees around its call): runs it and
-// returns true.
+// The reset of a save's load inside a campaign (ResetGamestate's, with the history kept): runs
+// it and returns true. Hamweard's own reset frees around its call already.
 bool reset_of_a_load(void* app, bool keep_history) {
-    if (g_loading_save.load(std::memory_order_relaxed) <= 0 || g_free_else.load(std::memory_order_relaxed) > 0)
-        return false;
+    if (!g_load_reset_next.exchange(false) || g_free_else.load(std::memory_order_relaxed) > 0) return false;
     const ResetFreed n = free_around_reset([&] { g_reset_game.next(app, keep_history); });
     host().info("a save loads: memory its reset would lose: {} idea group tables, {} estate modifiers, {} center-of-trade modifiers ({} others kept), {} historical characters freed ({} in the store, {} others kept), {} leaders freed ({} of them mercenaries, {} others kept), {} rebel factions freed ({} others kept), {} AI army agents freed ({} others kept)",
                 n.idea_groups, n.estate_values, n.cot.freed, n.cot.kept, g_characters_freed.freed,
@@ -1690,6 +1693,7 @@ struct Hamweard : anvil::Plugin {
     anvil::Change rebel_stuff_clear;
     anvil::Change delayed_events_fired;
     anvil::Change center_of_trade_new;
+    anvil::Change load_reset_call;
 
     void load(anvil::Host& h) override {
         g_world = h.data(sym::world);
@@ -1782,6 +1786,7 @@ struct Hamweard : anvil::Plugin {
             note_cot_modifier(reinterpret_cast<void*>(cpu.rax));
         });
         h.swap(g_static_modifier_delete, sym::static_modifier_vtable, &on_static_modifier_delete);
+        load_reset_call = h.mid_hook(sym::load_reset_call, [] { g_load_reset_next.store(true); });
         h.swap(g_tick, sym::frontend_tick_slot, &on_frontend_tick);
         h.swap(g_restore_device_objects, sym::frontend_restore_slot, &on_frontend_restore);
         h.swap(g_battle_change_delete, sym::battle_change_delete_slot, &on_battle_change_delete);
