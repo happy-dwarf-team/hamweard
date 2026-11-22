@@ -27,7 +27,8 @@ the new `symbols.lock` in the same pull request; CI fails on a stale lock.
 Hamweard's promise is that a campaign after a return is the campaign a fresh start would
 give. The reset oracle checks it. Run it before every release that changes the reset:
 `reset_world`, anything Hamweard keeps at the first menu and restores after `ResetGame`,
-the teardown, or the symbols they use. A pull request that fixes a carry-over puts the
+the teardown, or the symbols they use. The Random New World and canal arms are needed for a
+change to the map copy; their fresh side is the vanilla arm's. A pull request that fixes a carry-over puts the
 arms it touches in its evidence.
 
 Each arm is a pair of runs of the same game with the same plugins, and the same start in both:
@@ -43,6 +44,8 @@ Each arm is a pair of runs of the same game with the same plugins, and the same 
 | late game | Steam, no mods | a save of 1 January 1821, loaded from the menu | the same save, a new campaign, the Russia save |
 | Anbennar | Steam, Anbennar | a new campaign | three new campaigns |
 | GOG | GOG 1.37.5.2, no mods | a new campaign | three new campaigns |
+| Random New World | Steam, no mods | a new campaign, as vanilla 1444 | a Random New World campaign, a new campaign, a Random New World campaign |
+| canals | Steam, no mods | a new campaign, as vanilla 1444 | a new campaign with the Kiel canal built from the console (`great_project kiel_canal`), the Russia save, the same canal campaign |
 
 The measured stretch:
 

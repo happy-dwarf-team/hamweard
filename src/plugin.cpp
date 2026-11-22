@@ -591,13 +591,20 @@ void keep_map_before_change() {
 }
 
 // After the reset: the map as it was kept, or false when it cannot be put back exactly.
-bool put_map_back() {
+// The game's Clear rebuilt the map's colonial regions from the definitions Random New World
+// had filled, and CMap::AddColonialRegion gave each of their provinces (the map's, which
+// outlive the campaign) that region (hamweard#118: 752 provinces only RNW uses kept a
+// placeholder region). So after the definitions are back, the regions are rebuilt again,
+// which first resets every province to the null region.
+bool put_map_back(bool randomized) {
     const auto extras = map_extras_view();
     if (!g_map_before_change.restore(map_view())) return false;
     const bool put = g_map_extras_before_change.restore(
         extras, [](std::size_t size) { return game(sym::game_alloc, std::uint64_t{size}); },
         [](void* memory) { game(sym::game_free, memory); });
-    return put && g_map_extras_before_change.differences(extras) == 0;
+    if (!put || g_map_extras_before_change.differences(extras) != 0) return false;
+    if (randomized) game(sym::map_reinit_colonial_regions, reinterpret_cast<void*>(*g_map));
+    return true;
 }
 
 // CAchievementsManager is a singleton, so ResetGame leaves the list the last
@@ -1540,9 +1547,10 @@ void on_frontend_tick(void* idler, bool update) {
                              forget_loaded_achievements();
                              if (g_map_changed) {
                                  g_map_changed = false;
-                                 const char* change = g_map_randomized ? "a Random New World map" : "a canal";
+                                 const bool randomized = g_map_randomized;
+                                 const char* change = randomized ? "a Random New World map" : "a canal";
                                  g_map_randomized = false;
-                                 if (put_map_back()) {
+                                 if (put_map_back(randomized)) {
                                      host().info("map put back as it was before {}", change);
                                  } else {
                                      // A campaign must not start on a changed map.

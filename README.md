@@ -75,10 +75,12 @@ have not checked yet; a correction is welcome in an issue or a pull request.
   reset takes the canal's links out, but leaves other movement costs and naval distances
   behind. So the plugin copies them before the first canal and puts them back on a return.
   If they cannot be put back, that return restarts the game, as it does without the plugin.
-- **Random New World restarts.** After a Random New World map, from a new campaign or a loaded
-  save, Exit to Menu and Back restart the game, as they do without the plugin. The game's own
-  restore of the map misses part of it: in the lab the next campaign gave Tortuga other
-  missions than a fresh start did.
+- **Random New World.** A Random New World map rewrites the map and the databases built on it
+  once at startup: the colonial regions, the rivers and tree counts of the provinces. The
+  game's own restore misses part of it (in the lab the next campaign gave Tortuga other
+  missions than a fresh start did). So the plugin copies all of it before the first such map,
+  together with what a canal changes, puts it back on a return and rebuilds the colonial
+  regions. If it cannot be put back, that return restarts the game.
 - **A save clicked in the Single Player list.** Click a save in the list, then a bookmark or
   a date, and the game resets the world without validating the history's effects and without
   naming the provinces after their owners. So a campaign started from there had no province
@@ -139,9 +141,8 @@ shows how much each one kept.
 | What you see | Why | What to do |
 | --- | --- | --- |
 | Exit to Menu or Back restarts the game | The plugin is not loaded | Open the Anvil panel (`Ctrl+Shift+F12`): is Hamweard loaded and approved? |
-| The same, and the log says `the map could not be put back` | A canal changed the map and the saved copy no longer fits it | Nothing to fix: a campaign does not start on the changed map, so the plugin restarts the game. |
+| The same, and the log says `the map could not be put back` | A canal or a Random New World map changed the map and the saved copy no longer fits it | Nothing to fix: a campaign does not start on the changed map, so the plugin restarts the game. |
 | The same, and the log says `multiplayer` | A multiplayer session ends with a restart | Expected. |
-| The same, and the log says `Random New World` | Such a map changes more than a return can put back | Expected. |
 | The same, and the log says `too little memory` | Less than 1 GB of the system's commit limit was left | Expected: the restart gives the memory back. |
 | The same, and the log says `with Shift held` | Shift was down on the click that left | Expected: Shift asks for the game's own restart. Let go of Shift for a return. |
 | Anvil refuses to load Hamweard | The game is another build, or the original EU4 Menu Patch changed the same code | Use EU4 1.37.5 on Steam or GOG 1.37.5.2 or 1.37.5.0, and remove the Menu Patch DLL. |
@@ -239,7 +240,8 @@ seed each time. Save lines are compared with a campaign from a fresh process.
 
 A return took 3.3 to 3.8 seconds with **Back** and 5.5 to 6 with **Exit to Menu** without mods,
 and 5.8 to 6.3 and 8 to 10.7 with Anbennar. In that test two bugs came up and are fixed: a
-Random New World map changed the next campaign's missions (such a return now restarts), and a
+Random New World map changed the next campaign's missions (such a return restarted the game until
+[#118](https://github.com/happy-dwarf-team/hamweard/issues/118) put the map back), and a
 custom nation designed in the lobby and left behind with **Back** joined the next campaign.
 
 The characters of a country without one were tested on 11 November 2026, with `-seed=12345`:
@@ -317,11 +319,12 @@ code first, then tested with a second player on 6 November 2026.
 | --- | --- | --- |
 | `0x815CAE`, the Exit to Menu branch of `CInGameIdler::Idle` | sets the exit and restart flags: the game quits and starts again | in single player releases the campaign's leftovers, queues a new main menu and resumes at the stock epilogue; in a multiplayer session, the game's restart |
 | `0x111DFD7`, Back on the country selection screen | the same flags | in single player queues the switch for the menu's next tick; in a multiplayer lobby, the game's restart |
-| slot `+0x20` of the frontend idler vtable | the frontend tick | runs the queued switch, destroys the last campaign's windows, resets the world once the old idler is gone, forgets the achievement list the last loaded save carried and puts a canal's map back, or restarts the game if it cannot, then the stock tick |
+| slot `+0x20` of the frontend idler vtable | the frontend tick | runs the queued switch, destroys the last campaign's windows, resets the world once the old idler is gone, forgets the achievement list the last loaded save carried and puts a map changed by a canal or Random New World back, or restarts the game if it cannot, then the stock tick |
 | slot `+0x30` of the frontend idler vtable | builds the menu, starting with the loading screen | clears the last campaign's map objects first, so unit banners do not stand on the loading screen |
 | `0x468430`, `CustomCountryManager::Clear` | forgets the nations of the lobby, only when a campaign starts | calls it on every return too, or a nation designed and left behind by **Back** would join the next campaign |
-| `0x890D00`, `CMapRandomize::Randomize` | builds a Random New World map | the same, and the plugin notes it: from then on a return takes the game's restart |
-| `0x78F250`, `ApplyCanalLogic` | rewrites the map's neighbours for a canal | the same, and before the first canal the plugin copies the map's links and naval distances, to put them back after the world reset |
+| `0x890D00`, `CMapRandomize::Randomize` | builds a Random New World map | the same, and before the first such map or canal the plugin copies the map's links, naval distances, the provinces' flags, passable neighbours and tree counts, and the colonial region definitions, to put them back after the world reset |
+| `0x78F250`, `ApplyCanalLogic` | rewrites the map's neighbours for a canal | the same, and before the first canal or Random New World map the plugin copies the map as above |
+| `0x88AFD0`, `CMap::ReinitalizeColonialRegions` | gives each province the colonial region of its definition; the reset runs it | calls it again after it put back the map of a Random New World campaign, whose definitions the reset used |
 | `0x7E8470`, `CHistoryDataBase::Execute` | walks the history between two dates | does nothing while a return waits for its world reset: the new menu would walk it on the old world, which crashed after a start from a later date. In the reset's own walk it first validates the reloaded history, as the game does at startup: without that, triggers in history files stay unbound, and Anbennar's next campaign differed |
 | `0x10F0510`, the main menu's Multiplayer button | opens the multiplayer screen, whatever the game's check says | does nothing after a return in a process that has played |
 | `0x10EB5C0`, `CFrontEndView::GetMultiplayerAvailability` | gives the restart reason only with a Paradox session | gives it after a return without one too, so the button's tooltip always says why |
