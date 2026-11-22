@@ -5,19 +5,14 @@
 
 ### Features
 
-* return to the menu after a Random New World map ([#119](https://github.com/happy-dwarf-team/hamweard/issues/119)) ([2c2a0e8](https://github.com/happy-dwarf-team/hamweard/commit/2c2a0e89e61a492ea306f8504b73b369dfe76f5e))
+* **Exit to Menu** now also works after a Random New World campaign: Hamweard puts the regular map and its colonial regions back, so the next campaign gets the usual world. Before, the game restarted. ([#119](https://github.com/happy-dwarf-team/hamweard/issues/119)) ([2c2a0e8](https://github.com/happy-dwarf-team/hamweard/commit/2c2a0e89e61a492ea306f8504b73b369dfe76f5e))
 
 
 ### Bug Fixes
 
-* clear the AI's strength factor caches at a return ([#108](https://github.com/happy-dwarf-team/hamweard/issues/108)) ([6a64b7d](https://github.com/happy-dwarf-team/hamweard/commit/6a64b7de4f675e3f82d6824a31fb6727812307eb))
-* free every leader the old campaign left at a return ([#112](https://github.com/happy-dwarf-team/hamweard/issues/112)) ([80c3340](https://github.com/happy-dwarf-team/hamweard/commit/80c33400e66a8f1a4b94355ac812beeabe6ba8eb))
-* free the estates' temporary modifiers at a return ([#113](https://github.com/happy-dwarf-team/hamweard/issues/113)) ([cc9ac28](https://github.com/happy-dwarf-team/hamweard/commit/cc9ac28fc7d4bd7e3b731cd0a703e3200841a36b))
-* free the leaders of a save's characters at a return ([#111](https://github.com/happy-dwarf-team/hamweard/issues/111)) ([918ebb2](https://github.com/happy-dwarf-team/hamweard/commit/918ebb27e8919dc92fb52eaf568221d58aa1818d))
-* free the old campaign's leaders once per reset ([#116](https://github.com/happy-dwarf-team/hamweard/issues/116)) ([013e317](https://github.com/happy-dwarf-team/hamweard/commit/013e3173322a9b4e8e5ba1a1dd69188479a6781c))
-* free the old campaign's rebel factions at a return ([#117](https://github.com/happy-dwarf-team/hamweard/issues/117)) ([b4cb2bd](https://github.com/happy-dwarf-team/hamweard/commit/b4cb2bd1e13b1e7275f765e115f8d2ca6ef0d31c)), closes [#107](https://github.com/happy-dwarf-team/hamweard/issues/107)
-* free what the old world loses at a return and at a save's load ([#121](https://github.com/happy-dwarf-team/hamweard/issues/121)) ([679f84f](https://github.com/happy-dwarf-team/hamweard/commit/679f84fc32a5509e33618d0e4c2cd2f91ee8c6c8))
-* say when the strength factor caches could not be cleared ([#115](https://github.com/happy-dwarf-team/hamweard/issues/115)) ([0b5c572](https://github.com/happy-dwarf-team/hamweard/commit/0b5c572da508c73ce5f59b1c3fcaebd40f605415))
+* A return keeps less of the last campaign in memory: its leaders and mercenary captains (about 0.6 MB per return without mods), rebel factions (about 0.5 MB after a 1719 save), the estates' running influence and loyalty changes, and the modifiers of centers of trade. ([#111](https://github.com/happy-dwarf-team/hamweard/issues/111), [#112](https://github.com/happy-dwarf-team/hamweard/issues/112), [#113](https://github.com/happy-dwarf-team/hamweard/issues/113), [#116](https://github.com/happy-dwarf-team/hamweard/issues/116), [#117](https://github.com/happy-dwarf-team/hamweard/issues/117), [#121](https://github.com/happy-dwarf-team/hamweard/issues/121)) ([80c3340](https://github.com/happy-dwarf-team/hamweard/commit/80c33400e66a8f1a4b94355ac812beeabe6ba8eb), [b4cb2bd](https://github.com/happy-dwarf-team/hamweard/commit/b4cb2bd1e13b1e7275f765e115f8d2ca6ef0d31c), [679f84f](https://github.com/happy-dwarf-team/hamweard/commit/679f84fc32a5509e33618d0e4c2cd2f91ee8c6c8))
+* Loading a save from the in-game menu, with or without a return, no longer keeps the old campaign's leftovers: the game lost 4–5 MB per load of a 1719 save there. ([#121](https://github.com/happy-dwarf-team/hamweard/issues/121)) ([679f84f](https://github.com/happy-dwarf-team/hamweard/commit/679f84fc32a5509e33618d0e4c2cd2f91ee8c6c8))
+* A campaign after a return no longer starts with the AI's army estimates of the last one, which the AI army map mode (console `mapmode armyeval`) could leave behind. ([#108](https://github.com/happy-dwarf-team/hamweard/issues/108), [#115](https://github.com/happy-dwarf-team/hamweard/issues/115)) ([6a64b7d](https://github.com/happy-dwarf-team/hamweard/commit/6a64b7de4f675e3f82d6824a31fb6727812307eb), [0b5c572](https://github.com/happy-dwarf-team/hamweard/commit/0b5c572da508c73ce5f59b1c3fcaebd40f605415))
 
 ## [1.6.0](https://github.com/happy-dwarf-team/hamweard/compare/v1.5.0...v1.6.0) (2026-11-19)
 
