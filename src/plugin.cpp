@@ -1246,6 +1246,30 @@ void on_generate_random_world(void* randomize, void* count, void* file, const vo
                 g_bitmap_buffers_freed, static_cast<double>(g_bitmap_bytes_freed) / (1024.0 * 1024.0));
 }
 
+// The map's river bitmap. CMapRandomize::CreateRivers reads the generated world's rivers.bmp
+// into the map's own river bitmap (CMap +0x2F8, a CRomeBitmap) through its CreateBitmap slot,
+// which stores a new buffer over the one the map read its rivers into (at the map's load, or
+// at the last reset's CMap::ReadRiverBitmap) without freeing it: about 11 MB per generated
+// world. The bitmap's destructor frees its buffer, so the buffer is the bitmap's own; Hamweard
+// frees the old one after the call when the call replaced it.
+anvil::HookOf<sym::create_rivers> g_create_rivers;
+constexpr std::ptrdiff_t randomize_map = 0xE0;  // CMapRandomize's CMap*
+constexpr std::ptrdiff_t map_rivers = 0x2F8;    // CMap's river CRomeBitmap*
+
+void on_create_rivers(void* randomize, void* archive) {  // not noexcept: the game's exceptions pass
+    void* const map = randomize ? at<void*>(randomize, randomize_map) : nullptr;
+    void* const rivers = map ? at<void*>(map, map_rivers) : nullptr;
+    void* const old = rivers ? at<void*>(rivers, bitmap_data) : nullptr;
+    const std::int64_t old_bytes =
+        rivers ? static_cast<std::int64_t>(at<std::int32_t>(rivers, bitmap_row)) * at<std::int32_t>(rivers, bitmap_height)
+               : 0;
+    g_create_rivers.next(randomize, archive);
+    if (!old || at<void*>(map, map_rivers) != rivers || at<void*>(rivers, bitmap_data) == old) return;
+    game(sym::game_free, old);
+    host().info("Random New World: the map's old river buffer freed ({:.1f} MB)",
+                static_cast<double>(old_bytes > 0 ? old_bytes : 0) / (1024.0 * 1024.0));
+}
+
 // The rulers, heirs and consorts of a save's country history. The history's reader makes
 // one CMonarch, CHeir or CQueen for each monarch = { ... }, heir = { ... } or queen = { ... }
 // and gives it to the change (CMonarchChange +0x40..+0x58, CHeirChange and CQueenChange
@@ -1984,6 +2008,7 @@ struct Hamweard : anvil::Plugin {
         h.hook(g_trade_node_database_reset, sym::trade_node_database_reset, on_trade_node_database_reset);
         h.hook(g_bitmap_create, sym::bitmap_create, on_bitmap_create);
         h.hook(g_generate_random_world, sym::generate_random_world, on_generate_random_world);
+        h.hook(g_create_rivers, sym::create_rivers, on_create_rivers);
         h.swap(g_monarch_change_delete, sym::monarch_change_delete_slot, &on_monarch_change_delete);
         h.swap(g_heir_change_delete, sym::heir_change_delete_slot, &on_heir_change_delete);
         h.swap(g_queen_change_delete, sym::queen_change_delete_slot, &on_queen_change_delete);
