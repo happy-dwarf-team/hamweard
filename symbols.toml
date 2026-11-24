@@ -824,6 +824,15 @@ build."eu4-1.37.5-steam-win64" = { rva = 0x1561100 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x1558020 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x1558020 }
 
+[symbol.create_rivers]
+bytes = "48 89 5C 24 08 48 89 74 24 10 55 57 41 56 48 8D 6C 24 B9"
+memory = "code"
+signature = "void (void* randomize, void* archive)"
+note = "CMapRandomize::CreateRivers(CZipArchive*): reads the generated world's rivers.bmp into the map's river CRomeBitmap (CMap +0x2F8) through its CreateBitmap slot, which stores a new buffer over the old one without freeing it"
+build."eu4-1.37.5-steam-win64" = { rva = 0x89C830 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x89BA60 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x89BA60 }
+
 # --- the characters of a save's country history, which no one deletes ---
 
 [symbol.monarch_change_delete_slot]
