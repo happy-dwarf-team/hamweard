@@ -1150,6 +1150,53 @@ void forget_history_relations() noexcept {
     g_freed_relations.clear();
 }
 
+// The trade node definitions (common/tradenodes). ResetGame reads them again
+// (LoadDatabasesAfterReset: CTradeNodeDatabase::InitializeInstance, then InitFromDirectory).
+// InitializeInstance makes a new, empty database and gives it to the global unique_ptr, whose
+// reset frees the old database's arrays but none of the definitions in them, and the loop of
+// InitFromDirectory that deletes the definitions runs over the new, empty database. So every
+// reset lost all of them, with their names, province lists and outgoing links (lab, 25
+// November 2026: about 80 definitions, 0.1 MB in about 700 blocks per return). So while the
+// world is reset (Hamweard's reset, or the game's own for a save's load), the hook notes the
+// old database's definitions before the unique_ptr lets them go, and Hamweard deletes them once
+// ResetGame has returned, as that loop would: only those whose slot 0x40 allows it (the null
+// definition, a singleton, is in the array too). The old game state, whose trade nodes point
+// to them (CTradeNode::_pDefinition), is gone before ResetGame reads the databases again.
+anvil::HookOf<sym::trade_node_database_reset> g_trade_node_database_reset;
+void** g_trade_node_database = nullptr;  // the global unique_ptr<CTradeNodeDatabase>
+std::vector<void*> g_old_trade_nodes;   // the main thread's, inside the teardown window
+
+constexpr std::ptrdiff_t trade_nodes_begin = 0x00;  // CTradeNodeDatabase::_TradeNodeDefinitions
+constexpr std::ptrdiff_t trade_nodes_end = 0x08;
+constexpr std::size_t trade_node_may_delete_slot = 0x40 / sizeof(void*);
+
+void on_trade_node_database_reset(void* holder, void* database) noexcept {
+    if (g_world_teardown.load(std::memory_order_relaxed) > 0 && g_trade_node_database) {
+        if (void* old = *g_trade_node_database) {
+            void** const begin = at<void**>(old, trade_nodes_begin);
+            void** const end = at<void**>(old, trade_nodes_end);
+            if (begin && end > begin) g_old_trade_nodes.insert(g_old_trade_nodes.end(), begin, end);
+        }
+    }
+    g_trade_node_database_reset.next(holder, database);
+}
+
+std::size_t free_old_trade_nodes() noexcept {
+    using MayDelete = bool(void*);
+    std::size_t freed = 0;
+    for (void* definition : g_old_trade_nodes) {
+        if (!definition) continue;
+        void** const vtable = at<void**>(definition, 0);
+        const auto address = reinterpret_cast<std::uintptr_t>(vtable);
+        if (address < g_image_begin || address >= g_image_end) continue;
+        if (!reinterpret_cast<MayDelete*>(vtable[trade_node_may_delete_slot])(definition)) continue;
+        reinterpret_cast<DeleteFn*>(vtable[0])(definition, 1);
+        ++freed;
+    }
+    g_old_trade_nodes.clear();
+    return freed;
+}
+
 // The rulers, heirs and consorts of a save's country history. The history's reader makes
 // one CMonarch, CHeir or CQueen for each monarch = { ... }, heir = { ... } or queen = { ... }
 // and gives it to the change (CMonarchChange +0x40..+0x58, CHeirChange and CQueenChange
@@ -1567,7 +1614,7 @@ CotFreed free_old_cot_modifiers(std::uint32_t world) {
 // EU4LoadGameHelper::Load, before the load reads the save), which lost the same (lab, 22 November
 // 2026: 4-5 MB per load of a 1719 save, kept until the process ended).
 struct ResetFreed {
-    std::size_t idea_groups = 0, estate_values = 0;
+    std::size_t idea_groups = 0, estate_values = 0, trade_nodes = 0;
     CotFreed cot;
 };
 
@@ -1589,8 +1636,10 @@ template <class Reset> ResetFreed free_around_reset(Reset&& reset) {
         g_freeing_agents.store(true, std::memory_order_relaxed);
         g_leaders_to_free.store(true, std::memory_order_relaxed);
         const std::uint32_t cot_world = begin_cot_world();
+        g_old_trade_nodes.clear();
         reset();
         n.cot = free_old_cot_modifiers(cot_world);
+        n.trade_nodes = free_old_trade_nodes();
         g_leaders_to_free.store(false, std::memory_order_relaxed);
         g_freeing_agents.store(false, std::memory_order_relaxed);
     }
@@ -1610,11 +1659,12 @@ template <class Reset> ResetFreed free_around_reset(Reset&& reset) {
 bool reset_of_a_load(void* app, bool keep_history) {
     if (!g_load_reset_next.exchange(false) || g_free_else.load(std::memory_order_relaxed) > 0) return false;
     const ResetFreed n = free_around_reset([&] { g_reset_game.next(app, keep_history); });
-    host().info("a save loads: memory its reset would lose: {} idea group tables, {} estate modifiers, {} center-of-trade modifiers ({} others kept), {} historical characters freed ({} in the store, {} others kept), {} leaders freed ({} of them mercenaries, {} others kept), {} rebel factions freed ({} others kept), {} AI army agents freed ({} others kept)",
+    host().info("a save loads: memory its reset would lose: {} idea group tables, {} estate modifiers, {} center-of-trade modifiers ({} others kept), {} historical characters freed ({} in the store, {} others kept), {} leaders freed ({} of them mercenaries, {} others kept), {} rebel factions freed ({} others kept), {} AI army agents freed ({} others kept), {} trade node definitions freed",
                 n.idea_groups, n.estate_values, n.cot.freed, n.cot.kept, g_characters_freed.freed,
                 g_characters_freed.in_store, g_characters_freed.other, g_leaders_freed.freed,
                 g_leaders_freed.mercenaries, g_leaders_freed.other, g_factions_freed.freed, g_factions_freed.other,
-                g_agents_freed.load(std::memory_order_relaxed), g_agents_kept.load(std::memory_order_relaxed));
+                g_agents_freed.load(std::memory_order_relaxed), g_agents_kept.load(std::memory_order_relaxed),
+                n.trade_nodes);
     return true;
 }
 
@@ -1626,13 +1676,13 @@ void reset_world(Bytes app) {
     restore_null_characters();
     clear_strength_caches();
     const std::size_t fired = free_fired_events();
-    host().info("memory the reset would lose: {} idea group tables, {} estate modifiers, {} center-of-trade modifiers ({} others kept), {} else branches freed, {} fired delayed events freed, {} historical characters freed ({} in the store, {} others kept), {} leaders freed ({} of them mercenaries, {} others kept), {} rebel factions freed ({} others kept), {} AI army agents freed ({} others kept); {} subject modifiers, {} text box pan gestures, {} battle results and {} diplomatic history relations freed since the last reset",
+    host().info("memory the reset would lose: {} idea group tables, {} estate modifiers, {} center-of-trade modifiers ({} others kept), {} else branches freed, {} fired delayed events freed, {} historical characters freed ({} in the store, {} others kept), {} leaders freed ({} of them mercenaries, {} others kept), {} rebel factions freed ({} others kept), {} AI army agents freed ({} others kept), {} trade node definitions freed; {} subject modifiers, {} text box pan gestures, {} battle results and {} diplomatic history relations freed since the last reset",
                 idea_groups, estate_values, cot_freed.freed, cot_freed.kept, g_else_branches_freed.load(std::memory_order_relaxed), fired, g_characters_freed.freed,
                 g_characters_freed.in_store, g_characters_freed.other,
                 g_leaders_freed.freed, g_leaders_freed.mercenaries, g_leaders_freed.other,
                 g_factions_freed.freed, g_factions_freed.other,
                 g_agents_freed.load(std::memory_order_relaxed), g_agents_kept.load(std::memory_order_relaxed),
-                g_subject_modifiers_freed.exchange(0, std::memory_order_relaxed),
+                freed.trade_nodes, g_subject_modifiers_freed.exchange(0, std::memory_order_relaxed),
                 g_pan_gestures_freed.exchange(0, std::memory_order_relaxed),
                 g_battles_freed.exchange(0, std::memory_order_relaxed),
                 g_relations_freed.exchange(0, std::memory_order_relaxed));
@@ -1880,6 +1930,9 @@ struct Hamweard : anvil::Plugin {
         h.swap(g_diplomatic_change_delete[4], sym::improve_relation_change_delete_slot, &on_diplomatic_change_delete<4>);
         h.swap(g_diplomatic_change_delete[5], sym::dependency_change_delete_slot, &on_diplomatic_change_delete<5>);
         h.hook(g_diplomatic_change_execute, sym::diplomatic_change_execute, on_diplomatic_change_execute);
+        g_trade_node_database = reinterpret_cast<void**>(h.game().image_base + h.value(sym::trade_node_database_reset, "instance"));
+        g_old_trade_nodes.reserve(256);
+        h.hook(g_trade_node_database_reset, sym::trade_node_database_reset, on_trade_node_database_reset);
         h.swap(g_monarch_change_delete, sym::monarch_change_delete_slot, &on_monarch_change_delete);
         h.swap(g_heir_change_delete, sym::heir_change_delete_slot, &on_heir_change_delete);
         h.swap(g_queen_change_delete, sym::queen_change_delete_slot, &on_queen_change_delete);
