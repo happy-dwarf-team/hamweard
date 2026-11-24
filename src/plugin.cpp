@@ -25,6 +25,7 @@
 #include <psapi.h>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <cstddef>
@@ -1085,6 +1086,70 @@ void* on_battle_change_delete(void* change, std::uint32_t flags) noexcept {
     return g_battle_change_delete.previous()(change, flags);
 }
 
+// A relation of the diplomatic history (history/diplomacy: an alliance, a dependency, a royal
+// marriage, a guarantee, a casus belli, improved relations) is a CRelation that the history's
+// reader makes for each entry and gives to the entry's start change and, with an end date, to
+// its end change too (+0x40). When the history runs up to a campaign's start date, the start
+// change hands that same relation to the world (CDiplomacy::AddActive), which owns it from then
+// on: the world's teardown deletes it, or play does when the relation ends; a relation the
+// world refuses, the change deletes. The changes' deleting destructor (the one of every
+// 0x48-byte change) frees only the change, so every relation the history never handed over
+// was lost when the history went: the entries after a new campaign's start date, and all of
+// them after a save, whose world comes from the save (lab, 22 November 2026: about 900
+// relations, 0.08 MB, per return after a 1719 save). So Hamweard notes each relation a change
+// tries to hand over (CDiplomaticHistoryChange::Execute, whatever it does), and while the game
+// resets the world or loads a save, a change's slot deletes the change's relation first if no
+// change ever tried to hand it over and Hamweard has not deleted it already (the start and the
+// end change share one). DestroyDatabase destroys the history with all its changes, so the
+// notes go with it.
+anvil::HookOf<sym::diplomatic_change_execute> g_diplomatic_change_execute;
+std::array<anvil::PointerSwap<DeleteFn>, 6> g_diplomatic_change_delete;
+std::mutex g_history_relations_mutex;
+std::unordered_set<void*> g_handed_relations;  // a change tried to hand it to the world
+std::unordered_set<void*> g_freed_relations;   // Hamweard deleted it in this history's teardown
+std::atomic<std::uint64_t> g_relations_freed{0};
+std::uintptr_t g_image_begin = 0, g_image_end = 0;
+
+constexpr std::ptrdiff_t diplomatic_change_relation = 0x40;  // the change's CRelation*
+constexpr std::ptrdiff_t relation_disabled = 0x28;  // OnDisable sets it; ~CRelation logs a delete without it
+
+void on_diplomatic_change_execute(void* change, bool reverse) noexcept {
+    if (void* relation = at<void*>(change, diplomatic_change_relation)) {
+        const std::lock_guard lock(g_history_relations_mutex);
+        g_handed_relations.insert(relation);
+    }
+    g_diplomatic_change_execute.next(change, reverse);
+}
+
+void free_history_relation(void* change) noexcept {
+    if (g_world_teardown.load(std::memory_order_relaxed) <= 0) return;
+    auto& slot = at<void*>(change, diplomatic_change_relation);
+    void* relation = slot;
+    if (!relation) return;
+    {
+        const std::lock_guard lock(g_history_relations_mutex);
+        if (g_handed_relations.contains(relation) || !g_freed_relations.insert(relation).second) return;
+    }
+    // Never handed over, so still the history's own: a CRelation with a vtable in eu4.exe.
+    const auto vtable = reinterpret_cast<std::uintptr_t>(at<void*>(relation, 0));
+    if (vtable < g_image_begin || vtable >= g_image_end) return;
+    slot = nullptr;
+    at<std::uint8_t>(relation, relation_disabled) = 1;  // it was never enabled
+    at<DeleteFn*>(at<void*>(relation, 0), 0)(relation, 1);
+    g_relations_freed.fetch_add(1, std::memory_order_relaxed);
+}
+
+template <std::size_t I> void* on_diplomatic_change_delete(void* change, std::uint32_t flags) noexcept {
+    free_history_relation(change);
+    return g_diplomatic_change_delete[I].previous()(change, flags);
+}
+
+void forget_history_relations() noexcept {
+    const std::lock_guard lock(g_history_relations_mutex);
+    g_handed_relations.clear();
+    g_freed_relations.clear();
+}
+
 // The rulers, heirs and consorts of a save's country history. The history's reader makes
 // one CMonarch, CHeir or CQueen for each monarch = { ... }, heir = { ... } or queen = { ... }
 // and gives it to the change (CMonarchChange +0x40..+0x58, CHeirChange and CQueenChange
@@ -1561,7 +1626,7 @@ void reset_world(Bytes app) {
     restore_null_characters();
     clear_strength_caches();
     const std::size_t fired = free_fired_events();
-    host().info("memory the reset would lose: {} idea group tables, {} estate modifiers, {} center-of-trade modifiers ({} others kept), {} else branches freed, {} fired delayed events freed, {} historical characters freed ({} in the store, {} others kept), {} leaders freed ({} of them mercenaries, {} others kept), {} rebel factions freed ({} others kept), {} AI army agents freed ({} others kept); {} subject modifiers, {} text box pan gestures and {} battle results freed since the last reset",
+    host().info("memory the reset would lose: {} idea group tables, {} estate modifiers, {} center-of-trade modifiers ({} others kept), {} else branches freed, {} fired delayed events freed, {} historical characters freed ({} in the store, {} others kept), {} leaders freed ({} of them mercenaries, {} others kept), {} rebel factions freed ({} others kept), {} AI army agents freed ({} others kept); {} subject modifiers, {} text box pan gestures, {} battle results and {} diplomatic history relations freed since the last reset",
                 idea_groups, estate_values, cot_freed.freed, cot_freed.kept, g_else_branches_freed.load(std::memory_order_relaxed), fired, g_characters_freed.freed,
                 g_characters_freed.in_store, g_characters_freed.other,
                 g_leaders_freed.freed, g_leaders_freed.mercenaries, g_leaders_freed.other,
@@ -1569,7 +1634,8 @@ void reset_world(Bytes app) {
                 g_agents_freed.load(std::memory_order_relaxed), g_agents_kept.load(std::memory_order_relaxed),
                 g_subject_modifiers_freed.exchange(0, std::memory_order_relaxed),
                 g_pan_gestures_freed.exchange(0, std::memory_order_relaxed),
-                g_battles_freed.exchange(0, std::memory_order_relaxed));
+                g_battles_freed.exchange(0, std::memory_order_relaxed),
+                g_relations_freed.exchange(0, std::memory_order_relaxed));
 }
 
 void on_history_move(void* history, const void* date) noexcept {
@@ -1585,6 +1651,10 @@ void on_history_move(void* history, const void* date) noexcept {
 // Run by ResetGame (inside its own window), by the load of a save and by the
 // game's exit; only the first two free the branches.
 void on_history_destroy(void* history) noexcept {
+    // The diplomatic history goes with all its changes: its relations' notes go too.
+    struct ForgetRelations {
+        ~ForgetRelations() { forget_history_relations(); }
+    } forget_relations;
     const bool in_reset = g_free_else.load(std::memory_order_relaxed) > 0;
     if (!in_reset && g_loading_save.load(std::memory_order_relaxed) <= 0) {
         g_history_destroy.next(history);
@@ -1622,6 +1692,8 @@ void on_save_load_task(void* task) noexcept {
     if (const std::size_t fired = free_fired_events()) host().info("a save loaded: {} fired delayed events freed", fired);
     if (const auto battles = g_battles_freed.exchange(0, std::memory_order_relaxed))
         host().info("a save loaded: {} battle results of the old world freed", battles);
+    if (const auto relations = g_relations_freed.exchange(0, std::memory_order_relaxed))
+        host().info("a save loaded: {} relations of the old diplomatic history freed", relations);
 }
 
 // The frontend idler's first act after the hand-over: the outgoing idler is gone.
@@ -1794,6 +1866,20 @@ struct Hamweard : anvil::Plugin {
         h.swap(g_tick, sym::frontend_tick_slot, &on_frontend_tick);
         h.swap(g_restore_device_objects, sym::frontend_restore_slot, &on_frontend_restore);
         h.swap(g_battle_change_delete, sym::battle_change_delete_slot, &on_battle_change_delete);
+        {
+            const auto base = static_cast<std::uintptr_t>(h.game().image_base);
+            const auto* dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(base);
+            const auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS64*>(base + dos->e_lfanew);
+            g_image_begin = base;
+            g_image_end = base + nt->OptionalHeader.SizeOfImage;
+        }
+        h.swap(g_diplomatic_change_delete[0], sym::alliance_change_delete_slot, &on_diplomatic_change_delete<0>);
+        h.swap(g_diplomatic_change_delete[1], sym::guarantee_change_delete_slot, &on_diplomatic_change_delete<1>);
+        h.swap(g_diplomatic_change_delete[2], sym::royal_marriage_change_delete_slot, &on_diplomatic_change_delete<2>);
+        h.swap(g_diplomatic_change_delete[3], sym::casus_belli_change_delete_slot, &on_diplomatic_change_delete<3>);
+        h.swap(g_diplomatic_change_delete[4], sym::improve_relation_change_delete_slot, &on_diplomatic_change_delete<4>);
+        h.swap(g_diplomatic_change_delete[5], sym::dependency_change_delete_slot, &on_diplomatic_change_delete<5>);
+        h.hook(g_diplomatic_change_execute, sym::diplomatic_change_execute, on_diplomatic_change_execute);
         h.swap(g_monarch_change_delete, sym::monarch_change_delete_slot, &on_monarch_change_delete);
         h.swap(g_heir_change_delete, sym::heir_change_delete_slot, &on_heir_change_delete);
         h.swap(g_queen_change_delete, sym::queen_change_delete_slot, &on_queen_change_delete);

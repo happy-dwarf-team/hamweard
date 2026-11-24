@@ -728,6 +728,62 @@ build."eu4-1.37.5-steam-win64" = { rva = 0x1C448D0, points_to = 0x1DD060 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x1C2D6C0, points_to = 0x1DD030 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x1C2D6C0, points_to = 0x1DD030 }
 
+# --- the relations of the diplomatic history, which no change deletes ---
+# Slot 0 of each diplomatic history change's vtable: the deleting destructor of every 0x48-byte
+# history change, which frees the change but not its CRelation (+0x40). Each vtable's slot 16
+# names the change's type; the GOG names come from its eu4.pdb.
+
+[symbol.alliance_change_delete_slot]
+memory = "read"
+note = "slot 0 of CAllianceChange's vtable (type 0x28DD)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1C7ABD0, points_to = 0x4E2020 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1C63788, points_to = 0x4E1EF0 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1C63788, points_to = 0x4E1EF0 }
+
+[symbol.guarantee_change_delete_slot]
+memory = "read"
+note = "slot 0 of CGuaranteeChange's vtable (type 0x28DE)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1C7AB00, points_to = 0x4E2020 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1C635E8, points_to = 0x4E1EF0 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1C635E8, points_to = 0x4E1EF0 }
+
+[symbol.royal_marriage_change_delete_slot]
+memory = "read"
+note = "slot 0 of CRoyalMarriageChange's vtable (type 0x28DF)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1C7A960, points_to = 0x4E2020 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1C63928, points_to = 0x4E1EF0 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1C63928, points_to = 0x4E1EF0 }
+
+[symbol.casus_belli_change_delete_slot]
+memory = "read"
+note = "slot 0 of CCasusBelliChange's vtable (type 0x28ED)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1C7A7C0, points_to = 0x4E2020 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1C636B8, points_to = 0x4E1EF0 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1C636B8, points_to = 0x4E1EF0 }
+
+[symbol.improve_relation_change_delete_slot]
+memory = "read"
+note = "slot 0 of CImproveRelationChange's vtable (type 0x2DDB)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1C7AA30, points_to = 0x4E2020 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1C63518, points_to = 0x4E1EF0 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1C63518, points_to = 0x4E1EF0 }
+
+[symbol.dependency_change_delete_slot]
+memory = "read"
+note = "slot 0 of CDependencyChange's vtable (type 0x35C2, also the other dependencies' changes)"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1C7A890, points_to = 0x4E2020 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1C63858, points_to = 0x4E1EF0 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1C63858, points_to = 0x4E1EF0 }
+
+[symbol.diplomatic_change_execute]
+bytes = "48 89 5C 24 08 48 89 74 24 10 57 48 83 EC 20"
+memory = "code"
+signature = "void (void* change, bool reverse)"
+note = "CDiplomaticHistoryChange::Execute (slot 23 of every diplomatic change's vtable): gives the change's relation to CDiplomacy::AddActive, which keeps it or refuses it (then the change deletes it), or disables it"
+build."eu4-1.37.5-steam-win64" = { rva = 0x4E29E0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x4E28B0 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x4E28B0 }
+
 # --- the characters of a save's country history, which no one deletes ---
 
 [symbol.monarch_change_delete_slot]
