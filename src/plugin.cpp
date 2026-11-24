@@ -20,6 +20,7 @@
 #include "strength_caches.hpp"
 #include "symbols.gen.hpp"
 
+#include <intrin.h>
 #include <windows.h>
 // After windows.h: PSAPI_VERSION 2 maps GetProcessMemoryInfo to kernel32's K32 export.
 #include <psapi.h>
@@ -1215,12 +1216,53 @@ std::size_t g_bitmap_bytes_freed = 0;
 constexpr std::ptrdiff_t bitmap_data = 0x28;  // CBitmap::_pData
 constexpr std::ptrdiff_t bitmap_height = 0x0C, bitmap_row = 0x1C;  // rows, bytes per row
 
+// The generator's tile bitmaps. AddTileToRandomWorld loads each tile's bitmaps the first time
+// it needs them: a new CBitmap (0x38 bytes), CreateBitmap, and the pointer into one of three
+// arrays GenerateRandomWorld makes with _malloca for the generation. The generator frees the
+// arrays but not the bitmaps in them, so every generated world loses its tile bitmaps (lab
+// heap tracer: about 7 MB on the base map, no pointer left to them). Hamweard notes the heap
+// bitmaps CreateBitmap reads at those three calls (by the call's return address) while the
+// generator runs, and deletes them through their vtable once the generator has returned. A
+// generation that ends with an exception keeps them, as the game would.
+std::array<std::uintptr_t, 3> g_tile_bitmap_returns{};  // AddTileToRandomWorld's CreateBitmap calls, +5
+std::vector<void*> g_tile_bitmaps;                       // main thread, in this generation
+
+bool tile_bitmap_call(std::uintptr_t return_address) noexcept {
+    return std::find(g_tile_bitmap_returns.begin(), g_tile_bitmap_returns.end(), return_address) !=
+           g_tile_bitmap_returns.end();
+}
+
+std::size_t delete_tile_bitmaps(std::size_t& bytes) noexcept {
+    std::sort(g_tile_bitmaps.begin(), g_tile_bitmaps.end());
+    g_tile_bitmaps.erase(std::unique(g_tile_bitmaps.begin(), g_tile_bitmaps.end()), g_tile_bitmaps.end());
+    std::size_t deleted = 0;
+    for (void* bitmap : g_tile_bitmaps) {
+        void** const vtable = at<void**>(bitmap, 0);
+        const auto address = reinterpret_cast<std::uintptr_t>(vtable);
+        if (address < g_image_begin || address >= g_image_end) continue;
+        const std::int64_t size =
+            static_cast<std::int64_t>(at<std::int32_t>(bitmap, bitmap_row)) * at<std::int32_t>(bitmap, bitmap_height);
+        using DeleteBitmapFn = void*(void* bitmap, std::uint32_t flags);
+        reinterpret_cast<DeleteBitmapFn*>(vtable[0])(bitmap, 1);  // CBitmap's scalar deleting destructor
+        ++deleted;
+        if (size > 0) bytes += static_cast<std::size_t>(size);
+    }
+    g_tile_bitmaps.clear();
+    return deleted;
+}
+
 // Not noexcept: the game's file exceptions (CFileException) pass through both.
 bool on_bitmap_create(void* bitmap, void* file, bool flag) {
+    const auto return_address = reinterpret_cast<std::uintptr_t>(_ReturnAddress());
     const std::uintptr_t top = t_generator_stack;
     const auto address = reinterpret_cast<std::uintptr_t>(bitmap);
     const std::uintptr_t here = reinterpret_cast<std::uintptr_t>(&top);
-    if (top == 0 || address <= here || address >= top) return g_bitmap_create.next(bitmap, file, flag);
+    if (top == 0) return g_bitmap_create.next(bitmap, file, flag);
+    if (address <= here || address >= top) {
+        const bool ok = g_bitmap_create.next(bitmap, file, flag);
+        if (tile_bitmap_call(return_address)) g_tile_bitmaps.push_back(bitmap);
+        return ok;
+    }
     void* const old = at<void*>(bitmap, bitmap_data);
     const std::int64_t old_bytes =
         static_cast<std::int64_t>(at<std::int32_t>(bitmap, bitmap_row)) * at<std::int32_t>(bitmap, bitmap_height);
@@ -1241,9 +1283,14 @@ void on_generate_random_world(void* randomize, void* count, void* file, const vo
     } scope;
     g_bitmap_buffers_freed = 0;
     g_bitmap_bytes_freed = 0;
+    g_tile_bitmaps.clear();
     g_generate_random_world.next(randomize, count, file, seed);
-    host().info("Random New World: {} bitmap buffers the generator would lose freed ({:.1f} MB)",
-                g_bitmap_buffers_freed, static_cast<double>(g_bitmap_bytes_freed) / (1024.0 * 1024.0));
+    std::size_t tile_bytes = 0;
+    const std::size_t tiles = delete_tile_bitmaps(tile_bytes);
+    host().info("Random New World: {} bitmap buffers the generator would lose freed ({:.1f} MB), {} tile bitmaps "
+                "deleted ({:.1f} MB)",
+                g_bitmap_buffers_freed, static_cast<double>(g_bitmap_bytes_freed) / (1024.0 * 1024.0), tiles,
+                static_cast<double>(tile_bytes) / (1024.0 * 1024.0));
 }
 
 // The map's river bitmap. CMapRandomize::CreateRivers reads the generated world's rivers.bmp
@@ -2007,6 +2054,10 @@ struct Hamweard : anvil::Plugin {
         g_old_trade_nodes.reserve(256);
         h.hook(g_trade_node_database_reset, sym::trade_node_database_reset, on_trade_node_database_reset);
         h.hook(g_bitmap_create, sym::bitmap_create, on_bitmap_create);
+        g_tile_bitmap_returns = {reinterpret_cast<std::uintptr_t>(h.address(sym::tile_bitmap_call_0)) + 5,
+                                 reinterpret_cast<std::uintptr_t>(h.address(sym::tile_bitmap_call_1)) + 5,
+                                 reinterpret_cast<std::uintptr_t>(h.address(sym::tile_bitmap_call_2)) + 5};
+        g_tile_bitmaps.reserve(256);
         h.hook(g_generate_random_world, sym::generate_random_world, on_generate_random_world);
         h.hook(g_create_rivers, sym::create_rivers, on_create_rivers);
         h.swap(g_monarch_change_delete, sym::monarch_change_delete_slot, &on_monarch_change_delete);
