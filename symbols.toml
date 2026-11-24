@@ -804,6 +804,26 @@ bytes = "40 53 48 83 EC 20 48 8B 1D E3 91 8A 01 48 89 15 DC 91 8A 01"
 rva = 0xB66AD0
 bytes = "40 53 48 83 EC 20 48 8B 1D E3 91 8A 01 48 89 15 DC 91 8A 01"
 
+# --- Random New World's working bitmaps, whose first buffers no one frees ---
+
+[symbol.generate_random_world]
+bytes = "4C 89 4C 24 20 4C 89 44 24 18 48 89 54 24 10 48 89 4C 24 08 55 53 56 57"
+memory = "code"
+signature = "void (void* randomize, void* count, void* file, const void* seed)"
+note = "CMapRandomize::GenerateRandomWorld(int&, CFile&, const uint*): makes the three working CBitmaps on its stack (provinces, heightmap, rivers) with buffers of the map's size, then reads the base map's files into them with CBitmap::CreateBitmap"
+build."eu4-1.37.5-steam-win64" = { rva = 0x897CE0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x896F10 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x896F10 }
+
+[symbol.bitmap_create]
+bytes = "48 89 5C 24 10 48 89 74 24 18 55 57 41 56 48 8D 6C 24 90"
+memory = "code"
+signature = "bool (void* bitmap, void* file, bool flag)"
+note = "CBitmap::CreateBitmap(CFile*, bool): reads a BMP and stores a new buffer to _pData (+0x28) over the old one, which it does not free"
+build."eu4-1.37.5-steam-win64" = { rva = 0x1561100 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x1558020 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x1558020 }
+
 # --- the characters of a save's country history, which no one deletes ---
 
 [symbol.monarch_change_delete_slot]

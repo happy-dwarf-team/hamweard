@@ -1197,6 +1197,55 @@ std::size_t free_old_trade_nodes() noexcept {
     return freed;
 }
 
+// Random New World's working bitmaps. CMapRandomize::GenerateRandomWorld makes three CBitmaps
+// on its stack (the provinces, the heightmap and the rivers) with the map's size, which gives
+// each a buffer (CBitmap::_pData, +0x28), and then reads the base map's files into them with
+// CBitmap::CreateBitmap. CreateBitmap allocates a new buffer and stores it over the old one
+// without freeing it, so every world the generator makes loses those three buffers: about
+// 55 MB on the base map (33 MB for the 24-bit provinces, 11 MB each for the 8-bit heightmap
+// and rivers). ~CBitmap frees only the second. While the generator runs, Hamweard frees a
+// buffer CreateBitmap replaced in a bitmap on the generator's stack, after the call, as the
+// destructor would; a bitmap elsewhere, or a call that kept the buffer, is left alone.
+anvil::HookOf<sym::generate_random_world> g_generate_random_world;
+anvil::HookOf<sym::bitmap_create> g_bitmap_create;
+thread_local std::uintptr_t t_generator_stack = 0;  // an address in the hook's frame, above the generator's
+std::size_t g_bitmap_buffers_freed = 0;             // main thread, in this generation
+std::size_t g_bitmap_bytes_freed = 0;
+
+constexpr std::ptrdiff_t bitmap_data = 0x28;  // CBitmap::_pData
+constexpr std::ptrdiff_t bitmap_height = 0x0C, bitmap_row = 0x1C;  // rows, bytes per row
+
+// Not noexcept: the game's file exceptions (CFileException) pass through both.
+bool on_bitmap_create(void* bitmap, void* file, bool flag) {
+    const std::uintptr_t top = t_generator_stack;
+    const auto address = reinterpret_cast<std::uintptr_t>(bitmap);
+    const std::uintptr_t here = reinterpret_cast<std::uintptr_t>(&top);
+    if (top == 0 || address <= here || address >= top) return g_bitmap_create.next(bitmap, file, flag);
+    void* const old = at<void*>(bitmap, bitmap_data);
+    const std::int64_t old_bytes =
+        static_cast<std::int64_t>(at<std::int32_t>(bitmap, bitmap_row)) * at<std::int32_t>(bitmap, bitmap_height);
+    const bool ok = g_bitmap_create.next(bitmap, file, flag);
+    if (old && at<void*>(bitmap, bitmap_data) != old) {
+        game(sym::game_free, old);
+        ++g_bitmap_buffers_freed;
+        if (old_bytes > 0) g_bitmap_bytes_freed += static_cast<std::size_t>(old_bytes);
+    }
+    return ok;
+}
+
+void on_generate_random_world(void* randomize, void* count, void* file, const void* seed) {
+    struct Scope {
+        std::uintptr_t outer = t_generator_stack;
+        Scope() { t_generator_stack = reinterpret_cast<std::uintptr_t>(&outer); }
+        ~Scope() { t_generator_stack = outer; }
+    } scope;
+    g_bitmap_buffers_freed = 0;
+    g_bitmap_bytes_freed = 0;
+    g_generate_random_world.next(randomize, count, file, seed);
+    host().info("Random New World: {} bitmap buffers the generator would lose freed ({:.1f} MB)",
+                g_bitmap_buffers_freed, static_cast<double>(g_bitmap_bytes_freed) / (1024.0 * 1024.0));
+}
+
 // The rulers, heirs and consorts of a save's country history. The history's reader makes
 // one CMonarch, CHeir or CQueen for each monarch = { ... }, heir = { ... } or queen = { ... }
 // and gives it to the change (CMonarchChange +0x40..+0x58, CHeirChange and CQueenChange
@@ -1933,6 +1982,8 @@ struct Hamweard : anvil::Plugin {
         g_trade_node_database = reinterpret_cast<void**>(h.game().image_base + h.value(sym::trade_node_database_reset, "instance"));
         g_old_trade_nodes.reserve(256);
         h.hook(g_trade_node_database_reset, sym::trade_node_database_reset, on_trade_node_database_reset);
+        h.hook(g_bitmap_create, sym::bitmap_create, on_bitmap_create);
+        h.hook(g_generate_random_world, sym::generate_random_world, on_generate_random_world);
         h.swap(g_monarch_change_delete, sym::monarch_change_delete_slot, &on_monarch_change_delete);
         h.swap(g_heir_change_delete, sym::heir_change_delete_slot, &on_heir_change_delete);
         h.swap(g_queen_change_delete, sym::queen_change_delete_slot, &on_queen_change_delete);
