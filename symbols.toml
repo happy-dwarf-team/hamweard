@@ -833,6 +833,54 @@ build."eu4-1.37.5-steam-win64" = { rva = 0x89C830 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x89BA60 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x89BA60 }
 
+[symbol.tile_bitmap_call_0]
+memory = "code"
+note = "AddTileToRandomWorld+0xBC2: call CBitmap::CreateBitmap for a new tile bitmap, which then goes into one of GenerateRandomWorld's tile arrays; no one deletes it"
+
+[symbol.tile_bitmap_call_0.build."eu4-1.37.5-steam-win64"]
+rva = 0x895CF2
+bytes = "E8 09 B4 CC 00"
+
+[symbol.tile_bitmap_call_0.build."eu4-1.37.5.2-gog-win64"]
+rva = 0x894F22
+bytes = "E8 F9 30 CC 00"
+
+[symbol.tile_bitmap_call_0.build."eu4-1.37.5.0-gog-win64"]
+rva = 0x894F22
+bytes = "E8 F9 30 CC 00"
+
+[symbol.tile_bitmap_call_1]
+memory = "code"
+note = "AddTileToRandomWorld+0xEBA: call CBitmap::CreateBitmap for a new tile bitmap, which then goes into one of GenerateRandomWorld's tile arrays; no one deletes it"
+
+[symbol.tile_bitmap_call_1.build."eu4-1.37.5-steam-win64"]
+rva = 0x895FEA
+bytes = "E8 11 B1 CC 00"
+
+[symbol.tile_bitmap_call_1.build."eu4-1.37.5.2-gog-win64"]
+rva = 0x89521A
+bytes = "E8 01 2E CC 00"
+
+[symbol.tile_bitmap_call_1.build."eu4-1.37.5.0-gog-win64"]
+rva = 0x89521A
+bytes = "E8 01 2E CC 00"
+
+[symbol.tile_bitmap_call_2]
+memory = "code"
+note = "AddTileToRandomWorld+0x10B3: call CBitmap::CreateBitmap for a new tile bitmap, which then goes into one of GenerateRandomWorld's tile arrays; no one deletes it"
+
+[symbol.tile_bitmap_call_2.build."eu4-1.37.5-steam-win64"]
+rva = 0x8961E3
+bytes = "E8 18 AF CC 00"
+
+[symbol.tile_bitmap_call_2.build."eu4-1.37.5.2-gog-win64"]
+rva = 0x895413
+bytes = "E8 08 2C CC 00"
+
+[symbol.tile_bitmap_call_2.build."eu4-1.37.5.0-gog-win64"]
+rva = 0x895413
+bytes = "E8 08 2C CC 00"
+
 # --- the characters of a save's country history, which no one deletes ---
 
 [symbol.monarch_change_delete_slot]
