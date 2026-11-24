@@ -784,6 +784,26 @@ build."eu4-1.37.5-steam-win64" = { rva = 0x4E29E0 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x4E28B0 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x4E28B0 }
 
+# --- the trade node definitions, which no one deletes ---
+
+[symbol.trade_node_database_reset]
+memory = "code"
+signature = "void (void* holder, void* database)"
+values.instance = { at = 9, rip_relative = 13 }
+note = "std::unique_ptr<CTradeNodeDatabase>::reset, called by CTradeNodeDatabase::InitializeInstance with a new, empty database: stores it to the global instance (values.instance) and frees the old database's arrays (0x88 bytes), but not the CTradeNodeDefinitions its _TradeNodeDefinitions (+0x00) points to"
+
+[symbol.trade_node_database_reset.build."eu4-1.37.5-steam-win64"]
+rva = 0xB682F0
+bytes = "40 53 48 83 EC 20 48 8B 1D 4B 3B 8C 01 48 89 15 44 3B 8C 01"
+
+[symbol.trade_node_database_reset.build."eu4-1.37.5.2-gog-win64"]
+rva = 0xB66AD0
+bytes = "40 53 48 83 EC 20 48 8B 1D E3 91 8A 01 48 89 15 DC 91 8A 01"
+
+[symbol.trade_node_database_reset.build."eu4-1.37.5.0-gog-win64"]
+rva = 0xB66AD0
+bytes = "40 53 48 83 EC 20 48 8B 1D E3 91 8A 01 48 89 15 DC 91 8A 01"
+
 # --- the characters of a save's country history, which no one deletes ---
 
 [symbol.monarch_change_delete_slot]
