@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.7.1](https://github.com/happy-dwarf-team/hamweard/compare/v1.7.0...v1.7.1) (2026-11-24)
+
+
+### Bug Fixes
+
+* delete the tile bitmaps a Random New World generation leaves ([#129](https://github.com/happy-dwarf-team/hamweard/issues/129)) ([bafe34a](https://github.com/happy-dwarf-team/hamweard/commit/bafe34ad2a6663b3af71b0a753daeae26a6b2890))
+* free the diplomatic history's relations nothing handed to the world ([#124](https://github.com/happy-dwarf-team/hamweard/issues/124)) ([98f46d7](https://github.com/happy-dwarf-team/hamweard/commit/98f46d7d91f12878e3eda381b7475f87f2389224))
+* free the map's river buffer a Random New World replaces ([#128](https://github.com/happy-dwarf-team/hamweard/issues/128)) ([7ecd1c9](https://github.com/happy-dwarf-team/hamweard/commit/7ecd1c91217db7cc5cfd74c88fa7e7b236c13958))
+* free the Random New World bitmap buffers CreateBitmap replaces ([#127](https://github.com/happy-dwarf-team/hamweard/issues/127)) ([d34509a](https://github.com/happy-dwarf-team/hamweard/commit/d34509af11b0dcf2be22ca8ade64e03e6c4ce100))
+* free the trade node definitions the old database leaves at a reset ([#126](https://github.com/happy-dwarf-team/hamweard/issues/126)) ([0f1201d](https://github.com/happy-dwarf-team/hamweard/commit/0f1201dbc3fcf27f3400ab362768c350ebae8f03))
+
 ## [1.7.0](https://github.com/happy-dwarf-team/hamweard/compare/v1.6.0...v1.7.0) (2026-11-22)
 
 
