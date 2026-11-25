@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.7.2](https://github.com/happy-dwarf-team/hamweard/compare/v1.7.1...v1.7.2) (2026-11-25)
+
+
+### Bug Fixes
+
+* delete the history blocks the clear of a country and a Random New World map leave ([#133](https://github.com/happy-dwarf-team/hamweard/issues/133)) ([65385ff](https://github.com/happy-dwarf-team/hamweard/commit/65385ff87c204ad243b2d0325d7e8659098e0813))
+* free the subject modifiers the clear of a country's cached data drops ([#132](https://github.com/happy-dwarf-team/hamweard/issues/132)) ([c21af7d](https://github.com/happy-dwarf-team/hamweard/commit/c21af7dc7689b991b27ac2180e275a8d5348c19c))
+
+
+### Build
+
+* **symbols:** Hamweard now needs Anvil 1.10 or newer (was 1.9), because it checks the game's code by its digest instead of a copy of its bytes; nothing else changes for players ([#130](https://github.com/happy-dwarf-team/hamweard/issues/130)) ([3f0f1ca](https://github.com/happy-dwarf-team/hamweard/commit/3f0f1ca0a83a2e051361ae1f9abb0ba09f400840))
+
 ## [1.7.1](https://github.com/happy-dwarf-team/hamweard/compare/v1.7.0...v1.7.1) (2026-11-24)
 
 
