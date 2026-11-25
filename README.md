@@ -334,6 +334,8 @@ code first, then tested with a second player on 6 November 2026.
 | `0x233D8D0`, the country database | each country keeps a table of its idea groups, which the country's destructor never frees | frees the tables with the game's own `delete[]` just before the world reset |
 | `0x93AE10`, `CCountryModifiers`' destructor | rebuilds a country's modifiers in place and frees the list of its subjects' modifiers, but not the modifiers in it | deletes those modifiers first, in the whole game (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
 | `0x3296B0`, the assignment of `CCountryModifiers` | copies the list of its subjects' modifiers from the source over its own, without deleting the modifiers in its own; the clear of a country's cached data assigns an empty set this way | after the assignment, deletes each old modifier that neither set holds any more, in the whole game |
+| `0x2E1A30`, the clear of a country | empties the country for its next use; frees the list of its main history but not the dated blocks in it | after the clear, deletes those blocks, except any the clear deleted through its second history list, in the whole game (see [Memory a return used to lose](#memory-a-return-used-to-lose)) |
+| `0x8A7AD0`, a Random New World's setup of its land provinces | empties each such province's history from the files by freeing only its list | after the setup, deletes each dated block a province's history no longer holds |
 | `0x2EF4B8`, a country's serial daily update, after its delayed events | fires the delayed events whose days ran out and takes them out of the country's list without deleting them | notes those events, and deletes them after the reset of a return and after a save's load (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
 | `0x4748FC`, the center-of-trade modifier update after its `new`; slot 0 of the static modifier's vtable | gives a country a new modifier per center of trade and loses the old ones; deletes a modifier | notes each new one and forgets one the game deletes; after the reset of a return and after a save's load, deletes those of the old world (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
 | `0x152AAF0`, the text box's destructor | destroys a text box but not the pan gesture it made, unless the box has a scrollbar | first deletes that gesture, in the whole game, when the box's scrollbar never took it over (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
@@ -376,6 +378,14 @@ three more later (18–19 November 2026):
   plugin frees each battle with its entry, only while the world resets or a save loads; the
   rest of the game keeps the stock destructor. At a save loaded from inside a campaign the
   lab saw none freed: the load does not take the old wars apart inside that window.
+- **History a campaign did not use up.** A new campaign moves each country's and province's
+  dated history blocks from the files into the game. The clear of a country, which runs for
+  every country at a reset and at a save's load, empties its main history list by freeing
+  only the list itself, so the blocks still in it lost their last pointer. A Random New World
+  map does the same earlier to the files' history of the land provinces it rewrites. About
+  9,400 entries and 1 MB per return to a new campaign from 1444, and 1.4 MB to a Random New
+  World campaign (lab heap tracer, 25 November 2026). The plugin deletes those blocks right
+  after the game drops them, in the whole game.
 - **Rulers, heirs and consorts of a save's history.** A save's country history has its own
   characters (`monarch = { … }`, `heir = { … }`, `queen = { … }`). Only the characters read
   from `history/` or made in play go into the list the reset deletes; the countries and the

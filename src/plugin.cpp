@@ -124,6 +124,12 @@ constexpr std::ptrdiff_t country_db_countries = 0x118;   // its CCountry* array,
 constexpr std::ptrdiff_t country_has_idea_group = 0x10A0;  // CCountry: has each idea group, a bool[]
 constexpr std::ptrdiff_t subject_modifiers_begin = 0x6440;  // CCountryModifiers: the modifiers its subjects give
 constexpr std::ptrdiff_t subject_modifiers_end = 0x6448;
+constexpr std::ptrdiff_t country_history_first = 0x11C8;  // CCountry: first node of its history's list (root at +0x11A8)
+constexpr std::ptrdiff_t country_history2_first = 0x1208;  // the second history root's (+0x11E8), which the clear deletes
+constexpr std::ptrdiff_t history_node_next = 0x10;        // a list node: the entry at +0, previous at +8, next here
+constexpr std::ptrdiff_t history_entry_first = 0x20;      // a history entry: first node of its children's list
+constexpr std::ptrdiff_t history_provinces_begin = 0x0;   // the history database: its province entries, by province
+constexpr std::ptrdiff_t history_provinces_end = 0x8;
 constexpr std::ptrdiff_t country_delayed_begin = 0x2200;  // CCountry: its delayed events, a vector of pointers
 constexpr std::ptrdiff_t country_delayed_end = 0x2208;
 constexpr std::ptrdiff_t fired_events = 0x168;  // from rbp of the country's serial daily update: the events it fired today (their data)
@@ -225,6 +231,8 @@ anvil::HookOf<sym::if_effect_delete> g_if_effect_delete;
 anvil::HookOf<sym::history_move> g_history_move;
 anvil::HookOf<sym::country_modifiers_destroy> g_country_modifiers_destroy;
 anvil::HookOf<sym::country_modifiers_assign> g_country_modifiers_assign;
+anvil::HookOf<sym::country_clear> g_country_clear;
+anvil::HookOf<sym::rnw_land_provinces> g_rnw_land_provinces;
 anvil::HookOf<sym::history_destroy> g_history_destroy;
 anvil::HookOf<sym::save_load_task> g_save_load_task;
 anvil::HookOf<sym::text_box_destroy> g_text_box_destroy;
@@ -892,6 +900,85 @@ void* on_country_modifiers_assign(void* modifiers, void* source) noexcept {
         g_subject_modifiers_freed.fetch_add(1, std::memory_order_relaxed);
     }
     return result;
+}
+
+// The clear of a country (Steam 0x2E1A30: every country at a reset and a save's load, the
+// country database's creation, and a dynamic country's new slot) empties its history's root
+// (+0x11A8) by freeing only the list's nodes, not the entries they point to; it deletes the
+// entries of its second root (+0x11E8) first. The move of the history into the game state puts
+// each country's dated blocks under that root, so whatever the campaign did not use up loses
+// its last pointer: lab heap tracer, 25 November 2026, about 9,400 entries and 1 MB per return
+// to a new campaign from 1444, with or without a Random New World. The detour keeps the root's entries, lets the clear run and
+// deletes them with slot 0 and 1, as the root's own destructor does, skipping any the clear
+// already deleted through the second root.
+std::atomic<std::uint64_t> g_country_history_freed{0};
+
+void on_country_clear(void* country) noexcept {
+    std::vector<void*> entries;
+    for (Bytes node = at<Bytes>(country, off::country_history_first); node;
+         node = at<Bytes>(node, off::history_node_next)) {
+        if (void* entry = at<void*>(node, 0)) entries.push_back(entry);
+    }
+    std::vector<void*> deleted_by_clear;
+    if (!entries.empty()) {
+        for (Bytes node = at<Bytes>(country, off::country_history2_first); node;
+             node = at<Bytes>(node, off::history_node_next)) {
+            if (void* entry = at<void*>(node, 0)) deleted_by_clear.push_back(entry);
+        }
+    }
+    g_country_clear.next(country);
+    for (void* entry : entries) {
+        if (std::find(deleted_by_clear.begin(), deleted_by_clear.end(), entry) != deleted_by_clear.end()) continue;
+        using DeleteFn = void* (*)(void* entry, std::uint32_t flags);
+        at<DeleteFn>(at<void*>(entry, 0), 0)(entry, 1);
+        g_country_history_freed.fetch_add(1, std::memory_order_relaxed);
+    }
+}
+
+// A Random New World's setup of its land provinces (Steam 0x8A7AD0) empties, for each of them,
+// the province's entry in the history database the same way, freeing only the list's nodes: the
+// dated blocks the files gave those provinces lose their last pointer before the history moves
+// into the game state (lab heap tracer, 25 November 2026: about 500 blocks per Random New World
+// campaign). The detour keeps every province entry's list, lets the setup run, and deletes,
+// with slot 0 and 1, each block an entry no longer holds.
+std::atomic<std::uint64_t> g_province_history_freed{0};
+
+void on_rnw_land_provinces(void* a, void* b, void* c) noexcept {
+    Bytes db = g_history ? reinterpret_cast<Bytes>(*g_history) : nullptr;
+    std::vector<std::vector<void*>> before;
+    if (db) {
+        Bytes* begin = at<Bytes*>(db, off::history_provinces_begin);
+        Bytes* end = at<Bytes*>(db, off::history_provinces_end);
+        if (begin && end > begin) {
+            before.resize(static_cast<std::size_t>(end - begin));
+            for (std::size_t i = 0; i < before.size(); ++i) {
+                if (!begin[i]) continue;
+                for (Bytes node = at<Bytes>(begin[i], off::history_entry_first); node;
+                     node = at<Bytes>(node, off::history_node_next)) {
+                    if (void* entry = at<void*>(node, 0)) before[i].push_back(entry);
+                }
+            }
+        }
+    }
+    g_rnw_land_provinces.next(a, b, c);
+    if (before.empty()) return;
+    Bytes* begin = at<Bytes*>(db, off::history_provinces_begin);
+    Bytes* end = at<Bytes*>(db, off::history_provinces_end);
+    if (!begin || static_cast<std::size_t>(end - begin) != before.size()) return;  // the database changed: leave it
+    for (std::size_t i = 0; i < before.size(); ++i) {
+        if (before[i].empty() || !begin[i]) continue;
+        std::vector<void*> now;
+        for (Bytes node = at<Bytes>(begin[i], off::history_entry_first); node;
+             node = at<Bytes>(node, off::history_node_next)) {
+            now.push_back(at<void*>(node, 0));
+        }
+        for (void* entry : before[i]) {
+            if (std::find(now.begin(), now.end(), entry) != now.end()) continue;
+            using DeleteFn = void* (*)(void* entry, std::uint32_t flags);
+            at<DeleteFn>(at<void*>(entry, 0), 0)(entry, 1);
+            g_province_history_freed.fetch_add(1, std::memory_order_relaxed);
+        }
+    }
 }
 
 // Each text box makes a pan gesture recognizer (+0x210), and only the base GUI object's
@@ -1827,13 +1914,15 @@ void reset_world(Bytes app) {
     restore_null_characters();
     clear_strength_caches();
     const std::size_t fired = free_fired_events();
-    host().info("memory the reset would lose: {} idea group tables, {} estate modifiers, {} center-of-trade modifiers ({} others kept), {} else branches freed, {} fired delayed events freed, {} historical characters freed ({} in the store, {} others kept), {} leaders freed ({} of them mercenaries, {} others kept), {} rebel factions freed ({} others kept), {} AI army agents freed ({} others kept), {} trade node definitions freed; {} subject modifiers, {} text box pan gestures, {} battle results and {} diplomatic history relations freed since the last reset",
+    host().info("memory the reset would lose: {} idea group tables, {} estate modifiers, {} center-of-trade modifiers ({} others kept), {} else branches freed, {} fired delayed events freed, {} historical characters freed ({} in the store, {} others kept), {} leaders freed ({} of them mercenaries, {} others kept), {} rebel factions freed ({} others kept), {} AI army agents freed ({} others kept), {} trade node definitions freed; {} subject modifiers, {} country and {} province history entries, {} text box pan gestures, {} battle results and {} diplomatic history relations freed since the last reset",
                 idea_groups, estate_values, cot_freed.freed, cot_freed.kept, g_else_branches_freed.load(std::memory_order_relaxed), fired, g_characters_freed.freed,
                 g_characters_freed.in_store, g_characters_freed.other,
                 g_leaders_freed.freed, g_leaders_freed.mercenaries, g_leaders_freed.other,
                 g_factions_freed.freed, g_factions_freed.other,
                 g_agents_freed.load(std::memory_order_relaxed), g_agents_kept.load(std::memory_order_relaxed),
                 freed.trade_nodes, g_subject_modifiers_freed.exchange(0, std::memory_order_relaxed),
+                g_country_history_freed.exchange(0, std::memory_order_relaxed),
+                g_province_history_freed.exchange(0, std::memory_order_relaxed),
                 g_pan_gestures_freed.exchange(0, std::memory_order_relaxed),
                 g_battles_freed.exchange(0, std::memory_order_relaxed),
                 g_relations_freed.exchange(0, std::memory_order_relaxed));
@@ -2115,6 +2204,8 @@ struct Hamweard : anvil::Plugin {
         h.hook(g_history_move, sym::history_move, on_history_move);
         h.hook(g_country_modifiers_destroy, sym::country_modifiers_destroy, on_country_modifiers_destroy);
         h.hook(g_country_modifiers_assign, sym::country_modifiers_assign, on_country_modifiers_assign);
+        h.hook(g_country_clear, sym::country_clear, on_country_clear);
+        h.hook(g_rnw_land_provinces, sym::rnw_land_provinces, on_rnw_land_provinces);
         h.hook(g_history_destroy, sym::history_destroy, on_history_destroy);
         h.hook(g_save_load_task, sym::save_load_task, on_save_load_task);
         h.hook(g_text_box_destroy, sym::text_box_destroy, on_text_box_destroy);
