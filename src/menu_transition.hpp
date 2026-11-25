@@ -6,9 +6,9 @@
 
 namespace hamweard {
 
-// The world's PotentialCorruption after a return. The game sets it to 1 when
-// the player enters single player and keeps it through ResetGame: it is what
-// asks for a restart before multiplayer, so 1 stays. ResetGame turns every other
+// The world's potential corruption flag after a return. The game sets it to 1 when
+// the player enters single player and keeps it through reset_game: it is what
+// asks for a restart before multiplayer, so 1 stays. reset_game turns every other
 // non-zero reason into 1, and only -nudge's own reason (2) needs putting back.
 constexpr std::uint32_t corruption_after_return(std::uint32_t after_reset, std::uint32_t before_return) noexcept {
     return after_reset == 1 && before_return > 1 ? before_return : after_reset;
@@ -22,7 +22,7 @@ constexpr bool multiplayer_needs_restart(bool returned, std::uint32_t corruption
     return returned && corruption != 0;
 }
 
-// GetMultiplayerAvailability's "restart first", the only answer that shows the reason.
+// multiplayer_availability's "restart first", the only answer that shows the reason.
 constexpr int multiplayer_must_restart = 5;
 
 // The game answers that only with a Paradox session, so without one (GOG without
@@ -52,7 +52,7 @@ constexpr const char* restart_reason(bool shift, bool multiplayer, std::uint64_t
     return nullptr;
 }
 
-// Whether a ResetGame needs the validation of Hamweard's return (hamweard#88): it
+// Whether a reset_game needs the validation of Hamweard's return (hamweard#88): it
 // reloads the history (keep_history false), Hamweard is not reloading it itself,
 // the game is not in a multiplayer session, and the current idler does not ask
 // for the validation (the frontend's does not). Both questions are callables,

@@ -1,7 +1,7 @@
-// A country's estates (CCountry::_Estates, a CArray<CEstate> of 0xA8-byte elements, begin and
-// end at +0 and +8). Each estate keeps its temporary influence and loyalty modifiers as
-// CArray<CEstateValue*> (+0x58 and +0x70): it deletes one when it expires
-// (CEstate::UpdateInfluenceAndLoyaltyLevels), but ~CEstate frees only the arrays' buffers.
+// A country's estates (CCountry +0x21B0, an array of 0xA8-byte estates, begin and end at +0
+// and +8). Each estate keeps its temporary influence and loyalty modifiers as arrays of
+// estate value pointers (+0x58 and +0x70): it deletes one when it expires (in its update of
+// its influence and loyalty), but the estate's destructor frees only the arrays' buffers.
 #pragma once
 
 #include <cstddef>
@@ -16,7 +16,7 @@ inline constexpr std::size_t estate_size = 0xA8;
 inline constexpr std::ptrdiff_t estate_value_arrays[2] = {0x58, 0x70};
 
 // The values of every estate of one country, and each array emptied (end = begin), so that
-// ~CEstate then frees only the buffers. The caller deletes the values.
+// the estate's destructor then frees only the buffers. The caller deletes the values.
 inline std::vector<std::uint8_t*> take_estate_values(std::uint8_t* country) {
     std::vector<std::uint8_t*> values;
     std::uint8_t* begin = nullptr;

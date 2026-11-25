@@ -21,17 +21,17 @@ function(note_of name out)
     set(${out} "${note}" PARENT_SCOPE)
 endfunction()
 
-# The game's names (GOG eu4.pdb) of the functions the stock Exit to Menu calls.
-foreach(pair "in_game_exit=CInGameIdler::NiceMultiplayerExit"
-             "campaign_exit_cleanup=EU4SaveGameHelper::HandleIronmanSave"
-             "notifications_destroy=CAlertManager::ClearAllDiploIcons"
+# What the functions the stock Exit to Menu calls do, in the review's words.
+foreach(pair "in_game_exit=leaves the session for a new single-player one"
+             "campaign_exit_cleanup=saves an ironman campaign"
+             "notifications_destroy=pending diplomatic icons"
              "reset_game=slot \\+0x140")
     string(REPLACE "=" ";" pair "${pair}")
     list(GET pair 0 name)
     list(GET pair 1 expected)
     note_of(${name} note)
     if(NOT note MATCHES "${expected}")
-        fail("the note of ${name} does not name ${expected}: ${note}")
+        fail("the note of ${name} does not say ${expected}: ${note}")
     endif()
 endforeach()
 

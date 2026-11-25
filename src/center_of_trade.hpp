@@ -1,7 +1,8 @@
-// The center-of-trade modifiers a country gets for its provinces (UpdateCenterOfTradeGlobalModifier:
-// operator new of a 0x178-byte CStaticModifier per province, then CCountry::AddTemporaryModifier).
-// CCountry::DeleteTemporaryModifier, its "if" variant and ~CCountry delete only the list entry
-// (entry+0x30 is the modifier), so every modifier is lost once its entry goes. A country's
+// The center-of-trade modifiers a country gets for its provinces (the center-of-trade modifier
+// update: operator new of a 0x178-byte static modifier per province, then the country's add of a
+// temporary modifier). The country's removal of a temporary modifier, its "if" variant and
+// CCountry's destructor delete only the list entry (entry+0x30 is the modifier), so every
+// modifier is lost once its entry goes. A country's
 // temporary modifiers are a list: head at +0x1F0, nodes of 0x20 bytes (entry, prev, next, flag).
 #pragma once
 
