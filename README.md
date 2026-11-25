@@ -383,9 +383,9 @@ three more later (18–19 November 2026):
   every country at a reset and at a save's load, empties its main history list by freeing
   only the list itself, so the blocks still in it lost their last pointer. A Random New World
   map does the same earlier to the files' history of the land provinces it rewrites. About
-  2,500 blocks and 1.4 MB per return to a Random New World campaign (lab heap tracer,
-  25 November 2026). The plugin deletes those blocks right after the game drops them, in the
-  whole game.
+  9,400 entries and 1 MB per return to a new campaign from 1444, and 1.4 MB to a Random New
+  World campaign (lab heap tracer, 25 November 2026). The plugin deletes those blocks right
+  after the game drops them, in the whole game.
 - **Rulers, heirs and consorts of a save's history.** A save's country history has its own
   characters (`monarch = { … }`, `heir = { … }`, `queen = { … }`). Only the characters read
   from `history/` or made in play go into the list the reset deletes; the countries and the

@@ -907,8 +907,8 @@ void* on_country_modifiers_assign(void* modifiers, void* source) noexcept {
 // (+0x11A8) by freeing only the list's nodes, not the entries they point to; it deletes the
 // entries of its second root (+0x11E8) first. The move of the history into the game state puts
 // each country's dated blocks under that root, so whatever the campaign did not use up loses
-// its last pointer: lab heap tracer, 25 November 2026, about 2,000 blocks and 1 MB per return
-// to a Random New World campaign. The detour keeps the root's entries, lets the clear run and
+// its last pointer: lab heap tracer, 25 November 2026, about 9,400 entries and 1 MB per return
+// to a new campaign from 1444, with or without a Random New World. The detour keeps the root's entries, lets the clear run and
 // deletes them with slot 0 and 1, as the root's own destructor does, skipping any the clear
 // already deleted through the second root.
 std::atomic<std::uint64_t> g_country_history_freed{0};
