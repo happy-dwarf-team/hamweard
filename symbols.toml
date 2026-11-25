@@ -586,6 +586,16 @@ build."eu4-1.37.5-steam-win64" = { rva = 0x93AE10 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x93A040 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x93A040 }
 
+[symbol.country_modifiers_assign]
+sha256 = "601EA15E0C363C8AA87FABB67064753F2C7170F266CD3FA02E294B76F645E23F"
+size = 25
+memory = "code"
+signature = "void* (void* modifiers, void* source)"
+note = "the assignment of a country's modifier set: copies the source's array of the modifiers its subjects give (+0x6440) over the destination's without deleting the modifiers in it; its one caller, the clear of a country's cached data, assigns a freshly built empty set"
+build."eu4-1.37.5-steam-win64" = { rva = 0x3296B0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x329640 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x329640 }
+
 [symbol.history_move]
 sha256 = "8AB34DD133CB68EE4F74D00BD1A5559E2644E59AD7A2674D36E2998DAFC61F81"
 size = 18

@@ -224,6 +224,7 @@ anvil::HookOf<sym::multiplayer_availability> g_multiplayer_availability;
 anvil::HookOf<sym::if_effect_delete> g_if_effect_delete;
 anvil::HookOf<sym::history_move> g_history_move;
 anvil::HookOf<sym::country_modifiers_destroy> g_country_modifiers_destroy;
+anvil::HookOf<sym::country_modifiers_assign> g_country_modifiers_assign;
 anvil::HookOf<sym::history_destroy> g_history_destroy;
 anvil::HookOf<sym::save_load_task> g_save_load_task;
 anvil::HookOf<sym::text_box_destroy> g_text_box_destroy;
@@ -862,6 +863,35 @@ void on_country_modifiers_destroy(void* modifiers) noexcept {
         }
     }
     g_country_modifiers_destroy.next(modifiers);
+}
+
+// The other way the game drops them: the clear of a country's cached data (Steam 0x329230,
+// from the clear of every country at a reset and a save's load, and from the recalculation of
+// the cached data at a campaign's start) builds an empty set of modifiers and assigns it over
+// the country's. The assignment copies the array of the modifiers its subjects give over the
+// old one, so the old modifiers lose their only pointer (lab heap tracer, 25 November 2026:
+// about 40 per campaign on the 1719 save). The detour keeps the old array's pointers, lets the
+// assignment run, and deletes, as the destructor detour above does, each one the object no
+// longer holds and the source does not hold either. It does nothing for an assignment to itself.
+void* on_country_modifiers_assign(void* modifiers, void* source) noexcept {
+    if (modifiers == source) return g_country_modifiers_assign.next(modifiers, source);
+    void** begin = at<void**>(modifiers, off::subject_modifiers_begin);
+    void** end = at<void**>(modifiers, off::subject_modifiers_end);
+    std::vector<void*> old;
+    if (begin && end > begin) old.assign(begin, end);
+    void* result = g_country_modifiers_assign.next(modifiers, source);
+    const auto holds = [](void* object, const void* modifier) {
+        void** b = at<void**>(object, off::subject_modifiers_begin);
+        void** e = at<void**>(object, off::subject_modifiers_end);
+        return b && std::find(b, e, modifier) != e;
+    };
+    for (void* modifier : old) {
+        if (!modifier || holds(modifiers, modifier) || holds(source, modifier)) continue;
+        using DeleteFn = void* (*)(void* modifier, std::uint32_t flags);
+        at<DeleteFn>(at<void*>(modifier, 0), 0)(modifier, 1);
+        g_subject_modifiers_freed.fetch_add(1, std::memory_order_relaxed);
+    }
+    return result;
 }
 
 // Each text box makes a pan gesture recognizer (+0x210), and only the base GUI object's
@@ -2084,6 +2114,7 @@ struct Hamweard : anvil::Plugin {
         h.hook(g_if_effect_delete, sym::if_effect_delete, on_if_effect_delete);
         h.hook(g_history_move, sym::history_move, on_history_move);
         h.hook(g_country_modifiers_destroy, sym::country_modifiers_destroy, on_country_modifiers_destroy);
+        h.hook(g_country_modifiers_assign, sym::country_modifiers_assign, on_country_modifiers_assign);
         h.hook(g_history_destroy, sym::history_destroy, on_history_destroy);
         h.hook(g_save_load_task, sym::save_load_task, on_save_load_task);
         h.hook(g_text_box_destroy, sym::text_box_destroy, on_text_box_destroy);
