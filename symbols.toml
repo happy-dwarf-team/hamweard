@@ -606,6 +606,16 @@ build."eu4-1.37.5-steam-win64" = { rva = 0x2E1A30 }
 build."eu4-1.37.5.2-gog-win64" = { rva = 0x2E19E0 }
 build."eu4-1.37.5.0-gog-win64" = { rva = 0x2E19E0 }
 
+[symbol.rnw_land_provinces]
+sha256 = "2C542A7F5893A06D45505E9D07879C986A17540B7EB179E8E6949B44C473D6CD"
+size = 32
+memory = "code"
+signature = "void (void* a, void* b, void* c)"
+note = "a Random New World's setup of its land provinces: for each, it empties the province's entry in the history database by freeing only the list's nodes, not the dated blocks they point to"
+build."eu4-1.37.5-steam-win64" = { rva = 0x8A7AD0 }
+build."eu4-1.37.5.2-gog-win64" = { rva = 0x8A6D00 }
+build."eu4-1.37.5.0-gog-win64" = { rva = 0x8A6D00 }
+
 [symbol.history_move]
 sha256 = "8AB34DD133CB68EE4F74D00BD1A5559E2644E59AD7A2674D36E2998DAFC61F81"
 size = 18
