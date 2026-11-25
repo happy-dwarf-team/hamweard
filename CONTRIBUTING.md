@@ -38,7 +38,9 @@ give. The reset oracle checks it. Run it before every release that changes the r
 `reset_world`, anything Hamweard keeps at the first menu and restores after `reset_game`,
 the teardown, or the symbols they use. The Random New World and canal arms are needed for a
 change to the map copy; their fresh side is the vanilla arm's. A pull request that fixes a carry-over puts the
-arms it touches in its evidence.
+arms it touches in its evidence. The lab (`eu4-engine-lab`, private) runs the oracle with
+`scripts/hamweard-oracle.ps1`: one file per arm of the table below, and a comparison that applies the rules of
+this section and prints each arm's verdict.
 
 Each arm is a pair of runs of the same game with the same plugins, and the same start in both:
 
