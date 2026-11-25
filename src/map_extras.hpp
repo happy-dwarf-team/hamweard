@@ -11,7 +11,7 @@
 
 namespace hamweard {
 
-// The game's arrays (CArray, std::vector's layout): begin, end and capacity at +0, +8, +0x10.
+// The game's arrays (std::vector's layout): begin, end and capacity at +0, +8, +0x10.
 inline constexpr std::ptrdiff_t array_begin = 0, array_end = 8, array_capacity = 0x10;
 // MSVC's allocator puts a header before blocks of this size and above, which a plain operator
 // delete would not find: Hamweard reallocates only below it.
@@ -62,7 +62,7 @@ void put_array(std::uint8_t* array, std::span<const std::uint8_t> saved, Alloc&&
 }
 
 // Where the kept parts are in the live map: fixed fields (spans) and arrays (the address of
-// each CArray), in the same order at every call.
+// each array), in the same order at every call.
 struct MapExtrasView {
     std::vector<std::span<std::uint8_t>> fields;
     std::vector<std::uint8_t*> arrays;

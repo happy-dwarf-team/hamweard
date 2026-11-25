@@ -19,14 +19,23 @@ Titles follow [Conventional Commits](https://www.conventionalcommits.org/):
 Before 1.0.0 a breaking change (`feat!:` with a `BREAKING CHANGE:` paragraph) bumps the
 minor version.
 
-When you change `symbols.toml`, run the `-check` target with `EU4_EXE` set and commit
+**Game code and names.** This repository holds no code of eu4.exe and no
+names from its debug symbols. `symbols.toml` verifies each address with
+`sha256` and `size`, not with the game's bytes; write `bytes` while you work
+and run Anvil's `tools/symbols-to-digest.py` before you commit. Name the
+game's functions, classes and fields by their address and what they do,
+unless eu4.exe itself shows the name (its RTTI or its own log and assert
+texts). Our own symbol keys, addresses, offsets and signatures are fine.
+
+When you change `symbols.toml`, run the `-check` target with `EU4_EXE` set to the
+`eu4.exe` of each build in `builds` (Steam 1.37.5, GOG 1.37.5.2 and 1.37.5.0) and commit
 the new `symbols.lock` in the same pull request; CI fails on a stale lock.
 
 ## The reset oracle
 
 Hamweard's promise is that a campaign after a return is the campaign a fresh start would
 give. The reset oracle checks it. Run it before every release that changes the reset:
-`reset_world`, anything Hamweard keeps at the first menu and restores after `ResetGame`,
+`reset_world`, anything Hamweard keeps at the first menu and restores after `reset_game`,
 the teardown, or the symbols they use. The Random New World and canal arms are needed for a
 change to the map copy; their fresh side is the vanilla arm's. A pull request that fixes a carry-over puts the
 arms it touches in its evidence.

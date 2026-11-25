@@ -69,11 +69,11 @@ constexpr std::ptrdiff_t widget_name_slot = 0xA0;        // returns the .gui nam
 constexpr std::ptrdiff_t widget_visible = 0xC5;          // as Tongs reads it
 constexpr std::ptrdiff_t widget_hide_slot = 0x90;        // of the widget, as 0x82B470 hides the menu bar
 constexpr std::ptrdiff_t dialog_name = 0x118;            // eu3dialog: the .gui name of its window (std::string)
-constexpr std::ptrdiff_t goto_box_window = 0x30;         // CGotoBox::_pWindow, "goto_box"
-constexpr std::ptrdiff_t tutorial_minimized = 0xE0;      // CTutorial::_pMinimized, "tutorial_minimized"
-constexpr std::ptrdiff_t game_setup_view = 0x28;         // CGameSetup's CFrontEndView base, as CFrontEnd::_Views holds it
-constexpr std::ptrdiff_t game_setup_start_dialog = 0x2CA8;  // CGameSetup::_pStartDialog
-constexpr std::ptrdiff_t start_dialog_ironman = 0x298;   // CStartGameDialog::_pIronmanSaveSelect
+constexpr std::ptrdiff_t goto_box_window = 0x30;         // the goto box's window, "goto_box"
+constexpr std::ptrdiff_t tutorial_minimized = 0xE0;      // the tutorial's minimized button, "tutorial_minimized"
+constexpr std::ptrdiff_t game_setup_view = 0x28;         // CGameSetup's view base, as the main menu's view list holds it
+constexpr std::ptrdiff_t game_setup_start_dialog = 0x2CA8;  // CGameSetup's start game dialog
+constexpr std::ptrdiff_t start_dialog_ironman = 0x298;   // the start game dialog's ironman save selection
 
 constexpr std::ptrdiff_t lobby_id = 0x1C0;
 constexpr std::ptrdiff_t lobby_hosting = 0x299;
@@ -86,86 +86,86 @@ constexpr std::ptrdiff_t lobby_search_call = 0x310;
 
 constexpr std::ptrdiff_t world_provinces_begin = 0x1C90;
 constexpr std::ptrdiff_t world_provinces_end = 0x1C98;
-constexpr std::ptrdiff_t world_province_objects = 0x1CA8;  // CProvince[], as ResetGame and CGameSetup walk them
+constexpr std::ptrdiff_t world_province_objects = 0x1CA8;  // CProvince[], as reset_game and CGameSetup walk them
 constexpr std::ptrdiff_t province_size = 0x2E10;
-constexpr std::ptrdiff_t world_graphics_owner = 0x1E00;  // the current idler, as CGameSetup::Back reads it
+constexpr std::ptrdiff_t world_graphics_owner = 0x1E00;  // the current idler, as the game setup's Back reads it
 constexpr std::ptrdiff_t world_potential_corruption = 0x23B4;
 
 constexpr std::ptrdiff_t map_province_graphics = 0x70;
 constexpr std::ptrdiff_t province_graphics_size = 0x1400;
 
-constexpr std::ptrdiff_t canal_list_count = 0x14;  // ApplyCanalLogic's argument, a CPdxArray
+constexpr std::ptrdiff_t canal_list_count = 0x14;  // canal_logic_apply's argument, a CPdxArray
 
-constexpr std::ptrdiff_t map_templates_begin = 0x6C0;  // CMap: the province templates
+constexpr std::ptrdiff_t map_templates_begin = 0x6C0;  // the map: the province templates
 constexpr std::ptrdiff_t map_templates_end = 0x6C8;
 constexpr std::ptrdiff_t map_naval_count = 0x17C0;
 constexpr std::ptrdiff_t map_naval_distance = 0x17C8;
 constexpr std::ptrdiff_t template_size = 0x230;
-constexpr std::ptrdiff_t template_neighbours_begin = 0x168;  // CProvinceTemplate::_Neighbours
+constexpr std::ptrdiff_t template_neighbours_begin = 0x168;  // a province template's neighbours
 constexpr std::ptrdiff_t template_neighbours_end = 0x170;
-constexpr std::ptrdiff_t template_passable = 0x180;  // CProvinceTemplate::_PassableNeighbors (CArray<int>)
-constexpr std::ptrdiff_t template_trees = 0x1E0;     // _NumTreeTypes (CArray<pair<CTerrain*, int>>)
-constexpr std::ptrdiff_t template_flags = 0x229;     // _IsTropical.._bHasPixels, then _bIsIsland and its straits flag
+constexpr std::ptrdiff_t template_passable = 0x180;  // its passable neighbours (an int array)
+constexpr std::ptrdiff_t template_trees = 0x1E0;     // its tree counts (an array of terrain pointer and count)
+constexpr std::ptrdiff_t template_flags = 0x229;     // its climate and pixel flags, then its island and straits flags
 constexpr std::size_t template_flags_size = 2;
-constexpr std::ptrdiff_t colonial_def_scalars = 0x10;  // CColonialRegionDefinition: before its province list
+constexpr std::ptrdiff_t colonial_def_scalars = 0x10;  // a colonial region definition: before its province list
 constexpr std::size_t colonial_def_scalars_size = 0x18;
-constexpr std::ptrdiff_t colonial_def_provinces = 0x50;  // CArray<int>
+constexpr std::ptrdiff_t colonial_def_provinces = 0x50;  // an int array
 
-constexpr std::ptrdiff_t idler_session_slot = 0x80;  // GetSession
-constexpr std::ptrdiff_t idler_validates_history_slot = 0x140;  // asked by ResetGame before PostValidateEffects
-constexpr std::ptrdiff_t session_is_dummy = 0x55;    // CSession::_bIsDummy, single player's session
+constexpr std::ptrdiff_t idler_session_slot = 0x80;  // returns the idler's session
+constexpr std::ptrdiff_t idler_validates_history_slot = 0x140;  // asked by reset_game before history_post_validate
+constexpr std::ptrdiff_t session_is_dummy = 0x55;    // CSession: set on single player's session
 
-constexpr std::ptrdiff_t achievements_loaded_begin = 0x88;  // CArray<short>
+constexpr std::ptrdiff_t achievements_loaded_begin = 0x88;  // a short array
 constexpr std::ptrdiff_t achievements_loaded_end = 0x90;
 
-constexpr std::ptrdiff_t if_effect_else = 0xF0;          // CIfEffect::_pElse, the next else_if/else branch
-constexpr std::ptrdiff_t country_db_count = 0x100;       // CCountryDataBase::_nNumberOfCountries
-constexpr std::ptrdiff_t country_db_countries = 0x118;   // its CCountry* array, as ReadCountryFiles walks it
-constexpr std::ptrdiff_t country_has_idea_group = 0x10A0;  // CCountry::_HasIdeaGroup, a bool[]
-constexpr std::ptrdiff_t subject_modifiers_begin = 0x6440;  // CCountryModifiers::ModifiersFromSubjectToOverlord
+constexpr std::ptrdiff_t if_effect_else = 0xF0;          // the if effect's next else_if/else branch
+constexpr std::ptrdiff_t country_db_count = 0x100;       // the country database's country count
+constexpr std::ptrdiff_t country_db_countries = 0x118;   // its CCountry* array, as the read of the country files walks it
+constexpr std::ptrdiff_t country_has_idea_group = 0x10A0;  // CCountry: has each idea group, a bool[]
+constexpr std::ptrdiff_t subject_modifiers_begin = 0x6440;  // CCountryModifiers: the modifiers its subjects give
 constexpr std::ptrdiff_t subject_modifiers_end = 0x6448;
-constexpr std::ptrdiff_t country_delayed_begin = 0x2200;  // CCountry::_DelayedEvents, a vector of CDelayedEvent*
+constexpr std::ptrdiff_t country_delayed_begin = 0x2200;  // CCountry: its delayed events, a vector of pointers
 constexpr std::ptrdiff_t country_delayed_end = 0x2208;
-constexpr std::ptrdiff_t fired_events = 0x168;  // DailyUpdateSerial's rbp: the events it fired today (their data)
+constexpr std::ptrdiff_t fired_events = 0x168;  // from rbp of the country's serial daily update: the events it fired today (their data)
 constexpr std::ptrdiff_t fired_count = 0x174;   // and their count
 
-constexpr std::ptrdiff_t monarch_religion = 0x58;   // CMonarch::_pReligion
-constexpr std::ptrdiff_t monarch_culture = 0x60;    // CMonarch::_pCulture
-constexpr std::ptrdiff_t monarch_dynasty = 0x68;    // CMonarch::_pDynasty
-constexpr std::ptrdiff_t monarch_flags = 0xA0;      // CMonarch::_RulerFlags, a CIntegerFlags
-constexpr std::ptrdiff_t flags_begin = 0x10;        // CIntegerFlags::_Flags, a CArray<short>
+constexpr std::ptrdiff_t monarch_religion = 0x58;   // CMonarch: its religion
+constexpr std::ptrdiff_t monarch_culture = 0x60;    // CMonarch: its culture
+constexpr std::ptrdiff_t monarch_dynasty = 0x68;    // CMonarch: its dynasty
+constexpr std::ptrdiff_t monarch_flags = 0xA0;      // CMonarch: its ruler flags, a flag set
+constexpr std::ptrdiff_t flags_begin = 0x10;        // a flag set's flags, a short array
 constexpr std::ptrdiff_t flags_end = 0x18;
-constexpr std::ptrdiff_t culture_name = 0x48;       // CCulture's tag (std::string)
+constexpr std::ptrdiff_t culture_name = 0x48;       // a culture's tag (std::string)
 
-constexpr std::ptrdiff_t gui_gestures_begin = 0x90;   // CGuiObject: the recognizers it owns, {pointer, owned} of 16 bytes
+constexpr std::ptrdiff_t gui_gestures_begin = 0x90;   // a GUI object: the gesture recognizers it owns, {pointer, owned} of 16 bytes
 constexpr std::ptrdiff_t gui_gestures_end = 0x98;
 constexpr std::ptrdiff_t gui_gesture_size = 0x10;
-constexpr std::ptrdiff_t text_box_observer = 0xC8;    // CInstantTextBox's CGestureObserver base
-constexpr std::ptrdiff_t text_box_pan = 0x210;        // CInstantTextBox::_pPanGesture
-constexpr std::ptrdiff_t gesture_fingers_begin = 0x8;    // CGestureRecognizer::_TrackedFingers
+constexpr std::ptrdiff_t text_box_observer = 0xC8;    // the text box's gesture observer base
+constexpr std::ptrdiff_t text_box_pan = 0x210;        // the text box's pan gesture
+constexpr std::ptrdiff_t gesture_fingers_begin = 0x8;    // a gesture recognizer's tracked fingers
 constexpr std::ptrdiff_t gesture_fingers_end = 0x10;
-constexpr std::ptrdiff_t gesture_observers_begin = 0x28;  // CGestureRecognizer::_Observers, CGestureObserver*
+constexpr std::ptrdiff_t gesture_observers_begin = 0x28;  // its observers (observer pointers)
 constexpr std::ptrdiff_t gesture_observers_end = 0x30;
-constexpr std::ptrdiff_t gesture_waiters_begin = 0x40;    // CGestureRecognizer::_FailureWaiters
+constexpr std::ptrdiff_t gesture_waiters_begin = 0x40;    // the recognizers waiting for it to fail
 constexpr std::ptrdiff_t gesture_waiters_end = 0x48;
 }  // namespace off
 
-// The offsets that differ on the GOG builds 1.37.5.2 and 1.37.5.0 (their
-// eu4.pdb, and the same code in all builds): CInGameIdler's fields from its
-// CEU4Application pointer on, and CFrontEnd's view state and size.
-// CEU4Application, the widgets and the world's PotentialCorruption have the
+// The offsets that differ on the GOG builds 1.37.5.2 and 1.37.5.0 (matched
+// by the same code in all builds): the in-game idler's fields from its
+// application pointer on, and the main menu's view state and size. The
+// application, the widgets and the world's potential corruption flag have the
 // same layout. Both GOG builds have the same layouts.
 struct Layout {
     std::ptrdiff_t idler_app;
     std::ptrdiff_t idler_minimap;
     std::ptrdiff_t idler_exit_flag;
     std::ptrdiff_t idler_notifications;
-    std::ptrdiff_t menu_pending;  // CFrontEnd's view state
+    std::ptrdiff_t menu_pending;  // the main menu's view state
     std::size_t main_menu_size;
-    std::ptrdiff_t frontend_right_click;  // CFrontEnd::_pRightClickWindow
-    std::ptrdiff_t idler_goto_box;        // CInGameIdler::_pGotoBox
-    std::ptrdiff_t idler_tutorial;        // CInGameIdler::_pTutorial
-    std::ptrdiff_t idler_right_click;     // CInGameIdler::_pRightClickWindow
+    std::ptrdiff_t frontend_right_click;  // the main menu's right-click window
+    std::ptrdiff_t idler_goto_box;        // the in-game idler's goto box
+    std::ptrdiff_t idler_tutorial;        // its tutorial
+    std::ptrdiff_t idler_right_click;     // its right-click window
 };
 constexpr Layout kSteam{0x330, 0x10E0, 0x12E9, 0x1400, 0x900, 0xB48, 0x7C8, 0x1428, 0x1440, 0x1448};
 constexpr Layout kGog{0x328, 0x10D0, 0x12D9, 0x13F0, 0x8F0, 0xB38, 0x7B8, 0x1418, 0x1430, 0x1438};
@@ -180,11 +180,11 @@ anvil::PointerSwap<TickFn> g_tick;
 anvil::PointerSwap<RestoreFn> g_restore_device_objects;
 std::uintptr_t* g_world = nullptr;    // the global holding the root object
 std::uintptr_t* g_history = nullptr;  // the global holding the history
-std::uintptr_t* g_trigger_db = nullptr;  // CTriggerDataBase's instance: alive only while the game loads
+std::uintptr_t* g_trigger_db = nullptr;  // the trigger database's instance: alive only while the game loads
 std::uint8_t* g_custom_nation_used = nullptr;  // only a restart clears it, and the lobby reads it
 std::uintptr_t* g_country_db = nullptr;
-const std::uintptr_t* g_strength_cache_list = nullptr;   // CacheList (strength_caches.hpp)
-const std::uintptr_t* g_strength_cache_mutex = nullptr;  // CacheListMutex
+const std::uintptr_t* g_strength_cache_list = nullptr;   // the cache list (strength_caches.hpp)
+const std::uintptr_t* g_strength_cache_mutex = nullptr;  // its mutex
 void* g_lobby_vtable = nullptr;  // null on a build without the Steam lobby (GOG)
 void* g_minimap_vtable = nullptr;
 UnregisterCallResultFn* g_unregister_call_result = nullptr;
@@ -297,7 +297,7 @@ void leave_steam_session(Bytes app) {
                 at<std::uint64_t>(lobby, off::lobby_join_call) != 0, search_call != 0,
                 at<std::uint8_t>(lobby, off::lobby_hosting));
     // Cancel the lobby search with the same import and callback object as
-    // CSteamLobby's destructor, without destroying the reusable lobby.
+    // the Steam lobby's destructor, without destroying the reusable lobby.
     if (search_call && g_unregister_call_result) {
         g_unregister_call_result(lobby + off::lobby_search_callback, search_call);
         search_call = 0;
@@ -312,9 +312,9 @@ void leave_steam_session(Bytes app) {
 }
 
 // Once the new main menu owns the frame, has finished its first update and the
-// checksum is ready. The game's own PotentialCorruption flag stays set: this
+// checksum is ready. The game's own potential corruption flag stays set: this
 // process has played, so the game asks for a restart before multiplayer
-// (MUST_RESTART_TO_PLAY_MP). ResetGame only flattens -nudge's reason to 1.
+// (MUST_RESTART_TO_PLAY_MP). reset_game only flattens -nudge's reason to 1.
 void finish_return(void* idler) {
     if (idler != g_pending_menu_idler || !g_pending_menu_app) return;
     Bytes app = g_pending_menu_app;
@@ -393,11 +393,11 @@ void release_minimap(Bytes idler) {
 
 std::string_view game_string(const void* string) noexcept;
 
-// Unit banners and the other map objects of the last campaign: ResetGame clears
+// Unit banners and the other map objects of the last campaign: reset_game clears
 // them late, and the new menu's first act is to draw the loading screen over the
-// GUI root, so they stood on its picture until the menu. This is ResetGame's own
+// GUI root, so they stood on its picture until the menu. This is reset_game's own
 // loop, run before that. The world's graphics owner is the idler that is gone,
-// and Clear reads it.
+// and province_graphics_clear reads it.
 void clear_province_graphics(Bytes app, void* idler) {
     Bytes map = at<Bytes>(app, off::app_graphical_map);
     Bytes w = world();
@@ -410,12 +410,13 @@ void clear_province_graphics(Bytes app, void* idler) {
         game(sym::province_graphics_clear, graphics + i * off::province_graphics_size);
 }
 
-// ResetGame reloads the history files, and their triggers bind names like a
-// government reform only in the validation InitGame runs once, through a database
-// that exists only there. So a history effect's has_reform stayed false after a
-// return, which changed a new Anbennar campaign (lab: S9). The database is created
-// for the reset and used before its first walk, where InitGame uses it, then the
-// effects get the validation ResetGame runs only for an in-game idler.
+// reset_game reloads the history files, and their triggers bind names like a
+// government reform only in the validation the game's first initialisation runs
+// once, through a database that exists only there. So a history effect's
+// has_reform stayed false after a return, which changed a new Anbennar campaign
+// (lab: S9). The database is created for the reset and used before its first
+// walk, where that initialisation uses it, then the effects get the validation
+// reset_game runs only for an in-game idler.
 bool g_history_reloading = false;
 
 void validate_reloaded_history() {
@@ -429,7 +430,7 @@ void validate_reloaded_history() {
 }
 
 // The new menu's game setup walks the history from the world's date back to the
-// start date (CGameSetup::ResetScreen). A world about to be replaced does not
+// start date (the game setup's screen reset). A world about to be replaced does not
 // need that, and after a start from a later date the walk reads relations the
 // world has already taken from the history, and crashes.
 void on_history_execute(void* history, const void* from, const void* to) noexcept {
@@ -594,8 +595,8 @@ void keep_map_before_change() {
 }
 
 // After the reset: the map as it was kept, or false when it cannot be put back exactly.
-// The game's Clear rebuilt the map's colonial regions from the definitions Random New World
-// had filled, and CMap::AddColonialRegion gave each of their provinces (the map's, which
+// The game's clear of the world rebuilt the map's colonial regions from the definitions Random
+// New World had filled, and the map gave each of their provinces (the map's, which
 // outlive the campaign) that region (hamweard#118: 752 provinces only RNW uses kept a
 // placeholder region). So after the definitions are back, the regions are rebuilt again,
 // which first resets every province to the null region.
@@ -610,7 +611,7 @@ bool put_map_back(bool randomized) {
     return true;
 }
 
-// CAchievementsManager is a singleton, so ResetGame leaves the list the last
+// The achievements manager is a singleton, so reset_game leaves the list the last
 // loaded save carried in it, and a restart cleared that: every later save whose
 // achievements are off would write the list as its achievement={...} block.
 void forget_loaded_achievements() {
@@ -619,30 +620,30 @@ void forget_loaded_achievements() {
 }
 
 // Whether the idler's session is a real one, not single player's dummy. Anvil
-// suspends the plugin only for IsMultiplayerWithPlayers during a campaign, which
+// suspends the plugin only for multiplayer with other players during a campaign, which
 // leaves out a lobby and a host alone in the game, and only the game's restart
 // ends those sessions.
 bool in_multiplayer_session() {
     Bytes w = world();
     void* idler = w ? at<void*>(w, off::world_graphics_owner) : nullptr;
     if (!idler) return false;
-    using GetSessionFn = Bytes (*)(void* idler);
-    Bytes session = at<GetSessionFn>(at<void*>(idler, 0), off::idler_session_slot)(idler);
+    using SessionFn = Bytes (*)(void* idler);
+    Bytes session = at<SessionFn>(at<void*>(idler, 0), off::idler_session_slot)(idler);
     return session && !at<std::uint8_t>(session, off::session_is_dummy);
 }
 
 // The game's own resets on the frontend. A save picked in the Single Player list
-// and then a start date or a bookmark make the setup screen run ResetGame, which
-// reloads the history files but validates their effects (PostValidateEffects,
+// and then a start date or a bookmark make the setup screen run reset_game, which
+// reloads the history files but validates their effects (history_post_validate,
 // after the trigger database) only for an idler that asks for it, and the
 // frontend's does not. So the history's add_province_triggered_modifier and the
 // like stayed unbound, and the campaign started without any province triggered
 // modifier, as without Hamweard (lab: pol-k1; hwr-fix2 traced the reset). They get
 // the validation of Hamweard's return, which a fresh start matches. Not in a
 // multiplayer lobby, where every machine must run the reset the same way.
-// ResetGame gives every province its plain name back (ResetName); the dynamic
-// names after the owner's culture come from CGameSetup's constructor, which runs
-// UpdateDynamicProvinceName on every province when the setup screen opens. After a
+// reset_game gives every province its plain name back; the dynamic names after
+// the owner's culture come from CGameSetup's constructor, which runs
+// province_update_dynamic_name on every province when the setup screen opens. After a
 // save is clicked in the list, the setup screen is already open, so a campaign
 // started from a bookmark or date kept the plain names (Jämtland for Jemtland,
 // 259 of 4941 provinces in the lab, hwr-names; stock game too). The frontend
@@ -658,8 +659,8 @@ void name_provinces_as_setup() {
     host().info("dynamic province names set again after the frontend reset ({} provinces)", count);
 }
 
-// Up while CInGameIdler::ResetGamestate runs, until its ResetGame takes it; only
-// EU4LoadGameHelper::Load, the load of a save inside a campaign, calls ResetGamestate.
+// Up while the in-game idler's reset_gamestate runs, until its reset_game takes it; only
+// the load of a save inside a campaign calls reset_gamestate.
 std::atomic<bool> g_load_reset_next{false};
 anvil::HookOf<sym::reset_gamestate> g_reset_gamestate;
 
@@ -735,7 +736,7 @@ const char* restart_reason() {
 
 void note_idler_orphans(Bytes idler);
 
-// In CInGameIdler::Idle, instead of setting exit + restart.
+// In the in-game idler's tick, instead of setting exit + restart.
 void return_to_menu(Bytes idler) {
     Bytes app = at<Bytes>(idler, g_layout.idler_app);
     const std::uint32_t reason = potential_corruption();
@@ -744,10 +745,10 @@ void return_to_menu(Bytes idler) {
     g_recording_windows = false;
     at<std::uint8_t>(idler, g_layout.idler_exit_flag) = 0;
     BusyScope busy;
-    game(sym::in_game_exit, idler);  // NiceMultiplayerExit: a new single-player session
+    game(sym::in_game_exit, idler);  // a new single-player session
     leave_steam_session(app);
-    game(sym::campaign_exit_cleanup);  // HandleIronmanSave: an ironman campaign is saved here
-    // The alert manager's diplomatic icons (ClearAllDiploIcons): a save's load and a
+    game(sym::campaign_exit_cleanup);  // an ironman campaign is saved here
+    // The alert manager's diplomatic icons (notifications_destroy): a save's load and a
     // tag switch destroy their windows before the world changes, and so does a return.
     if (void* notices = at<void*>(idler, g_layout.idler_notifications)) game(sym::notifications_destroy, notices);
     release_minimap(idler);
@@ -755,17 +756,17 @@ void return_to_menu(Bytes idler) {
     construct_menu(app, reason);
 }
 
-// ResetGame destroys the history and reads it again. CIfEffect's destructor frees
-// the if but not _pElse, the else_if/else branch AddElse chained to it, which only
-// that pointer holds; so each reset lost every such branch with its subtree (lab:
+// reset_game destroys the history and reads it again. The if effect's destructor frees
+// the if but not the pointer at +0xF0, the else_if/else branch the parser chained to it,
+// which only that pointer holds; so each reset lost every such branch with its subtree (lab:
 // about 60 MB per return with Anbennar, whose country history calls scripted effects
 // full of else_if). The game loses them the same way where it deletes the history's
-// effects elsewhere: the start of a new campaign (MoveIntoGameState: effects cannot
-// move into the game state) and the load of a save (DestroyDatabase). Only in those
+// effects elsewhere: the start of a new campaign (history_move: effects cannot
+// move into the game state) and the load of a save (history_destroy). Only in those
 // windows: in the rest of the game, the game's exit among it, the detour passes the
 // call on unchanged. A counter, as the history's destruction runs inside the reset.
 std::atomic<int> g_free_else{0};
-std::atomic<int> g_loading_save{0};  // inside CGameStateLoadTask, which destroys the history first
+std::atomic<int> g_loading_save{0};  // inside save_load_task, which destroys the history first
 
 class FreeElseWindow {
 public:
@@ -781,7 +782,7 @@ void* on_if_effect_delete(void* effect, std::uint32_t flags) noexcept {
     void* branch = std::exchange(at<void*>(effect, off::if_effect_else), nullptr);
     void* result = g_if_effect_delete.next(effect, flags);
     if (branch) {
-        // Slot 0 with 1, as the game deletes an effect: a CIfEffect again, so a
+        // Slot 0 with 1, as the game deletes an effect: an if effect again, so a
         // chain of branches goes through this detour one by one.
         using DeleteFn = void* (*)(void* effect, std::uint32_t flags);
         at<DeleteFn>(at<void*>(branch, 0), 0)(branch, 1);
@@ -790,17 +791,17 @@ void* on_if_effect_delete(void* effect, std::uint32_t flags) noexcept {
     return result;
 }
 
-// ReadCountryFiles gives each country a bool[] of its idea groups (operator new[]),
-// and CCountry's destructor never frees it, so each reset lost one per country
+// The read of the country files gives each country a bool[] of its idea groups (operator
+// new[]), and CCountry's destructor never frees it, so each reset lost one per country
 // (lab: 2.6 MB with Anbennar, 0.8 MB without). Freed with the game's own delete
 // just before the reset destroys the countries; the countries that the reset reads
 // get a new one, and the game checks for a missing one before it clears it.
-// A country's estates own their temporary influence and loyalty modifiers (CEstateValue,
-// 0xB8 bytes with a trigger and a name): an estate deletes one when it expires, but ~CEstate
-// frees only the arrays that hold them, so each reset lost every one still running (lab, 19
+// A country's estates own their temporary influence and loyalty modifiers (estate values,
+// 0xB8 bytes with a trigger and a name): an estate deletes one when it expires, but the
+// estate's destructor frees only the arrays that hold them, so each reset lost every one still running (lab, 19
 // November 2026: about 0.2 MB per return after a 1719 save). Hamweard deletes them, through
 // their own destructor, just before the reset destroys the countries, and empties the arrays.
-// A value is deleted only if it is a CEstateValue by its exact vtable.
+// A value is deleted only if it is an estate value by its exact vtable.
 void* g_estate_value_vtable = nullptr;
 
 std::size_t free_estate_values() {
@@ -839,13 +840,13 @@ std::size_t free_idea_group_flags() {
     return freed;
 }
 
-// A country's modifiers are rebuilt in place (CalculateModifiers: the destructor, then the
-// constructor), every day for some countries. Each rebuild of an overlord gives each subject a new
-// CStaticModifier (operator new, CalcModifiersFromSubjects) in ModifiersFromSubjectToOverlord,
+// A country's modifiers are rebuilt in place (the modifier recalculation: the destructor, then
+// the constructor), every day for some countries. Each rebuild of an overlord gives each subject a
+// new static modifier (operator new) in the array of the modifiers its subjects give (+0x6440),
 // and the destructor frees only that array: lab, about 2 MB per year of play without mods,
 // so a long campaign kept the game's memory growing even without a return. Nothing else
-// points to them but the _Added list of the same object's total modifier (copies of a CModifier
-// do not take that list), which the same destructor ends. So the detour deletes them first,
+// points to them but the list of added modifiers of the same object's total modifier (copies of
+// a CModifier do not take that list), which the same destructor ends. So the detour deletes them first,
 // with slot 0 and 1 as the game deletes a modifier, everywhere: they belong to this object only.
 // They hold no game state; a rebuild makes new ones.
 std::atomic<std::uint64_t> g_subject_modifiers_freed{0};
@@ -863,13 +864,13 @@ void on_country_modifiers_destroy(void* modifiers) noexcept {
     g_country_modifiers_destroy.next(modifiers);
 }
 
-// Each CInstantTextBox makes a CPanGestureRecognizer (_pPanGesture), and only CGuiObject's
+// Each text box makes a pan gesture recognizer (+0x210), and only the base GUI object's
 // destructor deletes recognizers: those on the box's gesture list. A box without a scrollbar
 // (or a hidden one) takes it off that list, and the box's destructor leaves it, so every such
 // box lost one (lab#39: 0.6-0.8 MB per campaign, 0.15 MB per Back). Off the list it gets no
 // input and nothing else points to it; the box is its only observer. The detour deletes it,
 // everywhere, before the box's own destructor runs, and only in the state the box left it:
-// off the list, no fingers tracked (so not among CTouchGestures' active ones), no failure
+// off the list, no fingers tracked (so not among the touch gestures' active ones), no failure
 // waiters, the box as its one observer, which is taken off first. Anything else stays as the
 // game leaves it.
 std::atomic<std::uint64_t> g_pan_gestures_freed{0};
@@ -883,7 +884,7 @@ bool owns_gesture(Bytes object, const void* gesture) noexcept {
 }
 
 bool pan_gesture_left_alone(Bytes box, Bytes pan) noexcept {
-    if (owns_gesture(box, pan)) return false;  // ~CGuiObject deletes it
+    if (owns_gesture(box, pan)) return false;  // the GUI object's destructor deletes it
     if (at<void*>(pan, off::gesture_fingers_begin) != at<void*>(pan, off::gesture_fingers_end)) return false;
     if (at<void*>(pan, off::gesture_waiters_begin) != at<void*>(pan, off::gesture_waiters_end)) return false;
     void** observers = at<void**>(pan, off::gesture_observers_begin);
@@ -896,7 +897,7 @@ void on_text_box_destroy(void* object) noexcept {
     if (auto* pan = at<Bytes>(box, off::text_box_pan); pan && pan_gesture_left_alone(box, pan)) {
         at<void*>(box, off::text_box_pan) = nullptr;
         at<void**>(pan, off::gesture_observers_end) = at<void**>(pan, off::gesture_observers_begin);
-        // Slot 0 with 1, as ~CGuiObject deletes a recognizer it owns.
+        // Slot 0 with 1, as the GUI object's destructor deletes a recognizer it owns.
         using DeleteFn = void* (*)(void* gesture, std::uint32_t flags);
         at<DeleteFn>(at<void*>(pan, 0), 0)(pan, 1);
         g_pan_gestures_freed.fetch_add(1, std::memory_order_relaxed);
@@ -905,7 +906,7 @@ void on_text_box_destroy(void* object) noexcept {
 }
 
 // The ruler, heir and consort of a country that has none are three objects the game
-// makes once per process (CNullMonarch, CNullHeir, CNullQueen) and never resets, and
+// makes once per process (null_monarch, null_heir, null_queen) and never resets, and
 // effects on a country without one write into them: set_heir_culture on a country
 // without an heir sets the culture of every such country's heir. So a campaign after a
 // return started with what the last one wrote (lab#150: Anbennar's racial_misc.10 left
@@ -971,7 +972,7 @@ void restore_null_characters() {
 // siege, DLC check or building, and nothing resets them: a fresh process starts from the
 // image's value, and a return kept what the last campaign left (lab, 18 November 2026: the
 // console's infinite_combat was still on in the next campaign). Kept from the first main menu
-// and put back before the reset, as CCurrentGameState::Clear reads disable_dlc.
+// and put back before the reset, as the game state's clear reads disable_dlc.
 struct GameSwitch {
     const char* name;
     std::int32_t* int_value = nullptr;
@@ -1000,13 +1001,13 @@ void restore_switches() {
     }
 }
 
-// A country's delayed event (an event with days = N) is a CDelayedEvent in _DelayedEvents.
-// When its days run out, CCountry::DailyUpdateSerial fires it and takes it out of the vector,
-// but never deletes it: only ~CCountry deletes the ones still waiting. TriggerEvent copies the
-// scope it needs (AddPendingEvent), so nothing points to a fired one any more (lab: with
+// A country's delayed event (an event with days = N) is an object in the country's delayed
+// events (+0x2200). When its days run out, the country's serial daily update fires it and takes
+// it out of the vector, but never deletes it: only CCountry's destructor deletes the ones still
+// waiting. TriggerEvent copies the scope it needs, so nothing points to a fired one any more (lab: with
 // Anbennar, whose start-up events wait a few days, about 2 MB per campaign). The game keeps
 // running unchanged: right after that loop the plugin only notes the events it fired and took
-// out, and deletes them, as ~CCountry deletes an event, once the world they came from is gone:
+// out, and deletes them, as CCountry's destructor deletes an event, once the world they came from is gone:
 // after the reset of a return and after the load of a save.
 std::mutex g_fired_mutex;
 std::vector<void*> g_fired_events;
@@ -1023,7 +1024,7 @@ void note_fired_events(const anvil::Cpu& cpu) noexcept {
     std::lock_guard lock(g_fired_mutex);
     for (std::int32_t i = 0; i < count; ++i) {
         void* event = fired[i];
-        // Only one the loop took out: one still in the vector is ~CCountry's to delete.
+        // Only one the loop took out: one still in the vector is CCountry's destructor's to delete.
         if (event && std::find(begin, end, event) == end) g_fired_events.push_back(event);
     }
 }
@@ -1038,7 +1039,7 @@ std::size_t free_fired_events() {
     events.erase(std::unique(events.begin(), events.end()), events.end());
     std::size_t freed = 0;
     for (void* event : events) {
-        if (at<void*>(event, 0) != g_delayed_event_vtable) continue;  // not a CDelayedEvent any more
+        if (at<void*>(event, 0) != g_delayed_event_vtable) continue;  // not a delayed event any more
         // Slot 0 with 1, as the game deletes one: the scope's destructor, then the 0xF0 bytes.
         using DeleteFn = void* (*)(void* event, std::uint32_t flags);
         at<DeleteFn>(g_delayed_event_vtable, 0)(event, 1);
@@ -1047,25 +1048,25 @@ std::size_t free_fired_events() {
     return freed;
 }
 
-// A battle of a war is a CBattleResult that two things point to: the war's _BattleResults
-// (CWar::AddBattleResult, or RecalculateCachedBattleResults after a load) and the
-// CBattleResultChange of the war's history (+0x40), which the history's reader makes for
-// each battle = { ... } of a save or of history/wars. ~CWar frees only the list, and the
+// A battle of a war is a battle result that two things point to: the war's battle list
+// (war +0xF0, filled in play or rebuilt after a load) and the battle change of the war's
+// history (+0x40), which the history's reader makes for each battle = { ... } of a save or
+// of history/wars. The war's destructor frees only the list, and the
 // change's deleting destructor (shared with the other 0x48-byte changes) only the change,
 // so every battle of every war was lost whenever the world went: at each reset and at each
 // load of a save (lab, 19 November 2026: 1.6 MB in 5333 battles per return after a 1719
 // save). The change is the one owner left, as the war it belongs to goes in the same
-// teardown (its history is destroyed before its list, which ~CWar frees without reading).
+// teardown (its history is destroyed before its list, which the war's destructor frees without reading).
 // So while the game resets the world or loads a save, the change's slot deletes the battle
-// first, as the game deletes a CBattleResult (slot 0 with 1); in the rest of the game it
+// first, as the game deletes a battle result (slot 0 with 1); in the rest of the game it
 // stays as it was.
 using DeleteFn = void*(void* object, std::uint32_t flags);
 anvil::PointerSwap<DeleteFn> g_battle_change_delete;
 void* g_battle_result_vtable = nullptr;
-std::atomic<int> g_world_teardown{0};  // inside ResetGame or the load of a save
+std::atomic<int> g_world_teardown{0};  // inside reset_game or the load of a save
 std::atomic<std::uint64_t> g_battles_freed{0};
 
-constexpr std::ptrdiff_t battle_change_result = 0x40;  // CBattleResultChange's CBattleResult*
+constexpr std::ptrdiff_t battle_change_result = 0x40;  // the battle change's battle result
 
 class TeardownWindow {
 public:
@@ -1088,20 +1089,20 @@ void* on_battle_change_delete(void* change, std::uint32_t flags) noexcept {
 }
 
 // A relation of the diplomatic history (history/diplomacy: an alliance, a dependency, a royal
-// marriage, a guarantee, a casus belli, improved relations) is a CRelation that the history's
+// marriage, a guarantee, a casus belli, improved relations) is a relation object that the history's
 // reader makes for each entry and gives to the entry's start change and, with an end date, to
 // its end change too (+0x40). When the history runs up to a campaign's start date, the start
-// change hands that same relation to the world (CDiplomacy::AddActive), which owns it from then
+// change hands that same relation to the world's diplomacy, which owns it from then
 // on: the world's teardown deletes it, or play does when the relation ends; a relation the
 // world refuses, the change deletes. The changes' deleting destructor (the one of every
 // 0x48-byte change) frees only the change, so every relation the history never handed over
 // was lost when the history went: the entries after a new campaign's start date, and all of
 // them after a save, whose world comes from the save (lab, 22 November 2026: about 900
 // relations, 0.08 MB, per return after a 1719 save). So Hamweard notes each relation a change
-// tries to hand over (CDiplomaticHistoryChange::Execute, whatever it does), and while the game
+// tries to hand over (diplomatic_change_execute, whatever it does), and while the game
 // resets the world or loads a save, a change's slot deletes the change's relation first if no
 // change ever tried to hand it over and Hamweard has not deleted it already (the start and the
-// end change share one). DestroyDatabase destroys the history with all its changes, so the
+// end change share one). history_destroy destroys the history with all its changes, so the
 // notes go with it.
 anvil::HookOf<sym::diplomatic_change_execute> g_diplomatic_change_execute;
 std::array<anvil::PointerSwap<DeleteFn>, 6> g_diplomatic_change_delete;
@@ -1111,8 +1112,8 @@ std::unordered_set<void*> g_freed_relations;   // Hamweard deleted it in this hi
 std::atomic<std::uint64_t> g_relations_freed{0};
 std::uintptr_t g_image_begin = 0, g_image_end = 0;
 
-constexpr std::ptrdiff_t diplomatic_change_relation = 0x40;  // the change's CRelation*
-constexpr std::ptrdiff_t relation_disabled = 0x28;  // OnDisable sets it; ~CRelation logs a delete without it
+constexpr std::ptrdiff_t diplomatic_change_relation = 0x40;  // the change's relation
+constexpr std::ptrdiff_t relation_disabled = 0x28;  // set when it is disabled; the relation's destructor logs a delete without it
 
 void on_diplomatic_change_execute(void* change, bool reverse) noexcept {
     if (void* relation = at<void*>(change, diplomatic_change_relation)) {
@@ -1131,7 +1132,7 @@ void free_history_relation(void* change) noexcept {
         const std::lock_guard lock(g_history_relations_mutex);
         if (g_handed_relations.contains(relation) || !g_freed_relations.insert(relation).second) return;
     }
-    // Never handed over, so still the history's own: a CRelation with a vtable in eu4.exe.
+    // Never handed over, so still the history's own: a relation with a vtable in eu4.exe.
     const auto vtable = reinterpret_cast<std::uintptr_t>(at<void*>(relation, 0));
     if (vtable < g_image_begin || vtable >= g_image_end) return;
     slot = nullptr;
@@ -1151,23 +1152,23 @@ void forget_history_relations() noexcept {
     g_freed_relations.clear();
 }
 
-// The trade node definitions (common/tradenodes). ResetGame reads them again
-// (LoadDatabasesAfterReset: CTradeNodeDatabase::InitializeInstance, then InitFromDirectory).
-// InitializeInstance makes a new, empty database and gives it to the global unique_ptr, whose
-// reset frees the old database's arrays but none of the definitions in them, and the loop of
-// InitFromDirectory that deletes the definitions runs over the new, empty database. So every
+// The trade node definitions (common/tradenodes). reset_game reads them again: the trade node
+// database's initialisation, then its read of the folder. The initialisation makes a new, empty
+// database and gives it to the global unique_ptr, whose reset frees the old database's arrays
+// but none of the definitions in them, and the loop of the folder's read that deletes the
+// definitions runs over the new, empty database. So every
 // reset lost all of them, with their names, province lists and outgoing links (lab, 25
 // November 2026: about 80 definitions, 0.1 MB in about 700 blocks per return). So while the
 // world is reset (Hamweard's reset, or the game's own for a save's load), the hook notes the
 // old database's definitions before the unique_ptr lets them go, and Hamweard deletes them once
-// ResetGame has returned, as that loop would: only those whose slot 0x40 allows it (the null
+// reset_game has returned, as that loop would: only those whose slot 0x40 allows it (the null
 // definition, a singleton, is in the array too). The old game state, whose trade nodes point
-// to them (CTradeNode::_pDefinition), is gone before ResetGame reads the databases again.
+// to them, is gone before reset_game reads the databases again.
 anvil::HookOf<sym::trade_node_database_reset> g_trade_node_database_reset;
-void** g_trade_node_database = nullptr;  // the global unique_ptr<CTradeNodeDatabase>
+void** g_trade_node_database = nullptr;  // the global unique_ptr of the trade node database
 std::vector<void*> g_old_trade_nodes;   // the main thread's, inside the teardown window
 
-constexpr std::ptrdiff_t trade_nodes_begin = 0x00;  // CTradeNodeDatabase::_TradeNodeDefinitions
+constexpr std::ptrdiff_t trade_nodes_begin = 0x00;  // the database's definitions
 constexpr std::ptrdiff_t trade_nodes_end = 0x08;
 constexpr std::size_t trade_node_may_delete_slot = 0x40 / sizeof(void*);
 
@@ -1198,14 +1199,14 @@ std::size_t free_old_trade_nodes() noexcept {
     return freed;
 }
 
-// Random New World's working bitmaps. CMapRandomize::GenerateRandomWorld makes three CBitmaps
-// on its stack (the provinces, the heightmap and the rivers) with the map's size, which gives
-// each a buffer (CBitmap::_pData, +0x28), and then reads the base map's files into them with
-// CBitmap::CreateBitmap. CreateBitmap allocates a new buffer and stores it over the old one
-// without freeing it, so every world the generator makes loses those three buffers: about
-// 55 MB on the base map (33 MB for the 24-bit provinces, 11 MB each for the 8-bit heightmap
-// and rivers). ~CBitmap frees only the second. While the generator runs, Hamweard frees a
-// buffer CreateBitmap replaced in a bitmap on the generator's stack, after the call, as the
+// Random New World's working bitmaps. generate_random_world makes three bitmaps on its stack
+// (the provinces, the heightmap and the rivers) with the map's size, which gives each a buffer
+// (+0x28), and then reads the base map's files into them with bitmap_create. bitmap_create
+// allocates a new buffer and stores it over the old one without freeing it, so every world the
+// generator makes loses those three buffers: about 55 MB on the base map (33 MB for the 24-bit
+// provinces, 11 MB each for the 8-bit heightmap and rivers). The bitmap's destructor frees only
+// the second. While the generator runs, Hamweard frees a buffer bitmap_create replaced in a
+// bitmap on the generator's stack, after the call, as the
 // destructor would; a bitmap elsewhere, or a call that kept the buffer, is left alone.
 anvil::HookOf<sym::generate_random_world> g_generate_random_world;
 anvil::HookOf<sym::bitmap_create> g_bitmap_create;
@@ -1213,18 +1214,18 @@ thread_local std::uintptr_t t_generator_stack = 0;  // an address in the hook's 
 std::size_t g_bitmap_buffers_freed = 0;             // main thread, in this generation
 std::size_t g_bitmap_bytes_freed = 0;
 
-constexpr std::ptrdiff_t bitmap_data = 0x28;  // CBitmap::_pData
+constexpr std::ptrdiff_t bitmap_data = 0x28;  // the bitmap's buffer
 constexpr std::ptrdiff_t bitmap_height = 0x0C, bitmap_row = 0x1C;  // rows, bytes per row
 
-// The generator's tile bitmaps. AddTileToRandomWorld loads each tile's bitmaps the first time
-// it needs them: a new CBitmap (0x38 bytes), CreateBitmap, and the pointer into one of three
-// arrays GenerateRandomWorld makes with _malloca for the generation. The generator frees the
+// The generator's tile bitmaps. Its tile step (0x895130 on Steam) loads each tile's bitmaps
+// the first time it needs them: a new bitmap (0x38 bytes), bitmap_create, and the pointer into
+// one of three arrays generate_random_world makes with _malloca for the generation. The generator frees the
 // arrays but not the bitmaps in them, so every generated world loses its tile bitmaps (lab
 // heap tracer: about 7 MB on the base map, no pointer left to them). Hamweard notes the heap
-// bitmaps CreateBitmap reads at those three calls (by the call's return address) while the
+// bitmaps bitmap_create reads at those three calls (by the call's return address) while the
 // generator runs, and deletes them through their vtable once the generator has returned. A
 // generation that ends with an exception keeps them, as the game would.
-std::array<std::uintptr_t, 3> g_tile_bitmap_returns{};  // AddTileToRandomWorld's CreateBitmap calls, +5
+std::array<std::uintptr_t, 3> g_tile_bitmap_returns{};  // the tile step's bitmap_create calls, +5
 std::vector<void*> g_tile_bitmaps;                       // main thread, in this generation
 
 bool tile_bitmap_call(std::uintptr_t return_address) noexcept {
@@ -1243,7 +1244,7 @@ std::size_t delete_tile_bitmaps(std::size_t& bytes) noexcept {
         const std::int64_t size =
             static_cast<std::int64_t>(at<std::int32_t>(bitmap, bitmap_row)) * at<std::int32_t>(bitmap, bitmap_height);
         using DeleteBitmapFn = void*(void* bitmap, std::uint32_t flags);
-        reinterpret_cast<DeleteBitmapFn*>(vtable[0])(bitmap, 1);  // CBitmap's scalar deleting destructor
+        reinterpret_cast<DeleteBitmapFn*>(vtable[0])(bitmap, 1);  // the bitmap's scalar deleting destructor
         ++deleted;
         if (size > 0) bytes += static_cast<std::size_t>(size);
     }
@@ -1293,15 +1294,15 @@ void on_generate_random_world(void* randomize, void* count, void* file, const vo
                 static_cast<double>(tile_bytes) / (1024.0 * 1024.0));
 }
 
-// The map's river bitmap. CMapRandomize::CreateRivers reads the generated world's rivers.bmp
-// into the map's own river bitmap (CMap +0x2F8, a CRomeBitmap) through its CreateBitmap slot,
-// which stores a new buffer over the one the map read its rivers into (at the map's load, or
-// at the last reset's CMap::ReadRiverBitmap) without freeing it: about 11 MB per generated
+// The map's river bitmap. create_rivers reads the generated world's rivers.bmp into the map's
+// own river bitmap (map +0x2F8) through its read slot, which stores a new buffer over the one
+// the map read its rivers into (at the map's load, or at the last reset's read of the rivers)
+// without freeing it: about 11 MB per generated
 // world. The bitmap's destructor frees its buffer, so the buffer is the bitmap's own; Hamweard
 // frees the old one after the call when the call replaced it.
 anvil::HookOf<sym::create_rivers> g_create_rivers;
-constexpr std::ptrdiff_t randomize_map = 0xE0;  // CMapRandomize's CMap*
-constexpr std::ptrdiff_t map_rivers = 0x2F8;    // CMap's river CRomeBitmap*
+constexpr std::ptrdiff_t randomize_map = 0xE0;  // Random New World's map
+constexpr std::ptrdiff_t map_rivers = 0x2F8;    // the map's river bitmap
 
 void on_create_rivers(void* randomize, void* archive) {  // not noexcept: the game's exceptions pass
     void* const map = randomize ? at<void*>(randomize, randomize_map) : nullptr;
@@ -1318,19 +1319,19 @@ void on_create_rivers(void* randomize, void* archive) {  // not noexcept: the ga
 }
 
 // The rulers, heirs and consorts of a save's country history. The history's reader makes
-// one CMonarch, CHeir or CQueen for each monarch = { ... }, heir = { ... } or queen = { ... }
-// and gives it to the change (CMonarchChange +0x40..+0x58, CHeirChange and CQueenChange
+// one ruler, heir or consort for each monarch = { ... }, heir = { ... } or queen = { ... }
+// and gives it to the change (the ruler change +0x40..+0x58, the heir and consort changes
 // +0x40/+0x48); when the change runs, the country points to the same object. Only the
 // characters made while the game reads history/ (and those made in play) go into
-// CMonarchStore::_HistoricalMonarchs, the list DestroyDatabase deletes; ~CCountry and the
+// monarch_store, the list history_destroy deletes; CCountry's destructor and the
 // changes' destructors delete none, so the save's characters were lost at every reset (lab,
 // 19 November 2026: about 3 MB per return after a 1719 save, with their ID table nodes).
-// ResetGame destroys the countries with the old game state, then calls DestroyDatabase,
-// then replaces the ID tables (DeleteReferenceObjects). So while Hamweard resets the world,
-// the changes' slots note their characters, and Hamweard deletes them as DestroyDatabase
-// starts: the tables are still the ones the characters are in (~CMonarch erases its ID),
-// and the world that could point to them is gone. A character is deleted only if it is a
-// CMonarch, CHeir or CQueen by its exact vtable, not in the store, not a null character,
+// reset_game destroys the countries with the old game state, then calls history_destroy,
+// then replaces the ID tables. So while Hamweard resets the world, the changes' slots note
+// their characters, and Hamweard deletes them as history_destroy starts: the tables are
+// still the ones the characters are in (the character's destructor erases its ID), and the
+// world that could point to them is gone. A character is deleted only if it is a ruler,
+// heir or consort by its exact vtable, not in the store, not a null character,
 // and not deleted by anyone else since it was noted (the characters' own slots watch).
 anvil::PointerSwap<DeleteFn> g_monarch_change_delete;
 anvil::PointerSwap<DeleteFn> g_heir_change_delete;
@@ -1338,7 +1339,7 @@ anvil::PointerSwap<DeleteFn> g_queen_change_delete;
 anvil::PointerSwap<DeleteFn> g_monarch_delete;
 anvil::PointerSwap<DeleteFn> g_heir_delete;
 anvil::PointerSwap<DeleteFn> g_queen_delete;
-void* g_character_vtables[3] = {};  // CMonarch, CHeir, CQueen
+void* g_character_vtables[3] = {};  // ruler, heir, consort
 std::uintptr_t* g_monarch_store = nullptr;
 std::atomic<bool> g_noting_characters{false};
 std::mutex g_noted_characters_mutex;
@@ -1364,11 +1365,11 @@ void forget_character(void* character) noexcept {
 }
 
 void* on_monarch_change_delete(void* change, std::uint32_t flags) noexcept {
-    note_characters(change, 4);  // _pNew, _pOld, _pOldHeir, _pOldQueen
+    note_characters(change, 4);  // new ruler, old ruler, old heir, old consort
     return g_monarch_change_delete.previous()(change, flags);
 }
 void* on_heir_change_delete(void* change, std::uint32_t flags) noexcept {
-    note_characters(change, 2);  // _pNew, _pOld
+    note_characters(change, 2);  // new and old character
     return g_heir_change_delete.previous()(change, flags);
 }
 void* on_queen_change_delete(void* change, std::uint32_t flags) noexcept {
@@ -1393,33 +1394,33 @@ struct CharactersFreed {
 };
 CharactersFreed g_characters_freed;  // by the last reset
 
-// No one deletes a leader at a reset: ~CCountry frees its leader list's nodes only, ~CUnit
-// detaches its leader, ~CMercenaryCompany keeps its own (+0x48), a save's characters hold
-// theirs only by ID (CMonarch::_LeaderID) and ~CMonarch frees none, and CCountry::KillLeader
-// deletes a dead leader only for one or two tags (the player's, it seems). After DestroyDatabase,
-// DeleteReferenceObjects takes every leader still in the table out of it
-// (CReferenceObject::Destroy) without deleting it, so every leader of the old campaign was lost
+// No one deletes a leader at a reset: CCountry's destructor frees its leader list's nodes only,
+// CUnit's detaches its leader, a mercenary company's keeps its own (+0x48), a save's characters
+// hold theirs only by ID and their destructor frees none, and the country's removal of a dead
+// leader deletes it only for one or two tags (the player's, it seems). After history_destroy,
+// the replacement of the ID tables takes every leader still in the table out of it
+// without deleting it, so every leader of the old campaign was lost
 // at each return (lab, 21 November 2026: about 3,400 per return after a 1719 save or a new
-// campaign, mostly mercenaries, and 900 more of the save's characters). As DestroyDatabase
+// campaign, mostly mercenaries, and 900 more of the save's characters). As history_destroy
 // starts, the world is gone and the leader ID table is still the old one: what it holds
 // belongs to nothing left. The one destructor that deletes a leader after that point, the
-// country history's ~CLeaderChange, finds it by ID first. So Hamweard deletes every plain
+// country history's leader change, finds it by ID first. So Hamweard deletes every plain
 // CLeader still in the table, through its own destructor, after clearing the two links
-// ~CLeader would follow into the gone world (its country by _CountryTag, its unit), so that
+// the leader's destructor would follow into the gone world (its country by tag, its unit), so that
 // the destructor only frees the leader's strings and erases its ID.
 void* g_leader_vtable = nullptr;
-const std::uintptr_t* g_static_id_tables = nullptr;  // CReferenceObject::_StaticIdHashTables
-constexpr std::ptrdiff_t leader_unit = 0x58;       // CUnit* _pUnit
-constexpr std::ptrdiff_t leader_mercenary = 0x55;  // bool _IsMercenary
-constexpr std::ptrdiff_t leader_tag_valid = 0x77;  // the valid flag of CCountryTag _CountryTag (+0x70)
+const std::uintptr_t* g_static_id_tables = nullptr;  // the global ID tables (static_id_tables)
+constexpr std::ptrdiff_t leader_unit = 0x58;       // the leader's CUnit*
+constexpr std::ptrdiff_t leader_mercenary = 0x55;  // bool: a mercenary's leader
+constexpr std::ptrdiff_t leader_tag_valid = 0x77;  // the valid flag of the leader's country tag (+0x70)
 
 struct LeadersFreed {
     std::size_t freed = 0, mercenaries = 0, other = 0;
 };
 LeadersFreed g_leaders_freed;  // by the last reset
-// Set by reset_world around ResetGame and taken by the first history destroy inside it, the one
-// DestroyDatabase starts with: only then is the leader ID table the old world's. A later destroy
-// in the same reset, after TotalInit replaced the tables, or one in another FreeElseWindow (a new
+// Set by reset_world around reset_game and taken by the first history destroy inside it, the one
+// history_destroy starts with: only then is the leader ID table the old world's. A later destroy
+// in the same reset, after the full initialisation replaced the tables, or one in another FreeElseWindow (a new
 // campaign moving its history in) must not delete leaders a live world owns.
 std::atomic<bool> g_leaders_to_free{false};
 
@@ -1440,24 +1441,24 @@ LeadersFreed free_old_leaders() {
 }
 
 // The rebel factions of the old campaign (CRebelFaction, ID type 0x32): a save's, read into the
-// countries' _RebelFactions, and those made in play. ~CCountry does not delete them, and the old
-// game state's Clear takes them out of the ID table without deleting them (ClearRebelStuff), so
+// countries' rebel faction lists, and those made in play. CCountry's destructor does not delete them,
+// and the old game state's clear takes them out of the ID table without deleting them (rebel_stuff_clear), so
 // every return lost them (lab, 19 November 2026: about 0.6 MB after a 1719 save). Hamweard notes
-// them as ClearRebelStuff starts inside its reset, while the table still holds them. Their
+// them as rebel_stuff_clear starts inside its reset, while the table still holds them. Their
 // destructor plays game logic on the world (rebel_factions.hpp), which is gone by the time
-// DestroyDatabase starts. So there Hamweard detaches each one from it, before the leaders (a
+// history_destroy starts. So there Hamweard detaches each one from it, before the leaders (a
 // faction's leaders are in the leader table, freed next), and deletes it through its own
 // destructor, which then frees its strings and arrays. A faction is noted only if its vtable is
 // exactly CRebelFaction's, and deleted only once its ID is gone.
 void* g_rebel_faction_vtable = nullptr;
-std::vector<std::uint8_t*> g_old_factions;  // noted by ClearRebelStuff in the reset, freed in DestroyDatabase
+std::vector<std::uint8_t*> g_old_factions;  // noted by rebel_stuff_clear in the reset, freed in history_destroy
 
 struct FactionsFreed {
     std::size_t freed = 0, other = 0;
 };
 FactionsFreed g_factions_freed;  // by the last reset
 
-// Run as ClearRebelStuff starts; the reset's flag is up only before DestroyDatabase.
+// Run as rebel_stuff_clear starts; the reset's flag is up only before history_destroy.
 void note_old_rebel_factions() {
     if (!g_leaders_to_free.load(std::memory_order_relaxed)) return;
     for (Bytes faction : hamweard::id_table_objects(g_static_id_tables, hamweard::rebel_faction_id_type)) {
@@ -1482,7 +1483,7 @@ FactionsFreed free_old_rebel_factions() {
     return n;
 }
 
-// Ends the noting; run as DestroyDatabase starts inside Hamweard's reset.
+// Ends the noting; run as history_destroy starts inside Hamweard's reset.
 CharactersFreed free_noted_characters() {
     std::unordered_set<void*> noted;
     {
@@ -1515,27 +1516,27 @@ CharactersFreed free_noted_characters() {
     return n;
 }
 
-// The AI's army agents (CAIArmy, 0xBF8 bytes with their lists and maps) are held only by
-// their king's _ArmyAgents, or its _KillList once cancelled; ~CAIKing frees both lists'
-// nodes and never the agents (lab, 19 November 2026: about 1.1 MB per return after a 1719
-// save). Kings die in CCurrentGameState::ClearAIStuff, which the old game state's teardown
-// runs while the countries still live and after their units are deleted: CGameState::
-// DeleteUnit detaches a unit from its agent (DetachArmy) first, so an agent's unit list
+// The AI's army agents (0xBF8 bytes with their lists and maps) are held only by their
+// king's army agent list (+0xC50), or its kill list (+0xAC8) once cancelled; CAIKing's destructor
+// frees both lists' nodes and never the agents (lab, 19 November 2026: about 1.1 MB per return
+// after a 1719 save). Kings die in the game state's clear of the AI, which the old game state's
+// teardown runs while the countries still live and after their units are deleted: the deletion
+// of a unit detaches it from its agent first, so an agent's unit list
 // holds live units only. So while Hamweard resets the world, the king's slot copies its
 // army agents, lets the king die (its requests' destructors only free themselves), and then
 // deletes each agent through its own destructor, which unlinks its units and the country's
 // units that point to it and leaves the ID table, still the old one. An agent is deleted
-// only if its vtable is exactly CAIArmy's, its owner is that king, and it is not one of the
-// king's child agents (which ~CAIAgent deletes itself).
+// only if its vtable is exactly the army agent's, its owner is that king, and it is not one of
+// the king's child agents (which the agent's base destructor deletes itself).
 anvil::PointerSwap<DeleteFn> g_ai_king_delete;
 void* g_ai_army_vtable = nullptr;
 std::atomic<bool> g_freeing_agents{false};
 std::atomic<std::uint32_t> g_agents_freed{0}, g_agents_kept{0};
 
-constexpr std::ptrdiff_t agent_owner = 0x38;      // CAIAgent::_pOwner
-constexpr std::ptrdiff_t agent_children = 0x40;   // CAIAgent::_AgentList
-constexpr std::ptrdiff_t king_kill_list = 0xAC8;  // CAIKing::_KillList
-constexpr std::ptrdiff_t king_army_agents = 0xC50;  // CAIKing::_ArmyAgents
+constexpr std::ptrdiff_t agent_owner = 0x38;      // an AI agent's owner
+constexpr std::ptrdiff_t agent_children = 0x40;   // its child agents
+constexpr std::ptrdiff_t king_kill_list = 0xAC8;  // CAIKing: the cancelled agents
+constexpr std::ptrdiff_t king_army_agents = 0xC50;  // CAIKing: its army agents
 
 // A CList's nodes: the element at +0, the next node at +0x10; the list's head at +0.
 template <class F> void for_each_in_list(void* list, F&& f) {
@@ -1568,13 +1569,13 @@ void* on_ai_king_delete(void* king, std::uint32_t flags) noexcept {
 
 // Windows whose owner dies without destroying them. They stayed hidden in the
 // GUI root, seven per return in the menu (lab, 19 November 2026, Tongs ui tree):
-// - the goto box (CGotoBox: of the main menu's game setup view and of the in-game
-//   idler) and the tutorial's minimized button (CTutorial: of the main menu's
-//   tutorial screen): their deleting destructors leave their window;
-// - the right-click menus of the main menu (CFrontEnd) and of the in-game idler,
+// - the goto box (of the main menu's game setup view and of the in-game idler)
+//   and the tutorial's minimized button (of the main menu's tutorial screen):
+//   their deleting destructors leave their window;
+// - the right-click menus of the main menu and of the in-game idler,
 //   whose destructors do not read the field;
 // - the start game dialog of the main menu's game setup view (CGameSetup), which
-//   ~CGameSetup never frees, with its window and its ironman save selection
+//   CGameSetup's destructor never frees, with its window and its ironman save selection
 //   (start_game_dialog and IronmanSaveSelectDialog); both stay in the GUI reload list.
 // Nothing else holds them: each window is created into that one field and the
 // dialog only by CGameSetup's constructor. The swapped slots below only note
@@ -1602,7 +1603,7 @@ void* on_tutorial_delete(void* tutorial, std::uint32_t flags) noexcept {
     return g_tutorial_delete.previous()(tutorial, flags);
 }
 
-// The slot of CGameSetup's CFrontEndView vtable: `view` is that base, which
+// The slot of the vtable of CGameSetup's view base: `view` is that base, which
 // the main menu's view list holds and deletes.
 void* on_game_setup_delete(void* view, std::uint32_t flags) noexcept {
     Bytes setup = static_cast<Bytes>(view) - off::game_setup_view;
@@ -1629,7 +1630,7 @@ void note_idler_orphans(Bytes idler) {
         note_orphan(tutorial, off::tutorial_minimized, "tutorial_minimized");
 }
 
-// Clears the AI's strength factor caches as DailyUpdateAI does at the end of each AI day. The
+// Clears the AI's strength factor caches as the AI's daily update does at the end of each AI day. The
 // AI fills them only inside its day, but the AI army map mode (console `mapmode armyeval`) and
 // its province tooltip fill them on the main thread from the selected army's agent, and those
 // entries stay until the next AI day: keyed by units and provinces the reset frees, whose
@@ -1729,9 +1730,9 @@ CotFreed free_old_cot_modifiers(std::uint32_t world) {
     return n;
 }
 
-// What ResetGame loses, freed around it: in Hamweard's reset of a return, and in the reset the
-// game runs itself when a save loads inside a campaign (CInGameIdler::ResetGamestate, from
-// EU4LoadGameHelper::Load, before the load reads the save), which lost the same (lab, 22 November
+// What reset_game loses, freed around it: in Hamweard's reset of a return, and in the reset the
+// game runs itself when a save loads inside a campaign (reset_gamestate, from the load of the
+// save, before it reads the save), which lost the same (lab, 22 November
 // 2026: 4-5 MB per load of a 1719 save, kept until the process ended).
 struct ResetFreed {
     std::size_t idea_groups = 0, estate_values = 0, trade_nodes = 0;
@@ -1764,7 +1765,7 @@ template <class Reset> ResetFreed free_around_reset(Reset&& reset) {
         g_freeing_agents.store(false, std::memory_order_relaxed);
     }
     if (g_noting_characters.load(std::memory_order_relaxed)) {
-        // DestroyDatabase did not run: keep the characters rather than delete them late.
+        // history_destroy did not run: keep the characters rather than delete them late.
         const std::lock_guard lock(g_noted_characters_mutex);
         g_noting_characters.store(false, std::memory_order_relaxed);
         host().warn("{} historical characters kept: the reset did not destroy the history", g_noted_characters.size());
@@ -1774,7 +1775,7 @@ template <class Reset> ResetFreed free_around_reset(Reset&& reset) {
     return n;
 }
 
-// The reset of a save's load inside a campaign (ResetGamestate's): runs it and returns true.
+// The reset of a save's load inside a campaign (reset_gamestate's): runs it and returns true.
 // Hamweard's own reset frees around its call already.
 bool reset_of_a_load(void* app, bool keep_history) {
     if (!g_load_reset_next.exchange(false) || g_free_else.load(std::memory_order_relaxed) > 0) return false;
@@ -1818,7 +1819,7 @@ void on_history_move(void* history, const void* date) noexcept {
                 g_else_branches_freed.load(std::memory_order_relaxed) - before);
 }
 
-// Run by ResetGame (inside its own window), by the load of a save and by the
+// Run by reset_game (inside its own window), by the load of a save and by the
 // game's exit; only the first two free the branches.
 void on_history_destroy(void* history) noexcept {
     // The diplomatic history goes with all its changes: its relations' notes go too.
@@ -1989,7 +1990,7 @@ struct Hamweard : anvil::Plugin {
         // The GOG build has no Steam lobby: its four symbols are absent there.
         if (h.present(sym::steam_lobby_vtable)) {
             g_lobby_vtable = h.address(sym::steam_lobby_vtable);
-            // The import CSteamLobby's destructor calls through (IAT 0x1B67730).
+            // The import the Steam lobby's destructor calls through (IAT 0x1B67730).
             if (HMODULE steam = GetModuleHandleW(L"steam_api64.dll"))
                 g_unregister_call_result = reinterpret_cast<UnregisterCallResultFn*>(
                     reinterpret_cast<void*>(GetProcAddress(steam, "SteamAPI_UnregisterCallResult")));
@@ -2004,7 +2005,7 @@ struct Hamweard : anvil::Plugin {
         in_game = h.replace_block(sym::in_game_menu_block, [](anvil::Cpu& cpu) {
             if (const char* why = restart_reason()) {
                 host().info("Exit to Menu {}: the game restarts", why);
-                cpu.rcx = cpu.rbp + 0x240;  // the block's own lea
+                cpu.rcx = cpu.rbp + 0x240;  // what the replaced block does
                 cpu.rip = reinterpret_cast<std::uintptr_t>(g_in_game_stock_path);
                 return;
             }
@@ -2013,7 +2014,7 @@ struct Hamweard : anvil::Plugin {
         pregame = h.replace_block(sym::pregame_menu_block, [](anvil::Cpu& cpu) {
             if (const char* why = restart_reason()) {
                 host().info("Back {}: the game restarts", why);
-                at<std::uint16_t>(reinterpret_cast<void*>(cpu.rbx), off::app_exit) = 0x0101;  // the block's own mov
+                at<std::uint16_t>(reinterpret_cast<void*>(cpu.rbx), off::app_exit) = 0x0101;  // what the replaced block does
                 cpu.rip = reinterpret_cast<std::uintptr_t>(g_pregame_stock_path);
                 return;
             }

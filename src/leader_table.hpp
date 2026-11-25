@@ -1,7 +1,7 @@
-// The leaders' ID table. CReferenceObject::_StaticIdHashTables is an array of 4711 pointers,
-// one per object type, each to a std::unordered_map<unsigned, CReferenceObject*> (MSVC: its
-// list's sentinel node at +8; a node is next, prev, then the key at +0x10 and the object at
-// +0x18), as CReferenceObject::GetObjectFromID reads it. Leaders are type 0x31.
+// The leaders' ID table. The global ID tables are an array of 4711 pointers, one per object
+// type, each to a std::unordered_map<unsigned, object*> (MSVC: its list's sentinel node at +8;
+// a node is next, prev, then the key at +0x10 and the object at +0x18), as the game's lookup
+// of an object by its ID reads it. Leaders are type 0x31.
 #pragma once
 
 #include <cstddef>

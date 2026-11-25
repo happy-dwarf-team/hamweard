@@ -23,7 +23,7 @@ had one test with a second player.
 
 ## Install and use
 
-1. [Install Anvil](https://anvil.happydwarf.dev/docs/install/) 1.9 or newer in the game folder.
+1. [Install Anvil](https://anvil.happydwarf.dev/docs/install/) 1.10 or newer in the game folder.
 2. [Install the plugin](https://anvil.happydwarf.dev/docs/install-plugins/) from the **Catalog**
    tab of Anvil Manager, from the
    [Steam Workshop mod](https://steamcommunity.com/sharedfiles/filedetails/?id=3832650792), or
@@ -317,34 +317,34 @@ code first, then tested with a second player on 6 November 2026.
 
 | Site | The game | The plugin |
 | --- | --- | --- |
-| `0x815CAE`, the Exit to Menu branch of `CInGameIdler::Idle` | sets the exit and restart flags: the game quits and starts again | in single player releases the campaign's leftovers, queues a new main menu and resumes at the stock epilogue; in a multiplayer session, the game's restart |
+| `0x815CAE`, the Exit to Menu branch of the in-game idler's tick | sets the exit and restart flags: the game quits and starts again | in single player releases the campaign's leftovers, queues a new main menu and resumes at the stock epilogue; in a multiplayer session, the game's restart |
 | `0x111DFD7`, Back on the country selection screen | the same flags | in single player queues the switch for the menu's next tick; in a multiplayer lobby, the game's restart |
 | slot `+0x20` of the frontend idler vtable | the frontend tick | runs the queued switch, destroys the last campaign's windows, resets the world once the old idler is gone, forgets the achievement list the last loaded save carried and puts a map changed by a canal or Random New World back, or restarts the game if it cannot, then the stock tick |
 | slot `+0x30` of the frontend idler vtable | builds the menu, starting with the loading screen | clears the last campaign's map objects first, so unit banners do not stand on the loading screen |
-| `0x468430`, `CustomCountryManager::Clear` | forgets the nations of the lobby, only when a campaign starts | calls it on every return too, or a nation designed and left behind by **Back** would join the next campaign |
-| `0x890D00`, `CMapRandomize::Randomize` | builds a Random New World map | the same, and before the first such map or canal the plugin copies the map's links, naval distances, the provinces' flags, passable neighbours and tree counts, and the colonial region definitions, to put them back after the world reset |
-| `0x78F250`, `ApplyCanalLogic` | rewrites the map's neighbours for a canal | the same, and before the first canal or Random New World map the plugin copies the map as above |
-| `0x88AFD0`, `CMap::ReinitalizeColonialRegions` | gives each province the colonial region of its definition; the reset runs it | calls it again after it put back the map of a Random New World campaign, whose definitions the reset used |
-| `0x7E8470`, `CHistoryDataBase::Execute` | walks the history between two dates | does nothing while a return waits for its world reset: the new menu would walk it on the old world, which crashed after a start from a later date. In the reset's own walk it first validates the reloaded history, as the game does at startup: without that, triggers in history files stay unbound, and Anbennar's next campaign differed |
+| `0x468430`, the clear of the custom nations | forgets the nations of the lobby, only when a campaign starts | calls it on every return too, or a nation designed and left behind by **Back** would join the next campaign |
+| `0x890D00`, Random New World | builds a Random New World map | the same, and before the first such map or canal the plugin copies the map's links, naval distances, the provinces' flags, passable neighbours and tree counts, and the colonial region definitions, to put them back after the world reset |
+| `0x78F250`, the canals' application | rewrites the map's neighbours for a canal | the same, and before the first canal or Random New World map the plugin copies the map as above |
+| `0x88AFD0`, the map's rebuild of its colonial regions | gives each province the colonial region of its definition; the reset runs it | calls it again after it put back the map of a Random New World campaign, whose definitions the reset used |
+| `0x7E8470`, the history's walk | walks the history between two dates | does nothing while a return waits for its world reset: the new menu would walk it on the old world, which crashed after a start from a later date. In the reset's own walk it first validates the reloaded history, as the game does at startup: without that, triggers in history files stay unbound, and Anbennar's next campaign differed |
 | `0x10F0510`, the main menu's Multiplayer button | opens the multiplayer screen, whatever the game's check says | does nothing after a return in a process that has played |
-| `0x10EB5C0`, `CFrontEndView::GetMultiplayerAvailability` | gives the restart reason only with a Paradox session | gives it after a return without one too, so the button's tooltip always says why |
+| `0x10EB5C0`, the main menu's multiplayer availability | gives the restart reason only with a Paradox session | gives it after a return without one too, so the button's tooltip always says why |
 | `0x14E9030` (GUI manager create), `0x10A0735` (popup window), `0x803270`, `0x81AF10` | create windows, build the campaign GUI | the same, and the plugin notes which windows belong to the campaign |
-| `0x5ED370`, `CIfEffect`'s deleting destructor | frees an `if` effect but not the `else_if`/`else` branches chained to it | while the world resets, a new campaign starts or a save loads, deletes those branches too; elsewhere the stock destructor alone (see [Memory a return used to lose](#memory-a-return-used-to-lose)) |
-| `0x7E9490`, `CHistoryDataBase::MoveIntoGameState`; `0x7E9820`, `DestroyDatabase`; `0x5CF740`, `CGameStateLoadTask` | a new campaign deletes the history's effects; a save's load and the reset destroy the history | the same, with the branches freed for their duration; the game's exit stays the stock one |
-| `0x233D8D0`, `CCountryDataBase` | each country keeps a table of its idea groups, which the country's destructor never frees | frees the tables with the game's own `delete[]` just before the world reset |
+| `0x5ED370`, the `if` effect's deleting destructor | frees an `if` effect but not the `else_if`/`else` branches chained to it | while the world resets, a new campaign starts or a save loads, deletes those branches too; elsewhere the stock destructor alone (see [Memory a return used to lose](#memory-a-return-used-to-lose)) |
+| `0x7E9490`, the history's move into a new campaign; `0x7E9820`, the history's destruction; `0x5CF740`, the load of a save | a new campaign deletes the history's effects; a save's load and the reset destroy the history | the same, with the branches freed for their duration; the game's exit stays the stock one |
+| `0x233D8D0`, the country database | each country keeps a table of its idea groups, which the country's destructor never frees | frees the tables with the game's own `delete[]` just before the world reset |
 | `0x93AE10`, `CCountryModifiers`' destructor | rebuilds a country's modifiers in place and frees the list of its subjects' modifiers, but not the modifiers in it | deletes those modifiers first, in the whole game (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
-| `0x2EF4B8`, `CCountry::DailyUpdateSerial` after its delayed events | fires the delayed events whose days ran out and takes them out of the country's list without deleting them | notes those events, and deletes them after the reset of a return and after a save's load (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
-| `0x4748FC`, `UpdateCenterOfTradeGlobalModifier` after its `new`; slot 0 of `CStaticModifier`'s vtable | gives a country a new modifier per center of trade and loses the old ones; deletes a modifier | notes each new one and forgets one the game deletes; after the reset of a return and after a save's load, deletes those of the old world (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
-| `0x152AAF0`, `CInstantTextBox`'s destructor | destroys a text box but not the pan gesture it made, unless the box has a scrollbar | first deletes that gesture, in the whole game, when the box's scrollbar never took it over (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
+| `0x2EF4B8`, a country's serial daily update, after its delayed events | fires the delayed events whose days ran out and takes them out of the country's list without deleting them | notes those events, and deletes them after the reset of a return and after a save's load (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
+| `0x4748FC`, the center-of-trade modifier update after its `new`; slot 0 of the static modifier's vtable | gives a country a new modifier per center of trade and loses the old ones; deletes a modifier | notes each new one and forgets one the game deletes; after the reset of a return and after a save's load, deletes those of the old world (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
+| `0x152AAF0`, the text box's destructor | destroys a text box but not the pan gesture it made, unless the box has a scrollbar | first deletes that gesture, in the whole game, when the box's scrollbar never took it over (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
 
-The world's `PotentialCorruption` flag stays as the game keeps it through its reset. Only
+The world's potential corruption flag stays as the game keeps it through its reset. Only
 the `-nudge` reason (2), which the reset flattens to 1, is put back. Earlier versions, like
 the original, cleared the flag after every return.
 
 ## Why a return takes a few seconds
 
 A return took 3.5 to 4 seconds in the lab, and about 3 of those are the game's own world
-reset (`ResetGame`). Almost all of that re-reads the databases and the history from disk,
+reset (`reset_game` in `symbols.toml`). Almost all of that re-reads the databases and the history from disk,
 which is what gives the next campaign a clean start, so the plugin does not skip it.
 Loading a save from the menu is the game's own path, and Hamweard adds nothing to it.
 
@@ -355,8 +355,8 @@ loses part of what it destroys. 1.37.5 restarts the process instead, so it never
 there. The lab found two such leaks with a heap tracer (eu4-engine-lab, 9 November 2026), and
 three more later (18–19 November 2026):
 
-- **`else_if`/`else` branches.** `CIfEffect`'s destructor frees the `if` but not `_pElse`
-  (`+0xF0`), the chain of branches that follows it in a script, and nothing else points to
+- **`else_if`/`else` branches.** The `if` effect's destructor frees the `if` but not the
+  pointer at `+0xF0`, the chain of branches that follows it in a script, and nothing else points to
   them. Each time the history was destroyed, every such branch was lost with all it holds.
   Anbennar's country history calls scripted effects full of `else_if`: about 60 MB each
   time, at every **Back**, every new campaign and every save loaded. Without mods it is a few
@@ -411,7 +411,7 @@ three more later (18–19 November 2026):
   empties the lists.
 
 A save loaded inside a campaign, from the in-game menu, goes through the same reset: the game runs
-`ResetGame` itself before it reads the save (`CInGameIdler::ResetGamestate`), and lost the same
+its world reset itself before it reads the save (`reset_gamestate`), and lost the same
 things there, about 4 to 5 MB per load of a save from 1719 without mods (heap tracer, 22 November
 2026). The plugin frees around that reset what it frees around its own: the idea group tables,
 the estates' modifiers, the historical characters, the leaders, the rebel factions, the AI's army
@@ -423,8 +423,8 @@ rebel factions). The battle results a save's wars read are still lost at each lo
 
 Four leaks grow while you play, with or without a return. Each time the game recalculates the
 modifiers of a country with subjects (every day for some countries, and after many actions), it
-gives the overlord one new modifier per subject (`CalcModifiersFromSubjects`) and keeps it in a
-list (`ModifiersFromSubjectToOverlord`). The next recalculation throws the list away but not the
+gives the overlord one new modifier per subject and keeps it in a list (the country's modifiers
+`+0x6440`). The next recalculation throws the list away but not the
 modifiers in it. In the lab that lost about 2 MB per year of play without mods (a heap tracer,
 10 November 2026), so a full campaign from 1444 kept several hundred MB it never used again. The
 plugin deletes those modifiers when the game rebuilds or destroys the list. Nothing else in the
@@ -441,7 +441,7 @@ after the reset of a return and after a save's load.
 
 The fourth is the modifiers of centers of trade. Whenever the game recalculates a country's
 centers of trade (each load of a save, and each time a province changes owner or controller), it
-gives the country one new modifier per such province (`UpdateCenterOfTradeGlobalModifier`) and
+gives the country one new modifier per such province (`center_of_trade_modifier_new`) and
 throws away the list entries of the ones before, but not the modifiers: about 0.1 MB per return
 after a save from 1719 without mods, as much per load of a save inside a campaign, and more in a
 campaign where such provinces change hands (heap tracer, 22 November 2026). The game keeps running
@@ -449,7 +449,7 @@ as before: the plugin only notes each one the game makes, and once a reset or a 
 replaced the world, deletes those of the worlds before through their own destructor. If one of
 them is still on a country's list, that world is still there, and it keeps them all.
 
-The third is in the GUI. Every text box makes a pan gesture (`CPanGestureRecognizer`, for
+The third is in the GUI. Every text box makes a pan gesture (a gesture recognizer for
 dragging its text), and only the list of gestures a widget owns gets deleted with it. A box
 without a scrollbar, or a hidden one, takes its gesture off that list, and the box's destructor
 leaves it: about 0.6 to 0.8 MB per campaign and 0.15 MB per **Back** without mods (heap tracer,
@@ -486,9 +486,9 @@ goto box and the right-click menu of the in-game idler, and of the main menu the
 replaced its goto box, right-click menu, the tutorial's minimized button and the start game
 dialog with its ironman save selection (`goto_box` and `rightClickMenu` twice each,
 `tutorial_minimized`, `start_game_dialog`, `IronmanSaveSelectDialog`). Their owners die
-without destroying them: the destructors of `CGotoBox`, `CTutorial`, `CFrontEnd` and
-`CInGameIdler` never read the window's field, and `~CGameSetup` never frees its
-`CStartGameDialog`, which stays in the GUI reload list with its `CIronmanSaveSelect`. Nothing
+without destroying them: the destructors of the goto box, the tutorial, the main menu and
+the in-game idler never read the window's field, and the game setup's destructor never frees
+its start game dialog, which stays in the GUI reload list with its ironman save selection. Nothing
 else holds them. The plugin notes them when their owner is destroyed (slot 0 of the four
 vtables, and at a return for the in-game idler) and, at the next return, destroys the
 windows still alive under that name and frees each dialog with its own destructor, which
