@@ -6,7 +6,7 @@ Normally **Exit to Menu** in a campaign and **Back** on the country selection sc
 
 ![](https://anvil.happydwarf.dev/workshop/hamweard-steps.png)
 
-Get Anvil Manager from [anvil.happydwarf.dev](https://anvil.happydwarf.dev/). Hamweard needs Anvil 1.9 or newer (take the latest) and EU4 1.37.5 (Steam; GOG's 1.37.5.2 and 1.37.5.0 too, see the FAQ). If Windows warns about Anvil Manager, choose **More info**, then **Run anyway**. If you use the original EU4 Menu Patch, remove it first.
+Get Anvil Manager from [anvil.happydwarf.dev](https://anvil.happydwarf.dev/). Hamweard needs Anvil 1.10 or newer (take the latest) and EU4 1.37.5 (Steam; GOG's 1.37.5.2 and 1.37.5.0 too, see the FAQ). If Windows warns about Anvil Manager, choose **More info**, then **Run anyway**. If you use the original EU4 Menu Patch, remove it first.
 
 ![](https://anvil.happydwarf.dev/workshop/hamweard-tiles-title.png)
 
