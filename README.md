@@ -333,6 +333,7 @@ code first, then tested with a second player on 6 November 2026.
 | `0x7E9490`, the history's move into a new campaign; `0x7E9820`, the history's destruction; `0x5CF740`, the load of a save | a new campaign deletes the history's effects; a save's load and the reset destroy the history | the same, with the branches freed for their duration; the game's exit stays the stock one |
 | `0x233D8D0`, the country database | each country keeps a table of its idea groups, which the country's destructor never frees | frees the tables with the game's own `delete[]` just before the world reset |
 | `0x93AE10`, `CCountryModifiers`' destructor | rebuilds a country's modifiers in place and frees the list of its subjects' modifiers, but not the modifiers in it | deletes those modifiers first, in the whole game (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
+| `0x3296B0`, the assignment of `CCountryModifiers` | copies the list of its subjects' modifiers from the source over its own, without deleting the modifiers in its own; the clear of a country's cached data assigns an empty set this way | after the assignment, deletes each old modifier that neither set holds any more, in the whole game |
 | `0x2EF4B8`, a country's serial daily update, after its delayed events | fires the delayed events whose days ran out and takes them out of the country's list without deleting them | notes those events, and deletes them after the reset of a return and after a save's load (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
 | `0x4748FC`, the center-of-trade modifier update after its `new`; slot 0 of the static modifier's vtable | gives a country a new modifier per center of trade and loses the old ones; deletes a modifier | notes each new one and forgets one the game deletes; after the reset of a return and after a save's load, deletes those of the old world (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
 | `0x152AAF0`, the text box's destructor | destroys a text box but not the pan gesture it made, unless the box has a scrollbar | first deletes that gesture, in the whole game, when the box's scrollbar never took it over (see [Memory a long campaign lost](#memory-a-long-campaign-lost)) |
@@ -428,7 +429,12 @@ gives the overlord one new modifier per subject and keeps it in a list (the coun
 modifiers in it. In the lab that lost about 2 MB per year of play without mods (a heap tracer,
 10 November 2026), so a full campaign from 1444 kept several hundred MB it never used again. The
 plugin deletes those modifiers when the game rebuilds or destroys the list. Nothing else in the
-game points to them but the modifier they were added to, which goes with the same list.
+game points to them but the modifier they were added to, which goes with the same list. The
+game also drops the list when it clears a country's cached data, which it does for every country
+at a reset and at a save's load, and once more at a campaign's start: it assigns an empty set
+of modifiers over the country's, and the old modifiers lose their last pointer (about 40 per
+campaign on a save from 1719, lab heap tracer, 25 November 2026). The plugin deletes those after
+the assignment.
 
 The second is the delayed events (`country_event` with `days`). When one fires, the game takes
 it out of the country's list and never deletes it; only the country's destructor deletes the
