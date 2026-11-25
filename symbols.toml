@@ -909,7 +909,7 @@ build."eu4-1.37.5.0-gog-win64" = { rva = 0x89BA60 }
 
 [symbol.tile_bitmap_call_0]
 memory = "code"
-note = "0x895130+0xBC2, the generator's tile step: the call of bitmap_create for a new tile bitmap, which then goes into one of the generator's tile arrays; no one deletes it"
+note = "0x895130+0xBC2 on Steam, the generator's tile step: the call of bitmap_create for a new tile bitmap, which then goes into one of the generator's tile arrays; no one deletes it"
 
 [symbol.tile_bitmap_call_0.build."eu4-1.37.5-steam-win64"]
 rva = 0x895CF2
@@ -928,7 +928,7 @@ size = 5
 
 [symbol.tile_bitmap_call_1]
 memory = "code"
-note = "0x895130+0xEBA, the generator's tile step: the call of bitmap_create for a new tile bitmap, which then goes into one of the generator's tile arrays; no one deletes it"
+note = "0x895130+0xEBA on Steam, the generator's tile step: the call of bitmap_create for a new tile bitmap, which then goes into one of the generator's tile arrays; no one deletes it"
 
 [symbol.tile_bitmap_call_1.build."eu4-1.37.5-steam-win64"]
 rva = 0x895FEA
@@ -947,7 +947,7 @@ size = 5
 
 [symbol.tile_bitmap_call_2]
 memory = "code"
-note = "0x895130+0x10B3, the generator's tile step: the call of bitmap_create for a new tile bitmap, which then goes into one of the generator's tile arrays; no one deletes it"
+note = "0x895130+0x10B3 on Steam, the generator's tile step: the call of bitmap_create for a new tile bitmap, which then goes into one of the generator's tile arrays; no one deletes it"
 
 [symbol.tile_bitmap_call_2.build."eu4-1.37.5-steam-win64"]
 rva = 0x8961E3
